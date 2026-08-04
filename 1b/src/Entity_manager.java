@@ -1,10 +1,32 @@
 package src;
 import java.util.ArrayList;
+import java.util.Random;
+
 
 public class Entity_manager {
     private static ArrayList<entity> EntityList = new ArrayList<entity>(); 
     public static int EntityNumber = 0;
 
+
+    public static synchronized entity getRandomPartner(int excludeId, int neededSex){
+        ArrayList<entity> candidates = new ArrayList<>();
+        for(entity e : EntityList){
+            if(e.getId() != excludeId && e.getSex() == neededSex && e.life.get()){
+                candidates.add(e);
+            }
+        }
+        if(candidates.isEmpty()) return null;
+        return candidates.get(new Random().nextInt(candidates.size()));
+    }
+
+    public static synchronized double getAverageFitness(){
+        if(EntityList.isEmpty()) return 0;
+        double sum = 0;
+        for(entity e : EntityList){
+            sum += e.getFitness();
+        }
+        return sum / EntityList.size();
+    }
 
     public static synchronized int Entity_count(){
         return EntityList.size();

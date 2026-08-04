@@ -156,12 +156,26 @@ public class brain {
 
    public static class Reproduction {
         public static NeuralNetwork createChild(NeuralNetwork parent){
-            // copia il DNA del genitore
             NeuralNetwork child = parent.copy();
-            // mutazione genetica
             child.mutate(0.1);
             return child;
         }
+
+        public static NeuralNetwork crossover(NeuralNetwork parentA, NeuralNetwork parentB, double mutationRate){
+            NeuralNetwork child = parentA.copy();
+            Random r = new Random();
+            for(int l = 0; l < child.layers.length; l++){
+                for(int n = 0; n < child.layers[l].neurons.length; n++){
+                    if(r.nextBoolean()){ // 50% dei neuroni presi dal genitore B
+                        child.layers[l].neurons[n] = parentB.layers[l].neurons[n].copy();
+                    }
+                }
+            }
+            child.mutate(mutationRate);
+            return child;
+        }
     }
+
+
         
 }

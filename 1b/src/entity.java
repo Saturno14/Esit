@@ -139,34 +139,32 @@ public class entity {
     }
 
     private void reproduce(){
+        entity partner = Entity_manager.getRandomPartner(EntityID, this.sex == 1 ? 2 : 1);
+        if(partner == null){
+            System.out.println("ID "+EntityID+": nessun partner disponibile, niente figlio");
+            return;
+        }
+
+        double avgFitness = Entity_manager.getAverageFitness();
+        double myFitness = getFitness();
+        if(myFitness < avgFitness){
+            return; // sotto la media della popolazione: niente figlio questo giro
+        }
 
         int id = Entity_manager.get_EntityN();
-
         entity child = new entity(
-                id,
-                tick.get(),
-                position[0].get(),
-                position[1].get(),
-                position[2].get()
+                id, tick.get(),
+                position[0].get(), position[1].get(), position[2].get()
         );
 
-
-        // eredita cervello del padre con mutazioni
-        child.Brain = Reproduction.createChild(this.Brain);
-
+        // punto 5: mutazione adattiva, chi va molto meglio della media esplora meno
+        double rate = myFitness > avgFitness * 1.2 ? 0.05 : 0.2;
+        child.Brain = Reproduction.crossover(this.Brain, partner.Brain, rate);
 
         Entity_manager.Entity_add(child);
+        new Thread(() -> child.GoLife()).start();
 
-
-        new Thread(() -> {
-            child.GoLife();
-        }).start();
-
-
-        System.out.println(
-            "Nascita ID "+id+
-            " da padre "+EntityID
-        );
+        System.out.println("Nascita ID "+id+" da padre "+EntityID+" e madre "+partner.getId());
     }
 
     public void GoLife(){
