@@ -194,9 +194,13 @@ public class entity {
                 double[] output = Brain.predict(get_NetInput());
 
                 int best = 0;
-                for (int i = 1; i < output.length; i++) {
-                    if (output[i] > output[best]) {
-                        best = i;
+                if(Math.random() < 0.15){
+                    best = (int)(Math.random()*6);
+                }else{
+                    for (int i = 1; i < output.length; i++) {
+                        if (output[i] > output[best]) {
+                            best = i;
+                        }
                     }
                 }
 
