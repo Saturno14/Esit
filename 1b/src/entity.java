@@ -32,6 +32,13 @@ public class entity {
     private String quest = "";
     public NeuralNetwork Brain;
 
+    private NeuralNetwork bestBrain;          // ultimo cervello "accettato"
+    private double windowStartReward = 0;     // Netreward all'inizio della finestra
+    private double bestWindowScore = Double.NEGATIVE_INFINITY;
+    private int windowTick = 0;
+    private static final int WINDOW_SIZE = 10;    // ogni quanti tick valuti la mutazione
+    private static final double MUTATION_RATE = 0.25;
+
 
     public entity(int id, int cycle, int x, int y, int z){
         this.entity_type= "human";
@@ -53,6 +60,9 @@ public class entity {
         position[1] = new AtomicInteger(y);
         position[2] = new AtomicInteger(z);
         Brain = new NeuralNetwork(80,32,16,6);
+
+        bestBrain = Brain.copy();
+        Brain.mutate(MUTATION_RATE);
     }
 
     public int[] getPos(){
@@ -159,7 +169,8 @@ public class entity {
 
         // punto 5: mutazione adattiva, chi va molto meglio della media esplora meno
         double rate = myFitness > avgFitness * 1.2 ? 0.05 : 0.2;
-        child.Brain = Reproduction.crossover(this.Brain, partner.Brain, rate);
+        //child.Brain = Reproduction.crossover(this.Brain, partner.Brain, rate);
+        child.Brain = Reproduction.crossover(this.bestBrain, partner.bestBrain, rate);
 
         Entity_manager.Entity_add(child);
         new Thread(() -> child.GoLife()).start();
@@ -192,6 +203,20 @@ public class entity {
                 
 
                 double[] output = Brain.predict(get_NetInput());
+
+                windowTick++;
+                if (windowTick >= WINDOW_SIZE) {
+                    double score = (Netreward - windowStartReward) / windowTick;
+                    if (score >= bestWindowScore) {
+                        bestBrain = Brain.copy();   // la mutazione ha fatto uguale o meglio: la tengo
+                        bestWindowScore = score;
+                    } else {
+                        Brain = bestBrain.copy();   // ha fatto peggio: torno al migliore
+                    }
+                    Brain.mutate(MUTATION_RATE);    // preparo il prossimo tentativo
+                    windowStartReward = Netreward;
+                    windowTick = 0;
+                }
 
                 int best = 0;
                 if(Math.random() < 0.15){
