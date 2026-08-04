@@ -27,7 +27,7 @@ public class entity {
     public String process = "";
     private ArrayList[] NecessityList = new ArrayList[3];
     private ArrayList[] MoveList = new ArrayList[2];
-    public static AtomicBoolean life = new AtomicBoolean();
+    public AtomicBoolean life = new AtomicBoolean();
     private AtomicInteger tick = new AtomicInteger();
     private String quest = "";
     public NeuralNetwork Brain;
@@ -107,7 +107,7 @@ public class entity {
                 int counter = 0;
                 for(int i = position[0].get()+xmin; i<=position[0].get()+xmax; i++){
                     for(int j = position[1].get()+ymin; j<=position[1].get()+ymax; j++){
-                        int[] info = world.cord_Type(i,position[1].get(),j);
+                        int[] info = world.cord_Type(i, position[1].get(), j);
                             input[counter] = info[0];
                             input[counter++] = info[1];
                             input[counter++] = info[2];
@@ -129,7 +129,7 @@ public class entity {
         entity child = new entity(
                 id,
                 tick.get(),
-                position[0].get()+1,
+                position[0].get(),
                 position[1].get(),
                 position[2].get()
         );
@@ -188,20 +188,32 @@ public class entity {
 
                 switch (best) {
                     case 1:
-                        MoveList[0].add(position[0].get()+1);
-                        MoveList[1].add(position[2].get());
+                        if(position[0].get()+1 <= 20){
+                            MoveList[0].add(position[0].get()+1);
+                            MoveList[1].add(position[2].get());
+                            Netreward += 0.5;
+                        }else{Netreward -= 10;}
                         break;
                     case 2:
-                        MoveList[0].add(position[0].get()-1);
-                        MoveList[1].add(position[2].get());
+                        if(position[0].get()-1 >= 0){
+                            MoveList[0].add(position[0].get()-1);
+                            MoveList[1].add(position[2].get());
+                            Netreward += 0.5;
+                        }else{Netreward -= 10;}
                         break;
                     case 3:
-                        MoveList[0].add(position[0].get());
-                        MoveList[1].add(position[2].get()+1);
+                        if(position[2].get()+1 <= 20){
+                            MoveList[0].add(position[0].get());
+                            MoveList[1].add(position[2].get()+1);
+                            Netreward += 0.5;
+                        }else{Netreward -= 10;}
                         break;
                     case 4:
-                        MoveList[0].add(position[0].get());
-                        MoveList[1].add(position[2].get()-1);
+                        if(position[2].get()-1 >= 0){
+                            MoveList[0].add(position[0].get());
+                            MoveList[1].add(position[2].get()-1);
+                            Netreward += 0.5;
+                        }else{Netreward -= 10;}
                         break;
                     case 5:
                         MoveList[0].add(-1);
