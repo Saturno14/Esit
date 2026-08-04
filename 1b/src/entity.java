@@ -187,7 +187,7 @@ public class entity {
             try {
                 Thread.sleep(2000);
                 tick.addAndGet(1);
-                food -= 5;
+                food -= 2;
                 Netreward += 0.5;
 
                 if(food <= 0){
@@ -263,6 +263,7 @@ public class entity {
                         MoveList[1].add(-1);
                         break;
                     case 0:
+                        Netreward -= 0.5;
                         continue;
                     default:
                         throw new AssertionError();
@@ -324,7 +325,7 @@ public class entity {
                 food += 50;
                 if(food>100){food=100;}
                 food_count ++;
-                if(old_food != food){Netreward += 1.0;}
+                if(old_food != food){Netreward += 3.0;}
                 break;
             default:
                 System.err.println("Errore take Object Entity ID: "+EntityID+" str: "+str);
