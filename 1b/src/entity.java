@@ -82,44 +82,60 @@ public class entity {
                     else{xmin = 0;}
                 }
 
-                if(position[1].get()-2 >=0){
+                if(position[2].get()-2 >= 0){
                     ymin = -2;
                 }else{
-                    if(position[1].get()-1>=0){ymin = -1;}
+                    if(position[1].get()-1 >= 0){ymin = -1;}
                     else{ymin = 0;}
                 }
 
                 if(position[0].get()+2 <= world.getDim()-1){
                     xmax = +2;
                 }else{
-                    if(position[0].get()-1 <=world.getDim()-1){xmax = +1;}
+                    if(position[0].get()+1 <=world.getDim()-1){xmax = +1;}
                     else{xmax = 0;}
                 }
 
-                if(position[1].get()+2 <= world.getDim()-1){
+                if(position[2].get()+2 <= world.getDim()-1){
                     ymax = +2;
                 }else{
-                    if(position[1].get()-1 <=world.getDim()-1){ymax = +1;}
+                    if(position[2].get()+1 <=world.getDim()-1){ymax = +1;}
                     else{ymax = 0;}
                 }
 
                 double[] input = new double[80]; //75
                 int counter = 0;
                 for(int i = position[0].get()+xmin; i<=position[0].get()+xmax; i++){
-                    for(int j = position[1].get()+ymin; j<=position[1].get()+ymax; j++){
+                    for(int j = position[2].get()+ymin; j<=position[2].get()+ymax; j++){
                         int[] info = world.cord_Type(i, position[1].get(), j);
                             input[counter++] = info[0];
                             input[counter++] = info[1];
                             input[counter++] = info[2];
                     }
                 }
+                while(counter<75){
+                    input[counter++] = 0;
+                }
                 //0-24
                 input[counter++]= healt/100.0;
                 input[counter++]= food/100.0;
                 input[counter++]= stamina/100.0;
                 input[counter++]= position[0].get()/(double)world.getDim();
-                input[counter++]= position[1].get()/(double)world.getDim();
+                input[counter++]= position[2].get()/(double)world.getDim();
                 return input;
+    }
+
+    public double getFitness(){
+        int t = tick.get();
+        return t > 0 ? Netreward / t : Netreward;
+    }
+
+    public int getSex(){
+        return sex;
+    }
+
+    public double getNetreward(){
+        return Netreward;
     }
 
     private void reproduce(){
@@ -188,28 +204,28 @@ public class entity {
 
                 switch (best) {
                     case 1:
-                        if(position[0].get()+1 <= 20){
+                        if(position[0].get()+1 < 20){
                             MoveList[0].add(position[0].get()+1);
                             MoveList[1].add(position[2].get());
                             Netreward += 0.5;
                         }else{Netreward -= 10;}
                         break;
                     case 2:
-                        if(position[0].get()-1 >= 0){
+                        if(position[0].get()-1 > 0){
                             MoveList[0].add(position[0].get()-1);
                             MoveList[1].add(position[2].get());
                             Netreward += 0.5;
                         }else{Netreward -= 10;}
                         break;
                     case 3:
-                        if(position[2].get()+1 <= 20){
+                        if(position[2].get()+1 < 20){
                             MoveList[0].add(position[0].get());
                             MoveList[1].add(position[2].get()+1);
                             Netreward += 0.5;
                         }else{Netreward -= 10;}
                         break;
                     case 4:
-                        if(position[2].get()-1 >= 0){
+                        if(position[2].get()-1 > 0){
                             MoveList[0].add(position[0].get());
                             MoveList[1].add(position[2].get()-1);
                             Netreward += 0.5;

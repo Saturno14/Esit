@@ -102,8 +102,8 @@ public class main {
                     switch (str[0]) {
                         case "layer":
                             if(Integer.parseInt(str[1])>=0 && Integer.parseInt(str[1])<planet.getDim()){
-                                CycleFlag.set(false);
                                 try {
+                                    CycleFlag.set(false);
                                     Thread.sleep(5000);
                                 } catch (InterruptedException e) {
                                     // TODO Auto-generated catch block
