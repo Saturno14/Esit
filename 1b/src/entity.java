@@ -209,7 +209,7 @@ public class entity {
                         }else{Netreward -= 10;}
                         break;
                     case 2:
-                        if(position[0].get()-1 > 0){
+                        if(position[0].get()-1 >= 0){
                             MoveList[0].add(position[0].get()-1);
                             MoveList[1].add(position[2].get());
                             Netreward += 0.5;
@@ -223,7 +223,7 @@ public class entity {
                         }else{Netreward -= 10;}
                         break;
                     case 4:
-                        if(position[2].get()-1 > 0){
+                        if(position[2].get()-1 >= 0){
                             MoveList[0].add(position[0].get());
                             MoveList[1].add(position[2].get()-1);
                             Netreward += 0.5;
@@ -246,7 +246,9 @@ public class entity {
                             takeObject();
                             MoveList[0].remove(0);
                             MoveList[1].remove(0);
-                            
+                        }else{Netreward -= 2.0; 
+                            MoveList[0].remove(0);
+                            MoveList[1].remove(0);
                         }
                     }else{
                         System.out.println("muove in: "+MoveList[0].get(0)+" "+MoveList[1].get(0));
