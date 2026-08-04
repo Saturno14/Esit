@@ -63,7 +63,9 @@ public class main {
                         System.out.println("Entity count: "+Entity_manager.Entity_count());
                         try {
                             //qua devi aggiungere tutta la parte di come si svolge il ciclo giornaliero
+                            planet.add((int)(Math.random()*20), ground.get(), (int)(Math.random()*20), "M");
                             planetPrint(ground.get());
+                            
                             // for(int i = 0; i<EntityList.size()-1;i++){
                             //     int b[] = EntityList.get(i).getPos();
                             //     System.out.print("Pos: "+b[0]);

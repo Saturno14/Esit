@@ -85,7 +85,7 @@ public class entity {
                 if(position[2].get()-2 >= 0){
                     ymin = -2;
                 }else{
-                    if(position[1].get()-1 >= 0){ymin = -1;}
+                    if(position[2].get()-1 >= 0){ymin = -1;}
                     else{ymin = 0;}
                 }
 
@@ -233,7 +233,7 @@ public class entity {
                         MoveList[0].add(-1);
                         MoveList[1].add(-1);
                         break;
-                    case 6:
+                    case 0:
                         continue;
                     default:
                         throw new AssertionError();
