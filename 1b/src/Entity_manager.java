@@ -3,6 +3,7 @@ import java.util.ArrayList;
 
 public class Entity_manager {
     private static ArrayList<entity> EntityList = new ArrayList<entity>(); 
+    public static int EntityNumber = 0;
 
 
     public static synchronized int Entity_count(){
@@ -15,14 +16,19 @@ public class Entity_manager {
 
     public static synchronized void Entity_add(entity a){
         EntityList.add(a);
+        EntityNumber++;
     }
 
     public static synchronized void Entity_remuve(entity a){
         EntityList.remove(a);
     }
 
+    public static synchronized int get_EntityN(){
+        return EntityNumber;
+    }
+
     public static synchronized void Entity_remuve_ID(int id){
-        for(int i=0;i<=EntityList.size();i++){
+        for(int i=0;i<EntityList.size();i++){
             if(EntityList.get(i).getId() == id){EntityList.remove(i);}
         }
     }

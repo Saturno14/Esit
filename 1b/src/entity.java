@@ -108,7 +108,7 @@ public class entity {
                 for(int i = position[0].get()+xmin; i<=position[0].get()+xmax; i++){
                     for(int j = position[1].get()+ymin; j<=position[1].get()+ymax; j++){
                         int[] info = world.cord_Type(i, position[1].get(), j);
-                            input[counter] = info[0];
+                            input[counter++] = info[0];
                             input[counter++] = info[1];
                             input[counter++] = info[2];
                     }
@@ -124,7 +124,7 @@ public class entity {
 
     private void reproduce(){
 
-        int id = Entity_manager.Entity_count();
+        int id = Entity_manager.get_EntityN();
 
         entity child = new entity(
                 id,
