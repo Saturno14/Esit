@@ -1,6 +1,8 @@
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.geom.Point2D;
 import java.io.*;
 import java.util.ArrayList;
@@ -38,6 +40,13 @@ public class GameWindow extends JFrame {
     private JTextField consoleField;
     private JLabel statusLabel;
 
+    // --- Ispezione entita': click sullo sprite -> stats + storico azioni ---
+    private final Map<Integer, EntityTracker> trackers = new HashMap<>();
+    private final List<int[]> entityHitRegions = new ArrayList<>(); // {id, screenX, screenY}
+    private Integer selectedEntityId = null;
+    private EntityInspectorDialog inspectorDialog;
+    private static final int HIT_RADIUS = 16;
+
     public GameWindow() {
         super("Erimim - Motore Grafico 3D");
         setupWorld();
@@ -45,13 +54,45 @@ public class GameWindow extends JFrame {
         redirectConsole();
 
         Timer repaintTimer = new Timer(300, e -> {
+            updateTrackers();
             worldPanel.repaint();
             statusLabel.setText("Livello mela: " + ground.get()
                     + "   Ciclo: " + cycle
                     + "   Entita': " + entityList.size()
-                    + "   Stato: " + (cycleRunning.get() ? "IN ESECUZIONE" : "FERMO"));
+                    + "   Stato: " + (cycleRunning.get() ? "IN ESECUZIONE" : "FERMO")
+                    + (selectedEntityId != null ? "   Selezionata: #" + selectedEntityId : ""));
         });
         repaintTimer.start();
+    }
+
+    /** Campiona ogni entita' viva (e quelle appena decedute) e aggiorna il relativo tracker. */
+    private void updateTrackers() {
+        for (entity e : entityList) {
+            int id = e.getId();
+            int[] pos;
+            try {
+                pos = e.getPos();
+            } catch (Exception ex) {
+                continue;
+            }
+            EntityTracker t = trackers.computeIfAbsent(id, EntityTracker::new);
+            boolean changed = t.update(pos, e.getSex(), e.getNetreward(), e.life.get());
+            if (changed && selectedEntityId != null && selectedEntityId == id
+                    && inspectorDialog != null && inspectorDialog.isVisible()) {
+                inspectorDialog.refresh(t);
+            }
+        }
+    }
+
+    private void selectEntity(int id) {
+        selectedEntityId = id;
+        EntityTracker t = trackers.computeIfAbsent(id, EntityTracker::new);
+        if (inspectorDialog == null) {
+            inspectorDialog = new EntityInspectorDialog(this);
+        }
+        inspectorDialog.refresh(t);
+        inspectorDialog.setVisible(true);
+        worldPanel.repaint();
     }
 
     private void setupWorld() {
@@ -83,6 +124,15 @@ public class GameWindow extends JFrame {
 
         worldPanel = new IsoWorldPanel();
         worldPanel.setPreferredSize(new Dimension(650, 620));
+        worldPanel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                Integer hit = findEntityAt(e.getX(), e.getY());
+                if (hit != null) {
+                    selectEntity(hit);
+                }
+            }
+        });
 
         logArea = new JTextArea();
         logArea.setEditable(false);
@@ -313,6 +363,22 @@ public class GameWindow extends JFrame {
         totCycle.set(false);
     }
 
+    /** Trova l'entita' il cui sprite e' piu' vicino al punto cliccato, entro HIT_RADIUS px. */
+    private Integer findEntityAt(int x, int y) {
+        Integer bestId = null;
+        double bestDist = HIT_RADIUS;
+        synchronized (entityHitRegions) {
+            for (int[] hr : entityHitRegions) {
+                double dist = Point2D.distance(x, y, hr[1], hr[2]);
+                if (dist <= bestDist) {
+                    bestDist = dist;
+                    bestId = hr[0];
+                }
+            }
+        }
+        return bestId;
+    }
+
     /**
      * Pannello di rendering isometrico voxel-style.
      * Asset diversi per marker:
@@ -371,6 +437,8 @@ public class GameWindow extends JFrame {
                 entitiesByColumn.computeIfAbsent(pos[0] * dim + pos[2], k -> new ArrayList<>()).add(e);
             }
 
+            List<int[]> newHitRegions = new ArrayList<>();
+
             for (int diag = 0; diag <= 2 * (dim - 1); diag++) {
                 int iStart = Math.max(0, diag - dim + 1);
                 int iEnd = Math.min(dim - 1, diag);
@@ -393,10 +461,19 @@ public class GameWindow extends JFrame {
                         for (entity e : ents) {
                             int[] pos = e.getPos();
                             Point p = toScreen(pos[0], pos[1], pos[2], centerX, centerY);
-                            drawEntity(g2, p.x, p.y + TILE_H / 2, e.getId());
+                            int cx = p.x;
+                            int cy = p.y + TILE_H / 2;
+                            boolean selected = selectedEntityId != null && selectedEntityId == e.getId();
+                            drawEntity(g2, cx, cy, e.getId(), selected);
+                            newHitRegions.add(new int[]{e.getId(), cx, cy});
                         }
                     }
                 }
+            }
+
+            synchronized (entityHitRegions) {
+                entityHitRegions.clear();
+                entityHitRegions.addAll(newHitRegions);
             }
         }
 
@@ -455,7 +532,7 @@ public class GameWindow extends JFrame {
             g2.fillRect(cx - 1, topY - 4, 2, 5);
         }
 
-        private void drawEntity(Graphics2D g2, int cx, int cy, int id) {
+        private void drawEntity(Graphics2D g2, int cx, int cy, int id, boolean selected) {
             Color[] palette = {
                     new Color(30, 110, 210), new Color(210, 140, 30), new Color(30, 160, 120),
                     new Color(160, 60, 180), new Color(200, 60, 60), new Color(60, 150, 200)
@@ -465,6 +542,13 @@ public class GameWindow extends JFrame {
             int bodyH = 22;
             int headR = 7;
             int baseY = cy;
+
+            if (selected) {
+                g2.setColor(new Color(255, 215, 0));
+                g2.setStroke(new BasicStroke(2.5f));
+                g2.drawOval(cx - 13, baseY - bodyH - headR * 2 - 2, 26, bodyH + headR * 2 + 8);
+                g2.setStroke(new BasicStroke(1f));
+            }
 
             g2.setColor(new Color(0, 0, 0, 70));
             g2.fillOval(cx - 9, baseY - 3, 18, 6);
