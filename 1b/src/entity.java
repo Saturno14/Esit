@@ -45,7 +45,7 @@ public class entity {
         this.EntityID = id;
         this.healt = 100;
         this.water = 100;
-        this.food = 100;
+        this.food = 1000;
         this.stamina = 100;
         this.born = cycle;
         this.age = 0;
@@ -129,7 +129,7 @@ public class entity {
                 //0-24
                 input[counter++]= healt/100.0;
                 input[counter++]= food/100.0;
-                input[counter++]= stamina/100.0;
+                input[counter++]= Netreward;
                 input[counter++]= position[0].get()/(double)world.getDim();
                 input[counter++]= position[2].get()/(double)world.getDim();
                 return input;
@@ -140,26 +140,26 @@ public class entity {
         return t > 0 ? Netreward / t : Netreward;
     }
 
-    public int getSex(){
-        return sex;
-    }
-
-    public double getNetreward(){
-        return Netreward;
-    }
+    public int getSex(){return sex;}
+    public int getFood(){return food;}
+    public int getHealt(){return healt;}
+    public int getStamina(){ return stamina; }
+    public int getAge(){ return age; }
+    public boolean isAlive(){ return life.get(); }
+    public double getNetreward(){return Netreward;}
 
     private void reproduce(){
-        entity partner = Entity_manager.getRandomPartner(EntityID, this.sex == 1 ? 2 : 1);
-        if(partner == null){
-            System.out.println("ID "+EntityID+": nessun partner disponibile, niente figlio");
-            return;
-        }
+        // entity partner = Entity_manager.getRandomPartner(EntityID, this.sex == 1 ? 2 : 1);
+        // if(partner == null){
+        //     System.out.println("ID "+EntityID+": nessun partner disponibile, niente figlio");
+        //     return;
+        // }
 
         double avgFitness = Entity_manager.getAverageFitness();
         double myFitness = getFitness();
-        if(myFitness < avgFitness){
-            return; // sotto la media della popolazione: niente figlio questo giro
-        }
+        // if(myFitness < avgFitness){
+        //     return; // sotto la media della popolazione: niente figlio questo giro
+        // }
 
         int id = Entity_manager.get_EntityN();
         entity child = new entity(
@@ -170,12 +170,13 @@ public class entity {
         // punto 5: mutazione adattiva, chi va molto meglio della media esplora meno
         double rate = myFitness > avgFitness * 1.2 ? 0.05 : 0.2;
         //child.Brain = Reproduction.crossover(this.Brain, partner.Brain, rate);
-        child.Brain = Reproduction.crossover(this.bestBrain, partner.bestBrain, rate);
+        child.Brain = Reproduction.Partenogenesi(this.bestBrain, rate);
 
         Entity_manager.Entity_add(child);
         new Thread(() -> child.GoLife()).start();
 
-        System.out.println("Nascita ID "+id+" da padre "+EntityID+" e madre "+partner.getId());
+        // System.out.println("Nascita ID "+id+" da padre "+EntityID+" e madre "+partner.getId());
+        System.out.println("Nascita ID "+id+" da madre "+this.getId());
     }
 
     public void GoLife(){
@@ -196,7 +197,8 @@ public class entity {
                 if(food >= 85){if(healt < 100){healt ++;}}
                 if(healt <= 0){life.set(false);}
 
-                if(food_count >= 3){
+                if(food_count >=2){
+                    Netreward += 10;
                     reproduce();
                     food_count = 0;
                 }
@@ -313,6 +315,7 @@ public class entity {
 
     private boolean takeObject(){
         boolean flag = false;
+        int maxFood = 1000;
         int old_food = food;
         String str = world.getSymbol(position[0].get(),position[1].get(),position[2].get());
         System.out.println("take object+ "+str);
@@ -322,8 +325,8 @@ public class entity {
             case "M":
                 world.remove(position[0].get(),position[1].get(),position[2].get(),str);
                 System.out.println("dentro take mela");
-                food += 50;
-                if(food>100){food=100;}
+                food += 100;
+                if(food>maxFood){food=maxFood;}
                 food_count ++;
                 if(old_food != food){Netreward += 3.0;}
                 break;

@@ -76,7 +76,7 @@ public class GameWindow extends JFrame {
                 continue;
             }
             EntityTracker t = trackers.computeIfAbsent(id, EntityTracker::new);
-            boolean changed = t.update(pos, e.getSex(), e.getNetreward(), e.life.get());
+            boolean changed = t.update(pos, e.getSex(), e.getNetreward(), e.life.get(), e.getFood(), e.getHealt());
             if (changed && selectedEntityId != null && selectedEntityId == id
                     && inspectorDialog != null && inspectorDialog.isVisible()) {
                 inspectorDialog.refresh(t);

@@ -174,6 +174,13 @@ public class brain {
             child.mutate(mutationRate);
             return child;
         }
+
+        public static NeuralNetwork Partenogenesi(NeuralNetwork parentA, double mutationRate){
+            NeuralNetwork child = parentA.copy();
+            Random r = new Random();
+            child.mutate(mutationRate);
+            return child;
+        }
     }
 
 

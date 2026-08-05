@@ -36,8 +36,8 @@ public class EntityInspectorDialog extends JDialog {
         }
         idLabel.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 16));
 
-        JLabel disclaimer = new JLabel("<html><i>Fame/salute sono stimate ricostruendo la regola nota lato GUI, "
-                + "non lette direttamente dal modello. Le azioni sono dedotte da posizione/reward.</i></html>");
+        JLabel disclaimer = new JLabel("<html><i>Fame e salute sono lette direttamente dall'entita'. "
+                + "Le azioni sono dedotte da posizione/reward.</i></html>");
         disclaimer.setFont(new Font(Font.SANS_SERIF, Font.PLAIN, 11));
         disclaimer.setForeground(new Color(110, 110, 110));
         disclaimer.setBorder(BorderFactory.createEmptyBorder(0, 8, 6, 8));
@@ -66,8 +66,8 @@ public class EntityInspectorDialog extends JDialog {
         stateLabel.setText("Stato: " + (t.deadLogged ? "deceduta" : "viva"));
         fitnessLabel.setText(String.format("Reward netto totale: %.2f", t.lastNetreward));
         rewardLabel.setText(""); // riservato per usi futuri, tenuto per allineare la griglia
-        foodLabel.setText("Fame stimata: " + t.estFood + " / 100");
-        healthLabel.setText("Salute stimata: " + t.estHealth + " / 100");
+        foodLabel.setText("Fame: " + t.food + " / 100");
+        healthLabel.setText("Salute: " + t.health + " / 100");
 
         List<EntityTracker.LogEntry> entries = t.getLog();
         if (entries.size() != shownLogSize) {

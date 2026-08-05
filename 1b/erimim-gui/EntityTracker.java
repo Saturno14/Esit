@@ -7,17 +7,14 @@ import java.util.List;
 /**
  * Ricostruisce dall'esterno lo storico di un'entita', senza modificare src/entity.java.
  *
- * entity.java non espone getter per fame/salute, quindi:
- *  - posizione, fitness, reward netto, sesso, stato vivo/morto sono dati REALI (letti
- *    dai getter pubblici che gia' esistono);
- *  - l'azione compiuta ad ogni tick e' DEDOTTA confrontando la variazione di posizione
- *    e di reward tra un poll e l'altro, sulla base delle regole di reward gia' scritte
- *    in entity.GoLife() (mossa riuscita ~+1.0, mangiata ~+1.5, fermo ~+0.5, urto contro
- *    un bordo ~-9.5, presa a vuoto ~-1.5);
- *  - fame/salute stimate sono una SIMULAZIONE PARALLELA con la stessa regola nota
- *    (-5 di fame a tick, +50 quando mangia, salute -5 se fame a 0, +1 se fame >=85),
- *    non una lettura diretta: possono divergere leggermente dal valore reale interno
- *    se un tick viene perso tra due poll consecutivi.
+ * Tutti i dati mostrati (posizione, fitness, reward netto, sesso, stato vivo/morto,
+ * fame e salute) sono valori REALI, letti dai getter pubblici di entity
+ * (getPos, getSex, getNetreward, getFood, getHealt) e dal campo pubblico life.
+ * L'azione compiuta ad ogni tick e' comunque DEDOTTA confrontando la variazione di
+ * posizione e di reward tra un poll e l'altro, sulla base delle regole di reward gia'
+ * scritte in entity.GoLife() (mossa riuscita ~+1.0, mangiata ~+1.5, fermo ~+0.5, urto
+ * contro un bordo ~-9.5, presa a vuoto ~-1.5): questo perche' l'azione in se' non e'
+ * esposta da un getter, solo il suo effetto su posizione/reward.
  */
 public class EntityTracker {
 
@@ -37,8 +34,8 @@ public class EntityTracker {
     public boolean everSeen = false;
     public boolean deadLogged = false;
 
-    public int estFood = 100;
-    public int estHealth = 100;
+    public int food = 100;
+    public int health = 100;
 
     private final List<LogEntry> log = new ArrayList<>();
 
@@ -62,8 +59,10 @@ public class EntityTracker {
      * Ritorna true se e' stato registrato un nuovo evento (utile per capire se
      * un pannello aperto va rinfrescato).
      */
-    public synchronized boolean update(int[] pos, int sex, double netreward, boolean alive) {
+    public synchronized boolean update(int[] pos, int sex, double netreward, boolean alive, int food, int health) {
         this.sex = sex;
+        this.food = food;
+        this.health = health;
 
         if (!everSeen) {
             everSeen = true;
@@ -83,26 +82,14 @@ public class EntityTracker {
         if (Math.abs(deltaNet) > 0.05) {
             if (posChanged) {
                 addLog(String.format("Mossa verso (%d,%d,%d)  [reward %+.1f]", pos[0], pos[1], pos[2], deltaNet));
-                estFood -= 5;
             } else if (deltaNet >= 1.2) {
                 addLog(String.format("Ha mangiato una mela  [reward %+.1f]", deltaNet));
-                estFood = Math.min(100, estFood - 5 + 50);
             } else if (deltaNet <= -8.0) {
                 addLog(String.format("Ha urtato un bordo del mondo  [reward %+.1f]", deltaNet));
-                estFood -= 5;
             } else if (deltaNet <= -1.0) {
                 addLog(String.format("Ha tentato di prendere ma non c'era nulla  [reward %+.1f]", deltaNet));
-                estFood -= 5;
             } else {
                 addLog(String.format("E' rimasta ferma  [reward %+.1f]", deltaNet));
-                estFood -= 5;
-            }
-
-            estFood = Math.max(0, Math.min(100, estFood));
-            if (estFood <= 0) {
-                estHealth = Math.max(0, estHealth - 5);
-            } else if (estFood >= 85) {
-                estHealth = Math.min(100, estHealth + 1);
             }
 
             lastPos = pos;
