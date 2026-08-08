@@ -1,12 +1,102 @@
 package src;
 
+import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class world {
+    private static AtomicBoolean SimulationFlag = new AtomicBoolean();
     private static int Dimension = 20;
     private static cell[][][] Enviroment = new cell[Dimension][Dimension][Dimension];
     private static AtomicInteger ground = new AtomicInteger();
+    private static int PrintGround = 0;
+    private static int cycle = 0;
 
+    public static void ChengePrintGround(int value){
+        PrintGround = value;
+    }
+
+    public int getCycle(){
+        return cycle;
+    }
+
+    public static void DoCycle(){
+        AtomicBoolean CycleFlag = new AtomicBoolean();
+        
+        Thread Cycle = new Thread(()->{
+            int ore = 0;
+            System.out.println("Cycle start");
+            try {
+                while(world.GetSimulationFlag()){
+                    Thread.sleep(1000);//5 secondo
+                    System.out.println("Dentro doCycle flag= "+CycleFlag.get()+"threadN: "+Thread.currentThread());
+                    System.out.println("Cycle: "+cycle+" - ore: "+ore);
+                    System.out.println("print layer: "+ground.get());
+                    System.out.println("Entity count: "+Entity_manager.Entity_count());
+                    try {
+                        world.planetPrint();
+                    } catch (Exception e) {System.out.println("Errore try cycle: "+e.getMessage());}
+                    ore++;
+                    if(ore == 24){
+                        ore = 0;
+                        cycle++;
+                        System.out.println("Nuovo cyclo");
+                    }
+                }
+                System.out.println("TotCycle stopped");
+                
+            } catch (Exception e) {
+                System.out.println("Errore DoCycle thread: "+e.getMessage());
+            }
+        });
+        CycleFlag.set(true);
+        System.out.println("Avvio DoCycle");
+        if(!Cycle.isAlive()){Cycle.start();}
+        else{System.out.println("Cycle alredy alive");}
+        
+    }
+
+    public static void planetPrint(){
+        try {
+            int rows = Dimension;
+            int columns = Dimension;
+            String str;
+
+            // Intestazione con indici di colonna
+            str = "\t|\t";
+            for (int j = 0; j < columns; j++) {
+                str += j + "\t";
+            }
+            System.out.println(str);
+            System.out.println("--------".repeat(columns + 1));
+
+            // Righe con indice di riga a inizio
+            for (int i = 0; i < rows; i++) {
+                str = i + "\t|\t";
+                for (int j = 0; j < columns; j++) {
+                    int[] cord = {i,PrintGround,j};
+                    String str2 = "";
+                    for(int z=0;z<Entity_manager.Entity_count();z++){
+                        int[] a = Entity_manager.Entity_get(z).getPos();
+                        if(Arrays.equals(a, cord)){
+                            str2 = " E"+Entity_manager.Entity_get(z).getId();}
+                    }
+                    str +=  getSymbol(i, PrintGround, j)+str2+"\t";
+                }
+                System.out.println(str + "|");
+            }
+        } catch (Exception e) {
+            System.out.println("Matrix is empty!! "+e.getLocalizedMessage());
+        }
+    }
+
+    public static void ChangeSimulationFlag(boolean status){
+        SimulationFlag.set(status);
+    }
+
+    public static boolean GetSimulationFlag(){
+        return SimulationFlag.get();
+    }
     
     public boolean world_setup(){
         if(!cell_setup()){return false;}
