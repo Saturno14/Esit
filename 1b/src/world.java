@@ -22,7 +22,7 @@ public class world {
 
     public static void DoCycle(){
         AtomicBoolean CycleFlag = new AtomicBoolean();
-        
+        ChengePrintGround(ground_search());
         Thread Cycle = new Thread(()->{
             int ore = 0;
             System.out.println("Cycle start");

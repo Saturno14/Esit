@@ -1,11 +1,45 @@
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.Socket;
 import java.util.Arrays;
+import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicInteger;
 import src.*;
 public class main {
 
     private static world planet = new world();
     
-    private static AtomicInteger ground = new AtomicInteger();    
+    private static AtomicInteger ground = new AtomicInteger(); 
+    
+    public void client(){
+        try {
+            Socket socket = new Socket("localhost",1234);
+            System.out.println("collegato al server");
+
+            BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+
+            Scanner scanner = new Scanner(System.in);
+
+            new Thread(()->{
+                while(true){
+                    try {
+                        String output = "";
+                        String str = "";
+                        str = in.readLine();
+                        System.out.println("report: "+str);
+                        output = console.input(str);
+                        out.println("Comand output: "+output);
+
+                    } catch (Exception e) {System.out.println("Errore in server in");}
+                }
+            });
+        } catch (Exception e) {System.out.println("Errore in clint: "+e.getMessage());}
+
+
+        
+    }
 
     public static void main(String[] args) {
 
@@ -36,7 +70,7 @@ public class main {
             planet.add((int)(Math.random()*20), ground.get(), (int)(Math.random()*20), "M");
         }
 
-        ProcessBuilder Console = new ProcessBuilder("cmd", "/c", "start", "cmd", "/k", "java console.java");
+        ProcessBuilder Console = new ProcessBuilder("cmd", "/c", "start", "cmd", "/k", "java ConsoleInput.java");
         try {
             Console.start();
         } catch (Exception e) { System.out.println("Errore console main: "+e.getMessage());}

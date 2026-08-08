@@ -186,8 +186,8 @@ public class entity {
         
         while(life.get()){
             try {
-                Thread.sleep(2000);
                 while(world.GetSimulationFlag()){
+                    Thread.sleep(2000);
                     tick.addAndGet(1);
                     food -= 2;
                     Netreward += 0.5;
