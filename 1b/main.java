@@ -3,7 +3,6 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.Arrays;
-import java.util.Scanner;
 import java.util.concurrent.atomic.AtomicInteger;
 import src.*;
 public class main {
@@ -12,16 +11,13 @@ public class main {
     
     private static AtomicInteger ground = new AtomicInteger(); 
     
-    public void client(){
+    public static void client(){
         try {
-            Socket socket = new Socket("localhost",1234);
+            Socket socket = new Socket("localhost",5443);
             System.out.println("collegato al server");
 
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-
-            Scanner scanner = new Scanner(System.in);
-
             new Thread(()->{
                 while(true){
                     try {
@@ -34,7 +30,7 @@ public class main {
 
                     } catch (Exception e) {System.out.println("Errore in server in");}
                 }
-            });
+            }).start();
         } catch (Exception e) {System.out.println("Errore in clint: "+e.getMessage());}
 
 
@@ -72,10 +68,13 @@ public class main {
 
         ProcessBuilder Console = new ProcessBuilder("cmd", "/c", "start", "cmd", "/k", "java ConsoleInput.java");
         try {
+
             Console.start();
+            client();
         } catch (Exception e) { System.out.println("Errore console main: "+e.getMessage());}
         
         planet.DoCycle();
+
 
 
 

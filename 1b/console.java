@@ -47,13 +47,13 @@ public class console{
                             entity temp = Entity_manager.Entity_get(Integer.parseInt(str[1]));
                             StringBuilder tempStr = new StringBuilder();
                             
-                            tempStr.append("ID: "+temp.getId()+"/n");
-                            tempStr.append("IsAlive: "+temp.isAlive()+"/n");
-                            tempStr.append("Healt: "+temp.getHealt()+"/n");
-                            tempStr.append("Food: "+temp.getFood()+"/n");
-                            tempStr.append("NetRaward: "+temp.getNetreward()+"/n");
-                            tempStr.append("Age: "+temp.getAge()+"/n");
-                            tempStr.append("Sex: "+temp.getSex()+"/n");
+                            tempStr.append("ID: "+temp.getId()+"\n");
+                            tempStr.append("IsAlive: "+temp.isAlive()+"\n");
+                            tempStr.append("Healt: "+temp.getHealt()+"\n");
+                            tempStr.append("Food: "+temp.getFood()+"\n");
+                            tempStr.append("NetRaward: "+temp.getNetreward()+"\n");
+                            tempStr.append("Age: "+temp.getAge()+"\n");
+                            tempStr.append("Sex: "+temp.getSex()+"\n");
                             tempStr.append("Pos: "+temp.getPos());
                             out = tempStr.toString();
                             
