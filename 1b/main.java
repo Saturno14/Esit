@@ -13,7 +13,15 @@ public class main {
     
     public static void client(){
         try {
-            Socket socket = new Socket("localhost",5443);
+            Socket socket = null;
+            while (socket == null) {
+                try {
+                    socket = new Socket("localhost", 5443);
+                } catch (Exception e) {
+                    try { Thread.sleep(300); } catch (InterruptedException ignored) {}
+                    // ConsoleInput non è ancora pronto, riprova
+                }
+            }
             System.out.println("collegato al server");
 
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
