@@ -1,34 +1,57 @@
 package src;
 import java.io.File;
 import java.nio.file.*;
-import java.util.Arrays;
 
 public class Saving {
     private static boolean SaveEntityBrain(String dir){
         boolean flag = false;
         StringBuilder Str = new StringBuilder();
+        Str.append("[\n");
+        for(int i=0; i<Entity_manager.Entity_count(); i++){
+            entity ent = Entity_manager.Entity_get(i);
+            int[] topology = ent.getBrain().getTopology();
 
-        for(int i=0; i<Entity_manager.Entity_count();i++){
-            Str.append("{\n");
-            int topology[] = Entity_manager.Entity_get(i).getBrain().getTopology();
-            Str.append("id"+" : "+Entity_manager.Entity_get(i).getId()+",");
-            Str.append("topology"+" : ["+Entity_manager.Entity_get(i).getBrain().getTopology()+"],");
-            for(int j=0; j<topology.length-1;j++){
-                for(int z=0;z<topology[j+1];z++){
-                    Str.append("    "+Entity_manager.Entity_get(i).getBrain().getLayer(j).getNeuron(z).getBias()+",\n");
-                    double weights[] = Entity_manager.Entity_get(i).getBrain().getLayer(j).getNeuron(z).getWeight();
-                    for(int c=0;c<weights.length;c++){
-                        Str.append("    "+weights[c]+",\n");
-                    }
-                }
+            Str.append("  {\n");
+            Str.append("    \"id\": ").append(ent.getId()).append(",\n");
+
+            Str.append("    \"topology\": [");
+            for(int t=0; t<topology.length; t++){
+                Str.append(topology[t]);
+                if(t < topology.length-1) Str.append(", ");
             }
-            Str.append("};\n");
+            Str.append("],\n");
+
+            Str.append("    \"layers\": [\n");
+            for(int j=0; j<topology.length-1; j++){
+                Str.append("      {\n        \"neurons\": [\n");
+                for(int z=0; z<topology[j+1]; z++){
+                    brain.Neuron n = ent.getBrain().getLayer(j).getNeuron(z);
+                    double[] weights = n.getWeight();
+
+                    Str.append("          { \"bias\": ").append(n.getBias()).append(", \"weights\": [");
+                    for(int c=0; c<weights.length; c++){
+                        Str.append(weights[c]);
+                        if(c < weights.length-1) Str.append(", ");
+                    }
+                    Str.append("] }");
+                    if(z < topology[j+1]-1) Str.append(",");
+                    Str.append("\n");
+                }
+                Str.append("        ]\n      }");
+                if(j < topology.length-2) Str.append(",");
+                Str.append("\n");
+            }
+            Str.append("    ]\n");
+            Str.append("  }");
+            if(i < Entity_manager.Entity_count()-1) Str.append(",");
+            Str.append("\n");
         }
+        Str.append("]\n");
+
         try {
             Files.writeString(Path.of(dir+"/brain.json"), Str.toString());
             flag = true;
-        } catch (Exception e) {System.out.println("Errore Saving brain"+e.getMessage());}
-
+        } catch (Exception e) {System.out.println("Errore Saving brain "+e.getMessage());}
         return flag;
     }
 
@@ -38,14 +61,14 @@ public class Saving {
         for(int v=0; v<Entity_manager.Entity_count();v++){
             Str.append("{ ");
             Str.append("id"+" : "+Entity_manager.Entity_get(v).getId()+",");
-            Str.append("age"+" : "+Entity_manager.Entity_get(v).getAge()+",");
-            Str.append("food"+" : "+Entity_manager.Entity_get(v).getFood()+",");
-            Str.append("foodConsumed"+" : "+Entity_manager.Entity_get(v).getFoodConsumed()+",");
-            Str.append("healt"+" : "+Entity_manager.Entity_get(v).getHealt()+",");
-            Str.append("sex"+" : "+Entity_manager.Entity_get(v).getSex()+",");
-            Str.append("fitness"+" : "+ Entity_manager.Entity_get(v).getFitness()+",");
+            Str.append(" age"+" : "+Entity_manager.Entity_get(v).getAge()+",");
+            Str.append(" food"+" : "+Entity_manager.Entity_get(v).getFood()+",");
+            Str.append(" foodConsumed"+" : "+Entity_manager.Entity_get(v).getFoodConsumed()+",");
+            Str.append(" healt"+" : "+Entity_manager.Entity_get(v).getHealt()+",");
+            Str.append(" sex"+" : "+Entity_manager.Entity_get(v).getSex()+",");
+            Str.append(" fitness"+" : "+ Entity_manager.Entity_get(v).getFitness()+",");
             int[] tempos = Entity_manager.Entity_get(v).getPos();
-            Str.append("pos"+" : ["+tempos[0]+", "+tempos[1]+", "+tempos[2]+"] ");
+            Str.append(" pos"+" : ["+tempos[0]+", "+tempos[1]+", "+tempos[2]+"] ");
             Str.append("},\n");
         }
         try {
@@ -58,33 +81,40 @@ public class Saving {
     private static boolean SaveWorld(String dir){
         boolean flag = false;
         StringBuilder Str = new StringBuilder();
-        for(int i=0;i<world.getDim();i++){
-            for(int j=0; j<world.getDim();j++){
-                Str.append("{\n");
-                int[] info = world.cord_Type(i, world.getGround(), j);
-                if(info[0]>0){
-                    Str.append("    Entity: ");
-                    for(int f=0;f<Entity_manager.Entity_count();f++){
-                        int[] tempPos = {i,world.getGround(),j};
-                        if(Arrays.equals(Entity_manager.Entity_get(f).getPos(), tempPos)){
-                            if(f>1){Str.append(" - ");}
-                            Str.append(Entity_manager.Entity_get(f).getId());
-                        }
-                    }
-                    Str.append(",\n");
-                }
-                else if(info[1]>0){
-                    Str.append("    food: "+info[1]+",\n");
-                }
 
-                Str.append("    Type: "+info[2]+"\n");
-                Str.append("};\n");
+        Str.append("{\n");
+        Str.append("  \"dimension\": ").append(world.getDim()).append(",\n");
+        Str.append("  \"cycle\": ").append(world.getCycle()).append(",\n");
+        Str.append("  \"ground\": ").append(world.getGround()).append(",\n");
+        Str.append("  \"food\": [\n");
+
+        java.util.List<int[]> foodCells = new java.util.ArrayList<>();
+        int dim = world.getDim();
+        for(int x=0; x<dim; x++){
+            for(int y=0; y<dim; y++){
+                for(int z=0; z<dim; z++){
+                    if("M".equals(world.getSymbol(x, y, z))){
+                        foodCells.add(new int[]{x, y, z});
+                    }
+                }
             }
         }
+
+        for(int i=0; i<foodCells.size(); i++){
+            int[] pos = foodCells.get(i);
+            Str.append("    { \"pos\": [").append(pos[0]).append(", ")
+            .append(pos[1]).append(", ").append(pos[2]).append("] }");
+            if(i < foodCells.size()-1) Str.append(",");
+            Str.append("\n");
+        }
+
+        Str.append("  ]\n");
+        Str.append("}\n");
+
         try {
             Files.writeString(Path.of(dir+"/world.json"), Str.toString());
             flag = true;
-        } catch (Exception e) {System.out.println("Errore Saving brain"+e.getMessage());}
+        } catch (Exception e) {System.out.println("Errore Saving world "+e.getMessage());}
         return flag;
     }
 
