@@ -46,8 +46,6 @@ public class main {
 
     public static void main(String[] args) {
 
-        
-
         ProcessBuilder Console = new ProcessBuilder("cmd", "/c", "start", "cmd", "/k", "java ConsoleInput.java");
         try {
 
