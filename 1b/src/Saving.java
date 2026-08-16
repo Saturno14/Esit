@@ -11,6 +11,8 @@ public class Saving {
         for(int i=0; i<Entity_manager.Entity_count();i++){
             Str.append("{\n");
             int topology[] = Entity_manager.Entity_get(i).getBrain().getTopology();
+            Str.append("id"+" : "+Entity_manager.Entity_get(i).getId()+",");
+            Str.append("topology"+" : ["+Entity_manager.Entity_get(i).getBrain().getTopology()+"],");
             for(int j=0; j<topology.length-1;j++){
                 for(int z=0;z<topology[j+1];z++){
                     Str.append("    "+Entity_manager.Entity_get(i).getBrain().getLayer(j).getNeuron(z).getBias()+",\n");
@@ -34,17 +36,17 @@ public class Saving {
         boolean flag = false;
         StringBuilder Str = new StringBuilder();
         for(int v=0; v<Entity_manager.Entity_count();v++){
-            Str.append("{\n");
-            Str.append("    ID: "+Entity_manager.Entity_get(v).getId()+",\n");
-            Str.append("    Age: "+Entity_manager.Entity_get(v).getAge()+",\n");
-            Str.append("    Food: "+Entity_manager.Entity_get(v).getFood()+",\n");
-            Str.append("    FoodConsumed: "+Entity_manager.Entity_get(v).getFoodConsumed()+",\n");
-            Str.append("    Healt: "+Entity_manager.Entity_get(v).getHealt()+",\n");
-            Str.append("    Sex: "+Entity_manager.Entity_get(v).getSex()+",\n");
-            Str.append("    Fitness: "+ Entity_manager.Entity_get(v).getFitness()+",\n");
+            Str.append("{ ");
+            Str.append("id"+" : "+Entity_manager.Entity_get(v).getId()+",");
+            Str.append("age"+" : "+Entity_manager.Entity_get(v).getAge()+",");
+            Str.append("food"+" : "+Entity_manager.Entity_get(v).getFood()+",");
+            Str.append("foodConsumed"+" : "+Entity_manager.Entity_get(v).getFoodConsumed()+",");
+            Str.append("healt"+" : "+Entity_manager.Entity_get(v).getHealt()+",");
+            Str.append("sex"+" : "+Entity_manager.Entity_get(v).getSex()+",");
+            Str.append("fitness"+" : "+ Entity_manager.Entity_get(v).getFitness()+",");
             int[] tempos = Entity_manager.Entity_get(v).getPos();
-            Str.append("    Pos: "+tempos[0]+" "+tempos[1]+" "+tempos[2]+",\n");
-            Str.append("};\n");
+            Str.append("pos"+" : ["+tempos[0]+", "+tempos[1]+", "+tempos[2]+"] ");
+            Str.append("},\n");
         }
         try {
             Files.writeString(Path.of(dir+"/entity.json"), Str.toString());

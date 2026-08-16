@@ -16,12 +16,10 @@ public class console{
                     out = ("Changed print layer to: "+Integer.parseInt(str[1]));
                     break;
                 case "start":
-                    if(!world.isRunning()){world.PauseCycle(false);}
-                    else{System.out.println("Simulazione già in esecuzione");}
+                    world.PauseCycle(false);
                     break;
                 case "stop":
-                    if(world.isRunning()){world.PauseCycle(true);}
-                    else{System.out.println("Simulazione già ferma");}
+                    world.PauseCycle(true);
                     break;
                 case "mela":
                     try {
