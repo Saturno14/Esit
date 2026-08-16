@@ -97,10 +97,15 @@ public class console{
                     break;
 
                 case "Save":
-                    Saving.Save();
+                    world.ChangeSimulationFlag(false);
+                    System.out.println("Simulation status: "+world.GetSimulationFlag());
+                    if(Saving.Save()){System.out.println("Save Succesfull");}
+                    else{System.out.println("Errore Save");}
+                    world.ChangeSimulationFlag(true);
+                    System.out.println("Simulation status: "+world.GetSimulationFlag());
                     break;
 
-                case "Continue":
+                case "Load":
                     //da implementare;
                     break;
                     

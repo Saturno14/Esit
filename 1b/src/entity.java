@@ -1,5 +1,7 @@
 package src;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -24,7 +26,7 @@ public class entity {
     private int[] posi = new int[3];
     public String process = "";
     private ArrayList[] NecessityList = new ArrayList[3];
-    private ArrayList[] MoveList = new ArrayList[2];
+    private ArrayList<Integer>[] MoveList = new ArrayList[2];
     public AtomicBoolean life = new AtomicBoolean();
     private AtomicInteger tick = new AtomicInteger();
     private String quest = "";
@@ -41,7 +43,7 @@ public class entity {
     public entity(int id, int cycle, int x, int y, int z){
         this.EntityID = id;
         this.healt = 100;
-        this.food = 1000;
+        this.food = 200;
         this.born = cycle;
         this.age = 0;
         this.sex = (int)(Math.random()*(2-1))+1; //2 femmina, 1 maschio
@@ -60,7 +62,15 @@ public class entity {
         Brain.mutate(MUTATION_RATE);
     }
 
-    public void entityCreate(int id, int cycle, int x, int y, int z, int healt, int food, int born ){}//vedi dopo
+    public void entityLoad(int index){
+        String str = "";
+        try {
+            String content = Files.readString(Path.of("saving/entity.json"));
+            String[] entit0 = content.split(";");
+        } catch (Exception e) {
+            
+        }
+    }//vedi dopo
 
     public int[] getPos(){
         int[] pos = new int[3];
@@ -179,12 +189,17 @@ public class entity {
 
     public void GoLife(){
         life.set(true);
+        boolean flag = world.GetSimulationFlag();
+        
 
         System.out.println("appena vivo id: "+EntityID+" - Thr: "+process+" pos: "+position[0].get()+" "+position[1].get());
         
         while(life.get()){
+            flag = world.GetSimulationFlag();
             try {
-                while(world.GetSimulationFlag()){
+                while(flag){
+                    flag = world.GetSimulationFlag();
+                    if(!life.get()){flag = false;}
                     Thread.sleep(2000);
                     tick.addAndGet(1);
                     food -= 2;
@@ -318,7 +333,7 @@ public class entity {
 
     private boolean takeObject(){
         boolean flag = false;
-        int maxFood = 1000;
+        int maxFood = 200;
         int old_food = food;
         String str = world.getSymbol(position[0].get(),position[1].get(),position[2].get());
         System.out.println("take object+ "+str);

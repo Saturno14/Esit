@@ -35,7 +35,7 @@ public class main {
                         output = console.input(str);
                         out.println("Comand output: "+output);
 
-                    } catch (Exception e) {System.out.println("Errore in server in");}
+                    } catch (Exception e) {System.out.println("Errore in server in"+e.getMessage());}
                 }
             }).start();
         } catch (Exception e) {System.out.println("Errore in clint: "+e.getMessage());}

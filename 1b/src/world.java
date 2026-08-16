@@ -36,6 +36,7 @@ public class world {
                     System.out.println("Dentro doCycle flag= "+CycleFlag.get()+"threadN: "+Thread.currentThread());
                     System.out.println("Cycle: "+cycle+" - ore: "+ore);
                     System.out.println("print layer: "+ground.get());
+                    System.out.println("Total Entity: "+Entity_manager.get_EntityN());
                     System.out.println("Entity count: "+Entity_manager.Entity_count());
                     try {
                         for(int i = 0; i<Entity_manager.Entity_count()%2; i++){
@@ -86,7 +87,8 @@ public class world {
                     for(int z=0;z<Entity_manager.Entity_count();z++){
                         int[] a = Entity_manager.Entity_get(z).getPos();
                         if(Arrays.equals(a, cord) && Entity_manager.Entity_get(z).isAlive()){
-                            str2 = " E"+Entity_manager.Entity_get(z).getId();}
+                            str2 = " E"+Entity_manager.Entity_get(z).getId();
+                        }
                     }
                     str +=  getSymbol(i, PrintGround, j)+str2+"\t";
                 }
