@@ -6,8 +6,8 @@ public class Saving {
         //Files.writeString(Path.of("saving\brain.json"), Str.toString());
         for(int i=0; i<Entity_manager.Entity_count();i++){
             int topology[] = Entity_manager.Entity_get(i).getBrain().getTopology();
-            for(int j=0; j<topology.length;j++){
-                for(int z=0;z<topology[j];z++){
+            for(int j=0; j<topology.length-1;j++){
+                for(int z=0;z<topology[j+1];z++){
                     Str.append(Entity_manager.Entity_get(i).getBrain().getLayer(j).getNeuron(z).getBias());
                     Str.append(" -- ");
                     double weights[] = Entity_manager.Entity_get(i).getBrain().getLayer(j).getNeuron(z).getWeight();
