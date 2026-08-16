@@ -1,5 +1,6 @@
 package src;
 import java.nio.file.*;
+import java.util.Arrays;
 
 public class Saving {
     public boolean SaveEntityBrain(){
@@ -32,7 +33,8 @@ public class Saving {
         boolean flag = false;
         StringBuilder Str = new StringBuilder();
         for(int v=0; v<Entity_manager.EntityNumber;v++){
-            Str.append("{");
+            Str.setLength(0);
+            Str.append("{\n");
             Str.append("    ID: "+Entity_manager.Entity_get(v).getId()+"\n");
             Str.append("    Age: "+Entity_manager.Entity_get(v).getAge()+"\n");
             Str.append("    Food: "+Entity_manager.Entity_get(v).getFood()+"\n");
@@ -42,7 +44,7 @@ public class Saving {
             Str.append("    Fitness: "+ Entity_manager.Entity_get(v).getFitness()+"\n");
             int[] tempos = Entity_manager.Entity_get(v).getPos();
             Str.append("    Pos: "+tempos[0]+" "+tempos[1]+" "+tempos[2]+"\n");
-            Str.append("}");
+            Str.append("}\n");
             try {
                 Files.writeString(Path.of("saving/entity.json"), Str.toString());
                 flag = true;
@@ -67,7 +69,7 @@ public class Saving {
                     Str.append("Entity: ");
                     for(int f=0;f<Entity_manager.Entity_count();f++){
                         int[] tempPos = {i,world.getGround(),j};
-                        if(Entity_manager.Entity_get(f).getPos().equals(tempPos)){
+                        if(Arrays.equals(Entity_manager.Entity_get(f).getPos(), tempPos)){
                             Str.append(Entity_manager.Entity_get(f).getId()+" - ");
                         }
                     }
