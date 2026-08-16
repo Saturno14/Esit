@@ -63,7 +63,6 @@ public class entity {
     }
 
     public void entityLoad(int index){
-        String str = "";
         try {
             String content = Files.readString(Path.of("saving/entity.json"));
             String[] entit0 = content.split(";");
@@ -80,7 +79,6 @@ public class entity {
             for(int i=0;i<temp.length;i++){
                 position[i].set(Integer.parseInt(temp[i]));
             }
-
         } catch (Exception e) {
             
         }
@@ -203,124 +201,120 @@ public class entity {
 
     public void GoLife(){
         life.set(true);
-        boolean flag = world.GetSimulationFlag();
-        
-
         System.out.println("appena vivo id: "+EntityID+" - Thr: "+process+" pos: "+position[0].get()+" "+position[1].get());
         
         while(life.get()){
-            flag = world.GetSimulationFlag();
+            if(world.isPaused()){
+                try { Thread.sleep(100); } catch(InterruptedException ignored){}
+                continue;
+            }
             try {
-                while(flag){
-                    flag = world.GetSimulationFlag();
-                    if(!life.get()){flag = false;}
-                    Thread.sleep(2000);
-                    tick.addAndGet(1);
-                    food -= 2;
-                    Netreward += 0.5;
+                Thread.sleep(2000);
+                tick.addAndGet(1);
+                food -= 2;
+                Netreward += 0.5;
 
-                    if(food <= 0){
-                        healt -= 5;
+                if(food <= 0){
+                    healt -= 5;
+                }
+                if(food >= 85){if(healt < 100){healt ++;}}
+                if(healt <= 0){life.set(false);}
+
+                if(food_count >=2){
+                    Netreward += 10;
+                    reproduce();
+                    food_count = 0;
+                }
+                
+
+                double[] output = Brain.predict(get_NetInput());
+
+                windowTick++;
+                if (windowTick >= WINDOW_SIZE) {
+                    double score = (Netreward - windowStartReward) / windowTick;
+                    if (score >= bestWindowScore) {
+                        bestBrain = Brain.copy();   // la mutazione ha fatto uguale o meglio: la tengo
+                        bestWindowScore = score;
+                    } else {
+                        Brain = bestBrain.copy();   // ha fatto peggio: torno al migliore
                     }
-                    if(food >= 85){if(healt < 100){healt ++;}}
-                    if(healt <= 0){life.set(false);}
+                    Brain.mutate(MUTATION_RATE);    // preparo il prossimo tentativo
+                    windowStartReward = Netreward;
+                    windowTick = 0;
+                }
 
-                    if(food_count >=2){
-                        Netreward += 10;
-                        reproduce();
-                        food_count = 0;
-                    }
-                    
-
-                    double[] output = Brain.predict(get_NetInput());
-
-                    windowTick++;
-                    if (windowTick >= WINDOW_SIZE) {
-                        double score = (Netreward - windowStartReward) / windowTick;
-                        if (score >= bestWindowScore) {
-                            bestBrain = Brain.copy();   // la mutazione ha fatto uguale o meglio: la tengo
-                            bestWindowScore = score;
-                        } else {
-                            Brain = bestBrain.copy();   // ha fatto peggio: torno al migliore
-                        }
-                        Brain.mutate(MUTATION_RATE);    // preparo il prossimo tentativo
-                        windowStartReward = Netreward;
-                        windowTick = 0;
-                    }
-
-                    int best = 0;
-                    if(Math.random() < 0.15){
-                        best = (int)(Math.random()*6);
-                    }else{
-                        for (int i = 1; i < output.length; i++) {
-                            if (output[i] > output[best]) {
-                                best = i;
-                            }
+                int best = 0;
+                if(Math.random() < 0.15){
+                    best = (int)(Math.random()*6);
+                }else{
+                    for (int i = 1; i < output.length; i++) {
+                        if (output[i] > output[best]) {
+                            best = i;
                         }
                     }
+                }
 
-                    switch (best) {
-                        case 1:
-                            if(position[0].get()+1 < 20){
-                                MoveList[0].add(position[0].get()+1);
-                                MoveList[1].add(position[2].get());
-                                Netreward += 0.5;
-                            }else{Netreward -= 10;}
-                            break;
-                        case 2:
-                            if(position[0].get()-1 >= 0){
-                                MoveList[0].add(position[0].get()-1);
-                                MoveList[1].add(position[2].get());
-                                Netreward += 0.5;
-                            }else{Netreward -= 10;}
-                            break;
-                        case 3:
-                            if(position[2].get()+1 < 20){
-                                MoveList[0].add(position[0].get());
-                                MoveList[1].add(position[2].get()+1);
-                                Netreward += 0.5;
-                            }else{Netreward -= 10;}
-                            break;
-                        case 4:
-                            if(position[2].get()-1 >= 0){
-                                MoveList[0].add(position[0].get());
-                                MoveList[1].add(position[2].get()-1);
-                                Netreward += 0.5;
-                            }else{Netreward -= 10;}
-                            break;
-                        case 5:
-                            MoveList[0].add(-1);
-                            MoveList[1].add(-1);
-                            break;
-                        case 0:
-                            Netreward -= 0.5;
-                            continue;
-                        default:
-                            throw new AssertionError();
-                    }
+                switch (best) {
+                    case 1:
+                        if(position[0].get()+1 < 20){
+                            MoveList[0].add(position[0].get()+1);
+                            MoveList[1].add(position[2].get());
+                            Netreward += 0.5;
+                        }else{Netreward -= 10;}
+                        break;
+                    case 2:
+                        if(position[0].get()-1 >= 0){
+                            MoveList[0].add(position[0].get()-1);
+                            MoveList[1].add(position[2].get());
+                            Netreward += 0.5;
+                        }else{Netreward -= 10;}
+                        break;
+                    case 3:
+                        if(position[2].get()+1 < 20){
+                            MoveList[0].add(position[0].get());
+                            MoveList[1].add(position[2].get()+1);
+                            Netreward += 0.5;
+                        }else{Netreward -= 10;}
+                        break;
+                    case 4:
+                        if(position[2].get()-1 >= 0){
+                            MoveList[0].add(position[0].get());
+                            MoveList[1].add(position[2].get()-1);
+                            Netreward += 0.5;
+                        }else{Netreward -= 10;}
+                        break;
+                    case 5:
+                        MoveList[0].add(-1);
+                        MoveList[1].add(-1);
+                        break;
+                    case 0:
+                        Netreward -= 0.5;
+                        continue;
+                    default:
+                        throw new AssertionError();
+                }
 
-                    if(!MoveList[0].isEmpty()){
-                        if(MoveList[0].get(0).equals(-1)){
-                            if(world.getSymbol(position[0].get(),position[1].get(),position[2].get()).equals("M")){
-                                System.out.println("Take mela");
-                                takeObject();
-                                MoveList[0].remove(0);
-                                MoveList[1].remove(0);
-                            }else{Netreward -= 2.0; 
-                                MoveList[0].remove(0);
-                                MoveList[1].remove(0);
-                            }
-                        }else{
-                            System.out.println("muove in: "+MoveList[0].get(0)+" "+MoveList[1].get(0));
-                            int temp = (int)MoveList[0].get(0);
-                            position[0].set(temp);
-                            temp = (int)MoveList[1].get(0);
-                            position[2].set(temp);
+                if(!MoveList[0].isEmpty()){
+                    if(MoveList[0].get(0).equals(-1)){
+                        if(world.getSymbol(position[0].get(),position[1].get(),position[2].get()).equals("M")){
+                            System.out.println("Take mela");
+                            takeObject();
+                            MoveList[0].remove(0);
+                            MoveList[1].remove(0);
+                        }else{Netreward -= 2.0; 
                             MoveList[0].remove(0);
                             MoveList[1].remove(0);
                         }
-                    
+                    }else{
+                        System.out.println("muove in: "+MoveList[0].get(0)+" "+MoveList[1].get(0));
+                        int temp = (int)MoveList[0].get(0);
+                        position[0].set(temp);
+                        temp = (int)MoveList[1].get(0);
+                        position[2].set(temp);
+                        MoveList[0].remove(0);
+                        MoveList[1].remove(0);
                     }
+                
                 }
 
             } catch (InterruptedException e) {

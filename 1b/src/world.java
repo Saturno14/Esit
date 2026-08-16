@@ -13,7 +13,7 @@ public class world {
     private static AtomicInteger ground = new AtomicInteger();
     private static int PrintGround = 0;
     private static int cycle = 0;
-    
+
     private static volatile Thread cycleThread;          // riferimento persistente
     private static final AtomicBoolean running = new AtomicBoolean(false); // "deve girare"
     private static final AtomicBoolean paused  = new AtomicBoolean(false);
@@ -21,6 +21,9 @@ public class world {
     public static void ChengePrintGround(int value){
         PrintGround = value;
     }
+
+    public static boolean isPaused(){ return paused.get(); }
+    public static boolean isRunning(){ return running.get(); }
 
     public void Load(){
         try {
