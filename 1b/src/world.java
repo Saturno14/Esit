@@ -7,7 +7,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class world {
-    private static AtomicBoolean SimulationFlag = new AtomicBoolean();
     private static int Dimension = 20;
     private static cell[][][] Enviroment = new cell[Dimension][Dimension][Dimension];
     private static AtomicInteger ground = new AtomicInteger();
@@ -44,7 +43,8 @@ public class world {
 
     public static void DoCycle(){
         AtomicBoolean CycleFlag = new AtomicBoolean();
-        ChengePrintGround(ground_search());      
+        ChengePrintGround(ground_search());
+
         if(!running.compareAndSet(false, true)){
             System.out.println("Cycle già attivo, ignoro");
             return;
@@ -58,31 +58,27 @@ public class world {
                 int ore = 0;
                 System.out.println("Cycle start");
                 try {
-                    while(world.GetSimulationFlag()){
-                        Thread.sleep(1000);//5 secondo
-                        System.out.println("Dentro doCycle flag= "+CycleFlag.get()+"threadN: "+Thread.currentThread());
-                        System.out.println("Cycle: "+cycle+" - ore: "+ore);
-                        System.out.println("print layer: "+ground.get());
-                        System.out.println("Total Entity: "+Entity_manager.get_EntityN());
-                        System.out.println("Entity count: "+Entity_manager.Entity_count());
-                        try {
-                            for(int i = 0; i<Entity_manager.Entity_count()%2; i++){
-                                add((int)(Math.random()*20), ground.get(), (int)(Math.random()*20), "M");
-                            }
-                            world.planetPrint();
-                        } catch (Exception e) {System.out.println("Errore try cycle: "+e.getMessage());}
-                        ore++;
-                        if(ore == 24){
-                            ore = 0;
-                            cycle++;
-                            System.out.println("Nuovo cyclo");
+                    Thread.sleep(1000);//5 secondo
+                    System.out.println("Dentro doCycle flag= "+CycleFlag.get()+"threadN: "+Thread.currentThread());
+                    System.out.println("Cycle: "+cycle+" - ore: "+ore);
+                    System.out.println("print layer: "+ground.get());
+                    System.out.println("Total Entity: "+Entity_manager.get_EntityN());
+                    System.out.println("Entity count: "+Entity_manager.Entity_count());
+                    try {
+                        for(int i = 0; i<Entity_manager.Entity_count()%2; i++){
+                            add((int)(Math.random()*20), ground.get(), (int)(Math.random()*20), "M");
                         }
+                        world.planetPrint();
+                    } catch (Exception e) {System.out.println("Errore try cycle: "+e.getMessage());}
+                    ore++;
+                    if(ore == 24){
+                        ore = 0;
+                        cycle++;
+                        System.out.println("Nuovo cyclo");
                     }
-                    System.out.println("TotCycle stopped");
-                    
                 } catch (Exception e) {
                     System.out.println("Errore DoCycle thread: "+e.getMessage());
-            }
+                }
             }
             System.out.println("Cycle terminato");
         });
@@ -128,14 +124,6 @@ public class world {
         } catch (Exception e) {
             System.out.println("Matrix is empty!! "+e.getLocalizedMessage());
         }
-    }
-
-    public static void ChangeSimulationFlag(boolean status){
-        SimulationFlag.set(status);
-    }
-
-    public static boolean GetSimulationFlag(){
-        return SimulationFlag.get();
     }
     
     public static boolean world_setup(){

@@ -16,10 +16,12 @@ public class console{
                     out = ("Changed print layer to: "+Integer.parseInt(str[1]));
                     break;
                 case "start":
-                    world.PauseCycle(false);
+                    if(!world.isRunning()){world.PauseCycle(false);}
+                    else{System.out.println("Simulazione già in esecuzione");}
                     break;
                 case "stop":
-                    world.PauseCycle(true);
+                    if(world.isRunning()){world.PauseCycle(true);}
+                    else{System.out.println("Simulazione già ferma");}
                     break;
                 case "mela":
                     try {
@@ -62,8 +64,8 @@ public class console{
                     int start_entity = 10;
                     int Entity_count = 0;
                     int ground;
-                    world.ChangeSimulationFlag(true);
                     world.world_setup();
+                    world.PauseCycle(false);
                     ground = world.ground_search();
                     
                     
@@ -96,7 +98,7 @@ public class console{
                         Thread.sleep(5000);
                         Saving.Save();
                         world.PauseCycle(false);
-                    } catch (Exception e) {System.out.println("Errore Save"+e.getMessage());}
+                    } catch (Exception e) {System.out.println("Errore Save "+e.getMessage());}
                     break;
 
                 case "Load":
