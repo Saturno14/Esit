@@ -85,11 +85,10 @@ public class Saving {
         boolean flag = false;
         StringBuilder Str = new StringBuilder();
 
-        Str.append("{\n");
-        Str.append("  \"dimension\": ").append(world.getDim()).append(",\n");
-        Str.append("  \"cycle\": ").append(world.getCycle()).append(",\n");
-        Str.append("  \"ground\": ").append(world.getGround()).append(",\n");
-        Str.append("  \"food\": [\n");
+        Str.append("  \"[dimension\": ").append(world.getDim()).append("]\n");
+        Str.append("  \"[cycle\": ").append(world.getCycle()).append(",]\n");
+        Str.append("  \"[ground\": ").append(world.getGround()).append(",]\n");
+        Str.append("  \"[food\": ");
 
         java.util.List<int[]> foodCells = new java.util.ArrayList<>();
         int dim = world.getDim();
@@ -105,14 +104,9 @@ public class Saving {
 
         for(int i=0; i<foodCells.size(); i++){
             int[] pos = foodCells.get(i);
-            Str.append("    { \"pos\": [").append(pos[0]).append(", ")
-            .append(pos[1]).append(", ").append(pos[2]).append("] }");
-            if(i < foodCells.size()-1) Str.append(",");
-            Str.append("\n");
+            Str.append(" "+pos[0]+" ,"+pos[1]+","+pos[2]+";");
         }
-
-        Str.append("  ]\n");
-        Str.append("}\n");
+        Str.append("]");
 
         try {
             Files.writeString(Path.of(dir+"/world.json"), Str.toString());

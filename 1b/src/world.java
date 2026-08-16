@@ -27,6 +27,21 @@ public class world {
     public void Load(){
         try {
             String content = Files.readString(Path.of("saving/world.json"));
+            String[] str = content.split(",");
+            for(String s:str){
+                String[] sub = s.split(":");
+                for(String g:sub){
+                    if(g.equals("dimension")){
+                        this.Dimension = Integer.parseInt(sub[1]);
+                    }else if(g.equals("cycle")){
+                        this.cycle = Integer.parseInt(sub[1]);
+                    }else if(g.equals("ground")){
+                        this.ground.set(Integer.parseInt(sub[1]));
+                    }else if(g.equals("food")){
+                        this.cycle = Integer.parseInt(sub[1]);
+                    }
+                }
+            }
             
 
         } catch (Exception e) {
