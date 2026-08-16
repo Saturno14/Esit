@@ -86,9 +86,20 @@ public class Saving {
 
     public static boolean Save(){
         boolean flag = false;
-        File root = new File("saving");
+        File root = new File(".");
         File[] subdirs = root.listFiles(File::isDirectory);
-
+        boolean flag2 = false;
+        for(File e: subdirs){
+            if(e.getName().equals("saving")){
+                flag2 = true;
+            }
+        }
+        try {
+            if(!flag2){Files.createDirectories(Path.of(root+"/saving"));}
+        } catch (Exception e) {System.out.println("Errore creazione cartella Saving "+e.getMessage());}
+        
+        root = new File("saving/");
+        subdirs = root.listFiles(File::isDirectory);
 
         StringBuilder name = new StringBuilder();
         if(subdirs.length == 0){name.append("s-0");}
