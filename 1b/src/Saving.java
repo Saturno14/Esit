@@ -1,6 +1,4 @@
 package src;
-import java.nio.file.*;
-import java.io.IOException;
 public class Saving {
     public boolean SaveEntity(){
         boolean flag = false;
@@ -10,8 +8,14 @@ public class Saving {
             int topology[] = Entity_manager.Entity_get(i).getBrain().getTopology();
             for(int j=0; j<topology.length;j++){
                 for(int z=0;z<topology[j];z++){
-                    for(b=0;b<Entity_manager.Entity_get(i).getBrain().getLayer(z).)
+                    Str.append(Entity_manager.Entity_get(i).getBrain().getLayer(j).getNeuron(z).getBias());
+                    Str.append(" -- ");
+                    double weights[] = Entity_manager.Entity_get(i).getBrain().getLayer(j).getNeuron(z).getWeight();
+                    for(int c=0;c<weights.length;c++){
+                        Str.append(weights[c]+" - ");
+                    }
                 }
+                Str.append("\n");
             }
         }
         return flag;
