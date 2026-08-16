@@ -62,6 +62,14 @@ public class brain {
             return weights.length;
         }
 
+        public double[] getWeight(){
+            return weights;
+        }
+
+        public double getBias(){
+            return bias;
+        }
+
     }
 
 
@@ -98,6 +106,10 @@ public class brain {
                 n.mutate(rate);
             }
         }
+
+        public Neuron getNeuron(int index){
+            return neurons[index];
+        }
                 
         public double[] calculate(double[] input) {
 
@@ -129,6 +141,14 @@ public class brain {
                 );
 
             }
+        }
+
+        public int[] getTopology(){
+            return topology;
+        }
+
+        public Layer getLayer(int index){
+            return layers[index];
         }
 
         public void mutate(double rate){

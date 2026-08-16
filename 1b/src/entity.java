@@ -13,9 +13,7 @@ import src.brain.Reproduction;
 public class entity {
     private int EntityID;
     private int healt;
-    private int water;
     private int food;
-    private int stamina;
     private int born;
     private int age;
     private int sex;
@@ -43,9 +41,7 @@ public class entity {
     public entity(int id, int cycle, int x, int y, int z){
         this.EntityID = id;
         this.healt = 100;
-        this.water = 100;
         this.food = 1000;
-        this.stamina = 100;
         this.born = cycle;
         this.age = 0;
         this.sex = (int)(Math.random()*(2-1))+1; //2 femmina, 1 maschio
@@ -64,7 +60,7 @@ public class entity {
         Brain.mutate(MUTATION_RATE);
     }
 
-    public void entityCreate(int id, int cycle, int x, int y, int z, )
+    public void entityCreate(int id, int cycle, int x, int y, int z, int healt, int food, int born ){}//vedi dopo
 
     public int[] getPos(){
         int[] pos = new int[3];
@@ -78,7 +74,9 @@ public class entity {
         return EntityID;
     }
 
-    
+    public NeuralNetwork getBrain(){
+        return Brain;
+    }
 
     public void setProcessId(String value){
         this.process = value;
@@ -144,7 +142,6 @@ public class entity {
     public int getSex(){return sex;}
     public int getFood(){return food;}
     public int getHealt(){return healt;}
-    public int getStamina(){ return stamina; }
     public int getAge(){ return age; }
     public boolean isAlive(){ return life.get(); }
     public double getNetreward(){return Netreward;}
