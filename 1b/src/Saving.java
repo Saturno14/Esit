@@ -65,7 +65,7 @@ public class Saving {
                     for(int f=0;f<Entity_manager.Entity_count();f++){
                         int[] tempPos = {i,world.getGround(),j};
                         if(Arrays.equals(Entity_manager.Entity_get(f).getPos(), tempPos)){
-                            if(f>0){Str.append(" - ");}
+                            if(f>1){Str.append(" - ");}
                             Str.append(Entity_manager.Entity_get(f).getId());
                         }
                     }
@@ -104,9 +104,6 @@ public class Saving {
         subdirs = root.listFiles(File::isDirectory);
 
         StringBuilder name = new StringBuilder();
-        if(subdirs.length == 0){name.append("s-0");}
-        else{name.append(subdirs[subdirs.length-1].getName());}
-
         //ordinamento copiato
         int maxN = -1;
         for(File d : subdirs){
@@ -122,13 +119,16 @@ public class Saving {
             Files.createDirectories(Path.of("saving/" + name.toString()));
         }catch(Exception e){System.out.println("Errore creazione cartella "+e.getMessage());}
         String dir = "saving/"+name.toString();
-        if(SaveEntity(dir)){
-            if(SaveEntityBrain(dir)){
-                if(SaveWorld(dir)){
-                    flag= true;
-                }else{System.out.println("Errore SaveWorld");}
-            }else{System.out.println("Errore SaveEntityBrain");}
-        }else{System.out.println("Errore SaveEntity");}
+        try {
+            if(SaveEntity(dir)){
+                if(SaveEntityBrain(dir)){
+                    if(SaveWorld(dir)){
+                        flag= true;
+                    }else{System.out.println("Errore SaveWorld");}
+                }else{System.out.println("Errore SaveEntityBrain");}
+            }else{System.out.println("Errore SaveEntity");}
+        } catch (Exception e) { System.out.println("Errore ultimo if Save: "+e.getMessage());}
+        
         return flag;
     }
 }

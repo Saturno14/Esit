@@ -1,0 +1,110 @@
+{
+    ID: 0,
+    Age: 0,
+    Food: 174,
+    FoodConsumed: 0,
+    Healt: 100,
+    Sex: 1,
+    Fitness: 1.0,
+    Pos: 13 11 14,
+};
+{
+    ID: 1,
+    Age: 0,
+    Food: 174,
+    FoodConsumed: 0,
+    Healt: 100,
+    Sex: 1,
+    Fitness: -0.6153846153846154,
+    Pos: 13 11 19,
+};
+{
+    ID: 2,
+    Age: 0,
+    Food: 174,
+    FoodConsumed: 0,
+    Healt: 100,
+    Sex: 1,
+    Fitness: -1.5,
+    Pos: 7 11 8,
+};
+{
+    ID: 3,
+    Age: 0,
+    Food: 174,
+    FoodConsumed: 0,
+    Healt: 100,
+    Sex: 1,
+    Fitness: -7.884615384615385,
+    Pos: 5 11 19,
+};
+{
+    ID: 4,
+    Age: 0,
+    Food: 174,
+    FoodConsumed: 0,
+    Healt: 100,
+    Sex: 1,
+    Fitness: -0.11538461538461539,
+    Pos: 7 11 10,
+};
+{
+    ID: 5,
+    Age: 0,
+    Food: 174,
+    FoodConsumed: 0,
+    Healt: 100,
+    Sex: 1,
+    Fitness: -1.4615384615384615,
+    Pos: 19 11 18,
+};
+{
+    ID: 6,
+    Age: 0,
+    Food: 174,
+    FoodConsumed: 0,
+    Healt: 100,
+    Sex: 1,
+    Fitness: -1.3076923076923077,
+    Pos: 6 11 7,
+};
+{
+    ID: 7,
+    Age: 0,
+    Food: 174,
+    FoodConsumed: 0,
+    Healt: 100,
+    Sex: 1,
+    Fitness: 0.9230769230769231,
+    Pos: 13 11 17,
+};
+{
+    ID: 8,
+    Age: 0,
+    Food: 174,
+    FoodConsumed: 0,
+    Healt: 100,
+    Sex: 1,
+    Fitness: 0.8076923076923077,
+    Pos: 10 11 4,
+};
+{
+    ID: 9,
+    Age: 0,
+    Food: 174,
+    FoodConsumed: 0,
+    Healt: 100,
+    Sex: 1,
+    Fitness: -4.423076923076923,
+    Pos: 11 11 0,
+};
+{
+    ID: 10,
+    Age: 0,
+    Food: 174,
+    FoodConsumed: 0,
+    Healt: 100,
+    Sex: 1,
+    Fitness: -3.0,
+    Pos: 13 11 0,
+};
