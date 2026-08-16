@@ -20,6 +20,10 @@ public class world {
         return cycle;
     }
 
+    public int getGround(){
+        return ground.get();
+    }
+
     public static void DoCycle(){
         AtomicBoolean CycleFlag = new AtomicBoolean();
         ChengePrintGround(ground_search());
@@ -199,8 +203,8 @@ public class world {
         
         public cell(int x, int y, int z){
             cordinate[0] = x; //enviroment [x][][]
-            cordinate[1] = z;//enviroment [][][x]
-            cordinate[2] = y;//enviroment [][x][]
+            cordinate[1] = z; //enviroment [][][x]
+            cordinate[2] = y; //enviroment [][x][]
         }
 
         private  void set_cellType(String tipo){//aria/ground
