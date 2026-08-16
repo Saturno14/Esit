@@ -34,6 +34,9 @@ public class world {
                     System.out.println("print layer: "+ground.get());
                     System.out.println("Entity count: "+Entity_manager.Entity_count());
                     try {
+                        for(int i = 0; i<Entity_manager.Entity_count()%2; i++){
+                            add((int)(Math.random()*20), ground.get(), (int)(Math.random()*20), "M");
+                        }
                         world.planetPrint();
                     } catch (Exception e) {System.out.println("Errore try cycle: "+e.getMessage());}
                     ore++;
@@ -78,7 +81,7 @@ public class world {
                     String str2 = "";
                     for(int z=0;z<Entity_manager.Entity_count();z++){
                         int[] a = Entity_manager.Entity_get(z).getPos();
-                        if(Arrays.equals(a, cord)){
+                        if(Arrays.equals(a, cord) && Entity_manager.Entity_get(z).isAlive()){
                             str2 = " E"+Entity_manager.Entity_get(z).getId();}
                     }
                     str +=  getSymbol(i, PrintGround, j)+str2+"\t";

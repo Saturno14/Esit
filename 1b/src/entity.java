@@ -11,7 +11,6 @@ import src.brain.Reproduction;
  * entity
  */
 public class entity {
-    private String entity_type = "";
     private int EntityID;
     private int healt;
     private int water;
@@ -21,6 +20,7 @@ public class entity {
     private int age;
     private int sex;
     private int food_count = 0;
+    private int consumedFood = 0;
     private double Netreward = 0;
     private AtomicInteger[] position = new AtomicInteger[3];
     private int[] posi = new int[3];
@@ -41,7 +41,6 @@ public class entity {
 
 
     public entity(int id, int cycle, int x, int y, int z){
-        this.entity_type= "human";
         this.EntityID = id;
         this.healt = 100;
         this.water = 100;
@@ -64,6 +63,8 @@ public class entity {
         bestBrain = Brain.copy();
         Brain.mutate(MUTATION_RATE);
     }
+
+    public void entityCreate(int id, int cycle, int x, int y, int z, )
 
     public int[] getPos(){
         int[] pos = new int[3];
@@ -314,6 +315,10 @@ public class entity {
         this.food = value;
     }
 
+    public int getFoodConsumed(){
+        return consumedFood;
+    }
+
     private boolean takeObject(){
         boolean flag = false;
         int maxFood = 1000;
@@ -329,6 +334,7 @@ public class entity {
                 food += 100;
                 if(food>maxFood){food=maxFood;}
                 food_count ++;
+                consumedFood ++;
                 if(old_food != food){Netreward += 3.0;}
                 break;
             default:

@@ -42,7 +42,7 @@ public class console{
                     break;
                 
                 case "Get":
-                    if(Integer.parseInt(str[1])>=0 && Integer.parseInt(str[1])<= Entity_manager.Entity_count()){
+                    if(Integer.parseInt(str[1])>=0 && Integer.parseInt(str[1]) < Entity_manager.Entity_count()){
                         try {
                             entity temp = Entity_manager.Entity_get(Integer.parseInt(str[1]));
                             StringBuilder tempStr = new StringBuilder();
@@ -51,10 +51,11 @@ public class console{
                             tempStr.append("IsAlive: "+temp.isAlive()+"\n");
                             tempStr.append("Healt: "+temp.getHealt()+"\n");
                             tempStr.append("Food: "+temp.getFood()+"\n");
+                            tempStr.append("Food_consumed: "+temp.getFoodConsumed()+"\n");
                             tempStr.append("NetRaward: "+temp.getNetreward()+"\n");
                             tempStr.append("Age: "+temp.getAge()+"\n");
                             tempStr.append("Sex: "+temp.getSex()+"\n");
-                            tempStr.append("Pos: "+temp.getPos());
+                            tempStr.append("Pos: "+temp.getPos().toString());
                             out = tempStr.toString();
                             
                         } catch (Exception e) { out = ("Errore get Entity: "+ e.getMessage());}
