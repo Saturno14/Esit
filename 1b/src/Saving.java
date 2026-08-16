@@ -61,16 +61,18 @@ public class Saving {
                 Str.append("{\n");
                 int[] info = world.cord_Type(i, world.getGround(), j);
                 if(info[0]>0){
-                    Str.append("    Entity: \n");
+                    Str.append("    Entity: ");
                     for(int f=0;f<Entity_manager.Entity_count();f++){
                         int[] tempPos = {i,world.getGround(),j};
                         if(Arrays.equals(Entity_manager.Entity_get(f).getPos(), tempPos)){
-                            Str.append("    "+Entity_manager.Entity_get(f).getId()+"\n");
+                            if(f>0){Str.append(" - ");}
+                            Str.append(Entity_manager.Entity_get(f).getId());
                         }
                     }
+                    Str.append(",\n");
                 }
                 else if(info[1]>0){
-                    Str.append("    food: "+info[1]+"\n");
+                    Str.append("    food: "+info[1]+",\n");
                 }
 
                 Str.append("    Type: "+info[2]+"\n");
@@ -97,13 +99,22 @@ public class Saving {
         try {
             if(!flag2){Files.createDirectories(Path.of(root+"/saving"));}
         } catch (Exception e) {System.out.println("Errore creazione cartella Saving "+e.getMessage());}
-        
+
         root = new File("saving/");
         subdirs = root.listFiles(File::isDirectory);
 
         StringBuilder name = new StringBuilder();
         if(subdirs.length == 0){name.append("s-0");}
         else{name.append(subdirs[subdirs.length-1].getName());}
+
+        //ordinamento copiato
+        int maxN = -1;
+        for(File d : subdirs){
+            String[] parts = d.getName().split("-");
+            try { maxN = Math.max(maxN, Integer.parseInt(parts[1])); } catch(Exception ignored) {}
+        }
+        name.append("s-").append(maxN + 1);
+
         String[] str = name.toString().split("-");
         int n = Integer.parseInt(str[1])+1;
         name.replace(name.length()-str[1].length(), name.length(), Integer.toString(n));

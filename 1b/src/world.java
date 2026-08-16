@@ -13,6 +13,10 @@ public class world {
     private static AtomicInteger ground = new AtomicInteger();
     private static int PrintGround = 0;
     private static int cycle = 0;
+    
+    private static volatile Thread cycleThread;          // riferimento persistente
+    private static final AtomicBoolean running = new AtomicBoolean(false); // "deve girare"
+    private static final AtomicBoolean paused  = new AtomicBoolean(false);
 
     public static void ChengePrintGround(int value){
         PrintGround = value;
@@ -37,43 +41,56 @@ public class world {
 
     public static void DoCycle(){
         AtomicBoolean CycleFlag = new AtomicBoolean();
-        ChengePrintGround(ground_search());
-        Thread Cycle = new Thread(()->{
-            int ore = 0;
-            System.out.println("Cycle start");
-            try {
-                while(world.GetSimulationFlag()){
-                    Thread.sleep(1000);//5 secondo
-                    System.out.println("Dentro doCycle flag= "+CycleFlag.get()+"threadN: "+Thread.currentThread());
-                    System.out.println("Cycle: "+cycle+" - ore: "+ore);
-                    System.out.println("print layer: "+ground.get());
-                    System.out.println("Total Entity: "+Entity_manager.get_EntityN());
-                    System.out.println("Entity count: "+Entity_manager.Entity_count());
-                    try {
-                        for(int i = 0; i<Entity_manager.Entity_count()%2; i++){
-                            add((int)(Math.random()*20), ground.get(), (int)(Math.random()*20), "M");
-                        }
-                        world.planetPrint();
-                    } catch (Exception e) {System.out.println("Errore try cycle: "+e.getMessage());}
-                    ore++;
-                    if(ore == 24){
-                        ore = 0;
-                        cycle++;
-                        System.out.println("Nuovo cyclo");
-                    }
+        ChengePrintGround(ground_search());      
+        if(!running.compareAndSet(false, true)){
+            System.out.println("Cycle già attivo, ignoro");
+            return;
+        }
+        cycleThread = new Thread(() -> {
+            while(running.get()){
+                if(paused.get()){
+                    try { Thread.sleep(100); } catch(InterruptedException ignored){}
+                    continue; 
                 }
-                System.out.println("TotCycle stopped");
-                
-            } catch (Exception e) {
-                System.out.println("Errore DoCycle thread: "+e.getMessage());
+                int ore = 0;
+                System.out.println("Cycle start");
+                try {
+                    while(world.GetSimulationFlag()){
+                        Thread.sleep(1000);//5 secondo
+                        System.out.println("Dentro doCycle flag= "+CycleFlag.get()+"threadN: "+Thread.currentThread());
+                        System.out.println("Cycle: "+cycle+" - ore: "+ore);
+                        System.out.println("print layer: "+ground.get());
+                        System.out.println("Total Entity: "+Entity_manager.get_EntityN());
+                        System.out.println("Entity count: "+Entity_manager.Entity_count());
+                        try {
+                            for(int i = 0; i<Entity_manager.Entity_count()%2; i++){
+                                add((int)(Math.random()*20), ground.get(), (int)(Math.random()*20), "M");
+                            }
+                            world.planetPrint();
+                        } catch (Exception e) {System.out.println("Errore try cycle: "+e.getMessage());}
+                        ore++;
+                        if(ore == 24){
+                            ore = 0;
+                            cycle++;
+                            System.out.println("Nuovo cyclo");
+                        }
+                    }
+                    System.out.println("TotCycle stopped");
+                    
+                } catch (Exception e) {
+                    System.out.println("Errore DoCycle thread: "+e.getMessage());
             }
+            }
+            System.out.println("Cycle terminato");
         });
-        CycleFlag.set(true);
-        System.out.println("Avvio DoCycle");
-        if(!Cycle.isAlive()){Cycle.start();}
-        else{System.out.println("Cycle alredy alive");}
+        cycleThread.start();
         
     }
+
+    public static void PauseCycle(boolean status){
+        paused.set(status);
+    }
+
 
     public static void planetPrint(){
         try {

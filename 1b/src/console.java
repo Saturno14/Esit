@@ -16,16 +16,10 @@ public class console{
                     out = ("Changed print layer to: "+Integer.parseInt(str[1]));
                     break;
                 case "start":
-                    world.ChangeSimulationFlag(true);
-                    out = ("Simulation status: "+world.GetSimulationFlag());
-                    try {
-                        Thread.sleep(5000);
-                    } catch (Exception e) {}
-                    world.DoCycle();
+                    world.PauseCycle(false);
                     break;
                 case "stop":
-                    world.ChangeSimulationFlag(false);
-                    System.out.println("Simulation status: "+world.GetSimulationFlag());
+                    world.PauseCycle(true);
                     break;
                 case "mela":
                     try {
@@ -92,21 +86,17 @@ public class console{
                     for(int i=0;i<20; i++){
                         world.add((int)(Math.random()*20), ground, (int)(Math.random()*20), "M");
                     }
-
+                    world.PauseCycle(false);
                     world.DoCycle();
                     break;
 
                 case "Save":
-                    world.ChangeSimulationFlag(false);
-                    System.out.println("Simulation status: "+world.GetSimulationFlag());
-                    if(Saving.Save()){System.out.println("Save Succesfull");}
-                    else{System.out.println("Errore Save");}
-                    world.ChangeSimulationFlag(true);
-                    System.out.println("Simulation status: "+world.GetSimulationFlag());
                     try {
+                        world.PauseCycle(true);
                         Thread.sleep(5000);
-                    } catch (Exception e) {}
-                    world.DoCycle();
+                        Saving.Save();
+                        world.PauseCycle(false);
+                    } catch (Exception e) {System.out.println("Errore Save"+e.getMessage());}
                     break;
 
                 case "Load":
