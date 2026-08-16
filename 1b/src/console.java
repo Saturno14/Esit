@@ -1,4 +1,6 @@
-import src.*;
+package src;
+
+import java.util.Arrays;
 
 public class console{
     public static String input(String input){
@@ -60,6 +62,46 @@ public class console{
                             
                         } catch (Exception e) { out = ("Errore get Entity: "+ e.getMessage());}
                     }else{out = ("Errore in get input: "+str[1]);}
+                    break;
+
+                case "NewStart":
+                    int start_entity = 10;
+                    int Entity_count = 0;
+                    int ground;
+                    world.ChangeSimulationFlag(true);
+                    world.world_setup();
+                    ground = world.ground_search();
+                    
+                    
+
+                    for(int i=0; i<=start_entity;i++){
+                        entity tempEntity = new entity(Entity_count,world.getCycle(),(int)(Math.random()*(world.getDim()-1))+1,ground,(int)(Math.random()*(world.getDim()-1))+1);
+                        Entity_manager.Entity_add(tempEntity);
+                        int[] temppos = Entity_manager.Entity_get(Entity_manager.Entity_count()-1).getPos();
+                        world.add(temppos[0],temppos[1],temppos[2],"E");
+                        System.out.println("Entity: "+Entity_manager.Entity_get(i).getId()+" "+Arrays.toString(Entity_manager.Entity_get(i).getPos()));
+                        new Thread(()->{
+                            String temp = "";
+                            temp = Thread.currentThread().getName();
+                            tempEntity.setProcessId(temp);
+                            tempEntity.GoLife();
+                        }).start();
+                        Entity_count++;
+                    }
+                    Entity_count = Entity_manager.Entity_count();
+                    for(int i=0;i<20; i++){
+                        world.add((int)(Math.random()*20), ground, (int)(Math.random()*20), "M");
+                    }
+
+                    world.DoCycle();
+                    break;
+
+                case "Save":
+                    Saving.Save();
+                    break;
+
+                case "Continue":
+                    //da implementare;
                     break;
                     
                 default:

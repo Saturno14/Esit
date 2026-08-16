@@ -3,7 +3,7 @@ import java.nio.file.*;
 import java.util.Arrays;
 
 public class Saving {
-    public boolean SaveEntityBrain(){
+    private static boolean SaveEntityBrain(){
         boolean flag = false;
         StringBuilder Str = new StringBuilder();
 
@@ -29,11 +29,10 @@ public class Saving {
         return flag;
     }
 
-    public boolean SaveEntity(){
+    private static boolean SaveEntity(){
         boolean flag = false;
         StringBuilder Str = new StringBuilder();
         for(int v=0; v<Entity_manager.EntityNumber;v++){
-            Str.setLength(0);
             Str.append("{\n");
             Str.append("    ID: "+Entity_manager.Entity_get(v).getId()+"\n");
             Str.append("    Age: "+Entity_manager.Entity_get(v).getAge()+"\n");
@@ -45,21 +44,15 @@ public class Saving {
             int[] tempos = Entity_manager.Entity_get(v).getPos();
             Str.append("    Pos: "+tempos[0]+" "+tempos[1]+" "+tempos[2]+"\n");
             Str.append("}\n");
-            try {
-                Files.writeString(Path.of("saving/entity.json"), Str.toString());
-                flag = true;
-            } catch (Exception e) {System.out.println("Errore Saving brain");}
-            if(!flag){
-                System.out.println("Errore saving Entity");
-                return flag;
-            }
-            flag = false;
         }
-        flag = true;
+        try {
+            Files.writeString(Path.of("saving/entity.json"), Str.toString());
+            flag = true;
+        } catch (Exception e) {System.out.println("Errore Saving brain");}
         return flag;
     }
 
-    public boolean SaveWorld(){
+    private static boolean SaveWorld(){
         boolean flag = false;
         StringBuilder Str = new StringBuilder();
         for(int i=0;i<world.getDim();i++){
@@ -88,7 +81,7 @@ public class Saving {
         return flag;
     }
 
-    public boolean Save(){
+    public static boolean Save(){
         boolean flag = false;
         if(SaveEntity() && SaveEntityBrain() && SaveWorld()){flag = true;}
         return flag;

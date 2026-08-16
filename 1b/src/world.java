@@ -16,11 +16,11 @@ public class world {
         PrintGround = value;
     }
 
-    public int getCycle(){
+    public static int getCycle(){
         return cycle;
     }
 
-    public int getGround(){
+    public static int getGround(){
         return ground.get();
     }
 
@@ -105,7 +105,7 @@ public class world {
         return SimulationFlag.get();
     }
     
-    public boolean world_setup(){
+    public static boolean world_setup(){
         if(!cell_setup()){return false;}
         if(!terrein_set()){return false;}
         ground.set(ground_search());
@@ -122,7 +122,7 @@ public class world {
         return Enviroment[x][y][z].get_obgect();
     }
 
-    private boolean cell_setup(){
+    private static boolean cell_setup(){
         for(int i=0;i<Dimension;i++){ //y
             for(int j=0;j<Dimension;j++){//x
                 for(int f=0;f<Dimension;f++){//z
@@ -135,7 +135,7 @@ public class world {
 
 
 
-    private boolean terrein_set(){
+    private static boolean terrein_set(){
         //imposto che la metà bassa dellìaltezza è terra, e la metà alta aria, per ora non c'è acqua
         int low_site = 0;
         if(Dimension%2==0){low_site = Dimension/2;}else{low_site = (Dimension-1)/2;}
