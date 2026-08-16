@@ -103,6 +103,10 @@ public class console{
                     else{System.out.println("Errore Save");}
                     world.ChangeSimulationFlag(true);
                     System.out.println("Simulation status: "+world.GetSimulationFlag());
+                    try {
+                        Thread.sleep(5000);
+                    } catch (Exception e) {}
+                    world.DoCycle();
                     break;
 
                 case "Load":

@@ -29,7 +29,7 @@ public class ConsoleInput {
                         if(!str.isBlank()){System.out.println("report: "+str);}
                         
 
-                    } catch (Exception e) {System.out.println("Errore in server in");}
+                    } catch (Exception e) {System.out.println("Errore in server in "+e.getMessage());}
                 }
             }).start();
 

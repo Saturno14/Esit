@@ -1,5 +1,7 @@
 package src;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -14,6 +16,15 @@ public class world {
 
     public static void ChengePrintGround(int value){
         PrintGround = value;
+    }
+
+    public void Load(){
+        try {
+            String content = Files.readString(Path.of("saving/world.json"));
+            
+
+        } catch (Exception e) {
+        }
     }
 
     public static int getCycle(){

@@ -67,6 +67,20 @@ public class entity {
         try {
             String content = Files.readString(Path.of("saving/entity.json"));
             String[] entit0 = content.split(";");
+            String[] info = entit0[index].split(",");
+            this.EntityID = Integer.parseInt(info[0]);
+            this.age = Integer.parseInt(info[1]);
+            this.food = Integer.parseInt(info[2]);
+            this.food = Integer.parseInt(info[3]);
+            this.food_count = Integer.parseInt(info[4]);
+            this.healt = Integer.parseInt(info[5]);
+            this.sex = Integer.parseInt(info[6]);
+            this.Netreward = Integer.parseInt(info[7]);
+            String[] temp = info[8].split(" ");
+            for(int i=0;i<temp.length;i++){
+                position[i].set(Integer.parseInt(temp[i]));
+            }
+
         } catch (Exception e) {
             
         }
