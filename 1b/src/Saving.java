@@ -145,7 +145,7 @@ public class Saving {
         name.append("s-").append(maxN + 1);
 
         String[] str = name.toString().split("-");
-        int n = Integer.parseInt(str[1])+1;
+        int n = Integer.parseInt(str[1]);
         name.replace(name.length()-str[1].length(), name.length(), Integer.toString(n));
         try{
             Files.createDirectories(Path.of("saving/" + name.toString()));
