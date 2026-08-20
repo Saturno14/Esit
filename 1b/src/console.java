@@ -1,5 +1,7 @@
 package src;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 
 public class console{
@@ -100,7 +102,16 @@ public class console{
                     break;
 
                 case "Load":
-                    //da implementare;
+                    try {
+                        world.Load();
+                        String content = Files.readString(Path.of("saving/entity.json"));
+                        String[] entity = content.split("\\{");
+                        for(int i=0;i<entity.length;i++){
+                            Entity_manager.Entity_add(new entity(0, 0, 0, 0, 0));
+                            Entity_manager.Entity_get(0).entityLoad(i);
+                        }
+
+                    } catch (Exception e) {System.err.println("Errore Load entity console: "+e.getMessage());}
                     break;
                     
                 default:

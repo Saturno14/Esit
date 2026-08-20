@@ -24,22 +24,34 @@ public class world {
     public static boolean isPaused(){ return paused.get(); }
     public static boolean isRunning(){ return running.get(); }
 
-    public void Load(){
+    public static void Load(){
         try {
+            world_setup();
             String content = Files.readString(Path.of("saving/world.json"));
-            String[] str = content.split(",");
+            String[] str = content.split("-");
             for(String s:str){
                 String[] sub = s.split(":");
-                for(String g:sub){
-                    if(g.equals("dimension")){
-                        this.Dimension = Integer.parseInt(sub[1]);
-                    }else if(g.equals("cycle")){
-                        this.cycle = Integer.parseInt(sub[1]);
-                    }else if(g.equals("ground")){
-                        this.ground.set(Integer.parseInt(sub[1]));
-                    }else if(g.equals("food")){
-                        this.cycle = Integer.parseInt(sub[1]);
+                for(int i =0;i<sub.length;i++){
+                    switch (sub[i]) {
+                        case "dimension":
+                            Dimension=Integer.parseInt(sub[i+1]);
+                            break;
+                        case "cycle":
+                            cycle=Integer.parseInt(sub[i+1]);
+                            break;
+                        case "ground":
+                            ground.set(Integer.parseInt(sub[i+1]));
+                            break;
+                        case "food":
+                            String[] fd = sub[i+1].split(";");
+                            for(String o: fd){
+                                String[] cord = o.split(",");
+                                add(Integer.parseInt(cord[0]),Integer.parseInt(cord[1]),Integer.parseInt(cord[2]),"M");
+                            }
+                        default:
+                            throw new AssertionError();
                     }
+                    
                 }
             }
             
@@ -174,7 +186,7 @@ public class world {
     private static boolean terrein_set(){
         //imposto che la metà bassa dellìaltezza è terra, e la metà alta aria, per ora non c'è acqua
         int low_site = 0;
-        if(Dimension%2==0){low_site = Dimension/2;}else{low_site = (Dimension-1)/2;}
+        if(Dimension%2==0){low_site = Dimension/2;}else{low_site = (Dimension-1)/2;} //altezza fissa
         System.out.println("Low_site= "+low_site);
 
         for(int i=0; i<Dimension;i++){

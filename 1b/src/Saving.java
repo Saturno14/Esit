@@ -71,7 +71,7 @@ public class Saving {
             Str.append(" sex"+" : "+Entity_manager.Entity_get(v).getSex()+",");
             Str.append(" fitness"+" : "+ Entity_manager.Entity_get(v).getFitness()+",");
             int[] tempos = Entity_manager.Entity_get(v).getPos();
-            Str.append(" pos"+" : ["+tempos[0]+", "+tempos[1]+", "+tempos[2]+"] ");
+            Str.append(" pos"+" : "+tempos[0]+", "+tempos[1]+", "+tempos[2]);
             Str.append("},\n");
         }
         try {
@@ -85,10 +85,10 @@ public class Saving {
         boolean flag = false;
         StringBuilder Str = new StringBuilder();
 
-        Str.append("  \"[dimension\": ").append(world.getDim()).append("]\n");
-        Str.append("  \"[cycle\": ").append(world.getCycle()).append(",]\n");
-        Str.append("  \"[ground\": ").append(world.getGround()).append(",]\n");
-        Str.append("  \"[food\": ");
+        Str.append("  \"-dimension\": ").append(world.getDim()+"\n");
+        Str.append("  \"-cycle\": ").append(world.getCycle()+"\n");
+        Str.append("  \"-ground\": ").append(world.getGround()+"\n");
+        Str.append("  \"-food\": \n");
 
         java.util.List<int[]> foodCells = new java.util.ArrayList<>();
         int dim = world.getDim();
@@ -104,7 +104,7 @@ public class Saving {
 
         for(int i=0; i<foodCells.size(); i++){
             int[] pos = foodCells.get(i);
-            Str.append(" "+pos[0]+" ,"+pos[1]+","+pos[2]+";");
+            Str.append(" "+pos[0]+" ,"+pos[1]+","+pos[2]+";\n");
         }
         Str.append("]");
 
