@@ -85,10 +85,10 @@ public class Saving {
         boolean flag = false;
         StringBuilder Str = new StringBuilder();
 
-        Str.append("  \"-dimension\": ").append(world.getDim()+"\n");
-        Str.append("  \"-cycle\": ").append(world.getCycle()+"\n");
-        Str.append("  \"-ground\": ").append(world.getGround()+"\n");
-        Str.append("  \"-food\": \n");
+        Str.append("  -dimension : ").append(world.getDim()+"\n");
+        Str.append("  -cycle : ").append(world.getCycle()+"\n");
+        Str.append("  -ground : ").append(world.getGround()+"\n");
+        Str.append("  -food : \n");
 
         java.util.List<int[]> foodCells = new java.util.ArrayList<>();
         int dim = world.getDim();
