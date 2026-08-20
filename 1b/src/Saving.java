@@ -106,7 +106,6 @@ public class Saving {
             int[] pos = foodCells.get(i);
             Str.append(" "+pos[0]+" ,"+pos[1]+","+pos[2]+";\n");
         }
-        Str.append("]");
 
         try {
             Files.writeString(Path.of(dir+"/world.json"), Str.toString());

@@ -26,15 +26,16 @@ public class world {
 
     public static void Load(){
         try {
-            world_setup();
+            
             String content = Files.readString(Path.of("saving/world.json"));
             String[] str = content.split("-");
             for(String s:str){
                 String[] sub = s.split(":");
                 for(int i =0;i<sub.length;i++){
-                    switch (sub[i]) {
+                    switch (sub[i].trim()) {
                         case "dimension":
                             Dimension=Integer.parseInt(sub[i+1]);
+                            world_setup();
                             break;
                         case "cycle":
                             cycle=Integer.parseInt(sub[i+1]);
