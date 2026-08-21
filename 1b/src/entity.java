@@ -67,30 +67,29 @@ public class entity {
             String content = Files.readString(Path.of("saving/entity.json"));
             String[] entit0 = content.split("\\{");
             entit0 = entit0[index].split(",");
-            int ind = 0;
             for(String a: entit0){
                 String[] sub = a.split(":");
-                switch (sub[ind]) {
+                switch (sub[0].trim()) {
                     case "id":
-                        this.EntityID=Integer.parseInt(sub[ind+1]);
+                        this.EntityID=Integer.parseInt(sub[1]);
                         break;
                     case "age":
-                        this.age=Integer.parseInt(sub[ind+1]);
+                        this.age=Integer.parseInt(sub[1]);
                         break;
                     case "food":
-                        this.food=Integer.parseInt(sub[ind+1]);
+                        this.food=Integer.parseInt(sub[1]);
                         break;
                     case "foodConsumed":
-                        this.food_count=Integer.parseInt(sub[ind+1]);
+                        this.food_count=Integer.parseInt(sub[1]);
                         break;
                     case "healt":
-                        this.healt=Integer.parseInt(sub[ind+1]);
+                        this.healt=Integer.parseInt(sub[1]);
                         break;
                     case "fitness":
-                        this.Netreward=Integer.parseInt(sub[ind+1]);
+                        this.Netreward=Integer.parseInt(sub[1]);
                         break;
                     case "pos":
-                        String[] tempos = sub[index].split(",");
+                        String[] tempos = sub[1].split(",");
                         for(int i=0;i<tempos.length;i++){
                             position[i].set(Integer.parseInt(tempos[i]));
                         }
@@ -98,7 +97,6 @@ public class entity {
                     default:
                         
                 }
-                ind++;
             }
             
         } catch (Exception e) {
