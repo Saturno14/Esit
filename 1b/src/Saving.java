@@ -9,47 +9,25 @@ public class Saving {
     private static boolean SaveEntityBrain(String dir){
         boolean flag = false;
         StringBuilder Str = new StringBuilder();
-        Str.append("[\n");
         for(int i=0; i<Entity_manager.Entity_count(); i++){
             entity ent = Entity_manager.Entity_get(i);
             int[] topology = ent.getBrain().getTopology();
-
-            Str.append("  {\n");
-            Str.append("    \"id\": ").append(ent.getId()).append(",\n");
-
-            Str.append("    \"topology\": [");
-            for(int t=0; t<topology.length; t++){
-                Str.append(topology[t]);
-                if(t < topology.length-1) Str.append(", ");
-            }
-            Str.append("],\n");
-
-            Str.append("    \"layers\": [\n");
-            for(int j=0; j<topology.length-1; j++){
-                Str.append("      {\n        \"neurons\": [\n");
-                for(int z=0; z<topology[j+1]; z++){
-                    brain.Neuron n = ent.getBrain().getLayer(j).getNeuron(z);
-                    double[] weights = n.getWeight();
-
-                    Str.append("          { \"bias\": ").append(n.getBias()).append(", \"weights\": [");
-                    for(int c=0; c<weights.length; c++){
-                        Str.append(weights[c]);
-                        if(c < weights.length-1) Str.append(", ");
+            Str.append("- ID : "+ent.getId()+"\n");
+            Str.append("- Brain : \n");
+            for(int j=1;j<topology.length ;j++){
+            Str.append("- layer : \n");   
+            Str.append("- neurons : \n");
+                for(int o=0;o<topology[j];o++){
+                    Str.append("- bias : "+ent.getBrain().getLayer(j).getNeuron(o).getBias()+"\n");
+                    double[] weigh = ent.getBrain().getLayer(j).getNeuron(o).getWeight();
+                    Str.append("- weights : ");
+                    for(int k=0;k<weigh.length;k++){
+                        Str.append(weigh[k]+", ");
                     }
-                    Str.append("] }");
-                    if(z < topology[j+1]-1) Str.append(",");
-                    Str.append("\n");
+                    Str.append(";\n");
                 }
-                Str.append("        ]\n      }");
-                if(j < topology.length-2) Str.append(",");
-                Str.append("\n");
             }
-            Str.append("    ]\n");
-            Str.append("  }");
-            if(i < Entity_manager.Entity_count()-1) Str.append(",");
-            Str.append("\n");
         }
-        Str.append("]\n");
 
         try {
             Files.writeString(Path.of(dir+"/brain.json"), Str.toString());
@@ -148,13 +126,23 @@ public class Saving {
         }catch(Exception e){System.out.println("Errore creazione cartella "+e.getMessage());}
         String dir = "saving/"+name.toString();
         try {
-            if(SaveEntity(dir)){
-                if(SaveEntityBrain(dir)){
-                    if(SaveWorld(dir)){
-                        flag= true;
-                    }else{System.out.println("Errore SaveWorld");}
-                }else{System.out.println("Errore SaveEntityBrain");}
-            }else{System.out.println("Errore SaveEntity");}
+            boolean f1 = false;
+            boolean f2 = false;
+            boolean f3 = false;
+
+            try {
+                if(SaveWorld(dir)){f1 = true;}
+            } catch (Exception e) {System.out.println("Errore SaveWorld in Save "+e.getMessage());}
+            try {
+                if(SaveEntity(dir)){f2 = true;}
+            } catch (Exception e) {System.out.println("Errore SaveEntity in Save "+e.getMessage());}
+            try {
+                if(SaveEntityBrain(dir)){f3 = true;}
+            } catch (Exception e) {System.out.println("Errore SaveEntityBrain in Save "+e.getMessage());}
+
+            System.out.println("Save1: "+f1);
+            System.out.println("Save2: "+f2);
+            System.out.println("Save3: "+f3);
         } catch (Exception e) { System.out.println("Errore ultimo if Save: "+e.getMessage());}
         
         return flag;

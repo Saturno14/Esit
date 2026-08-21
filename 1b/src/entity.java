@@ -99,9 +99,13 @@ public class entity {
                 }
             }
             
+        } catch (Exception e) { System.out.println("Errore load Entity in entity "+e.getMessage());}
+
+        try { //load brain
+            String content = Files.readString(Path.of("saving/brain.json"));
         } catch (Exception e) {
-            
         }
+
     }//vedi dopo
 
     public int[] getPos(){
