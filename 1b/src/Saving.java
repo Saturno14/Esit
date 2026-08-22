@@ -12,22 +12,37 @@ public class Saving {
         for(int i=0; i<Entity_manager.Entity_count(); i++){
             entity ent = Entity_manager.Entity_get(i);
             int[] topology = ent.getBrain().getTopology();
-            Str.append("- ID : "+ent.getId()+";\n");
-            for(int j=1;j<topology.length ;j++){
-                Str.append("    layer ; \n");   
-                for(int o=0;o<topology[j];o++){
-                    Str.append("        neurons ; \n");
-                    Str.append("        bias : "+ent.getBrain().getLayer(j-1).getNeuron(o).getBias()+"\n");
-                    double[] weigh = ent.getBrain().getLayer(j-1).getNeuron(o).getWeight();
-                    Str.append("        weights : ");
-                    for(int k=0;k<weigh.length;k++){
-                        Str.append(weigh[k]+", ");
-                    }
-                    Str.append(";\n");
-                }
-                
+            Str.append("id : "+ent.getId()+";\n");
+            Str.append("topology : ");
+            for(int c:ent.getBrain().getTopology()){
+                Str.append(c+",");
             }
+            Str.delete(Str.length()-1, Str.length());
+            Str.append(";\n");
+            
+            StringBuilder biasStr = new StringBuilder();
+            StringBuilder weightStr = new StringBuilder();
+            biasStr.append("bias: ");
+            weightStr.append("weights: ");
+            for(int j=1;j<topology.length ;j++){
+                for(int o=0;o<topology[j];o++){
+                    biasStr.append(ent.getBrain().getLayer(j-1).getNeuron(o).getBias()+",");
+                    double[] weigh = ent.getBrain().getLayer(j-1).getNeuron(o).getWeight();
+                    for(int k=0;k<weigh.length;k++){
+                        weightStr.append(weigh[k]+", ");
+                    }
+                }
+            }
+            biasStr.deleteCharAt(biasStr.length());
+            biasStr.append(";\n");
+            weightStr.deleteCharAt(weightStr.length());
+            weightStr.append(";\n");
+            Str.append(biasStr);
+            Str.append(weightStr);
+            Str.append("\n");
         }
+        Str.append("-\n");
+
 
         try {
             Files.writeString(Path.of(dir+"/brain.json"), Str.toString());

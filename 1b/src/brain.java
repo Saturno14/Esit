@@ -31,6 +31,15 @@ public class brain {
             return clone;
         }
 
+        public void setBias(double baias){
+            this.bias = baias;
+        }
+
+        public void setWeights(double[] weiggts){
+            for (int i = 0; i < weiggts.length; i++) {
+                weights[i] = weiggts[i];
+            }
+        }
 
         public void mutate(double rate){
 
