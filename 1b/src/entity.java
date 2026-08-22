@@ -103,6 +103,12 @@ public class entity {
 
         try { //load brain
             String content = Files.readString(Path.of("saving/brain.json"));
+            String[] BrAin = content.split("-");
+            int index1 =0;
+            if(BrAin[index].equals("ID")){
+                String[] Layer = BrAin[index].split(";");
+                
+            }
         } catch (Exception e) {
         }
 

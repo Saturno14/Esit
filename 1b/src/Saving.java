@@ -12,29 +12,19 @@ public class Saving {
         for(int i=0; i<Entity_manager.Entity_count(); i++){
             entity ent = Entity_manager.Entity_get(i);
             int[] topology = ent.getBrain().getTopology();
-            Str.append("- ID : "+ent.getId()+"\n");
-            Str.append("- Brain : \n");
-            System.out.println("Topology: "+topology);
-             System.out.println("Topology lenght "+topology.length);
+            Str.append("- ID : "+ent.getId()+";\n");
             for(int j=1;j<topology.length ;j++){
-            Str.append("- layer : \n");   
-            Str.append("- neurons : \n");
-            try {
-                System.out.println("Topology di "+j+" lenght: "+topology[j]);
-                for(int o=0;o<topology[j-1];o++){
-                    System.out.println("Topology di "+j+" index: "+o);
-                    Str.append("- bias : "+ent.getBrain().getLayer(j).getNeuron(o).getBias()+"\n");
-                    double[] weigh = ent.getBrain().getLayer(j).getNeuron(o).getWeight();
-                    Str.append("- weights : ");
-                    try {
-                        for(int k=0;k<weigh.length;k++){
-                            Str.append(weigh[k]+", ");
-                        }
-                    } catch (Exception e) {System.out.println("errore for K "+e.getMessage());}
-                    
+                Str.append("    layer ; \n");   
+                for(int o=0;o<topology[j];o++){
+                    Str.append("        neurons ; \n");
+                    Str.append("        bias : "+ent.getBrain().getLayer(j-1).getNeuron(o).getBias()+"\n");
+                    double[] weigh = ent.getBrain().getLayer(j-1).getNeuron(o).getWeight();
+                    Str.append("        weights : ");
+                    for(int k=0;k<weigh.length;k++){
+                        Str.append(weigh[k]+", ");
+                    }
                     Str.append(";\n");
                 }
-            } catch (Exception e) {System.out.println("Errore for o "+e.getLocalizedMessage());}
                 
             }
         }
