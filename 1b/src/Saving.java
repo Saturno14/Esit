@@ -33,15 +33,16 @@ public class Saving {
                     }
                 }
             }
-            biasStr.deleteCharAt(biasStr.length());
+            biasStr.deleteCharAt(biasStr.length()-1);
             biasStr.append(";\n");
-            weightStr.deleteCharAt(weightStr.length());
+            weightStr.deleteCharAt(weightStr.length()-1);
             weightStr.append(";\n");
             Str.append(biasStr);
             Str.append(weightStr);
             Str.append("\n");
+            Str.append("-\n");
         }
-        Str.append("-\n");
+        
 
 
         try {

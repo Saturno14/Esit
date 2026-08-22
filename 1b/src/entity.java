@@ -110,28 +110,28 @@ public class entity {
                 String[] info = s.split(";");
                 for(String a:info){
                     String[] sub = a.split(":");
-                    if(sub[0].equals("id")){
+                    if(sub[0].trim().equals("id")){
                         if(Integer.parseInt(sub[1])==EntityID){
                             isEntity = true;
-                        }
+                        }else{isEntity = false;}
                     }
                     if(isEntity){
-                        if(sub[0].equals("topology")){
+                        if(sub[0].trim().equals("topology")){
                             String[] sub2 = sub[1].split(",");
                             int inde=0;
                             for(String aa:sub2){
                                 topology[inde++]=Integer.parseInt(aa);
                             }
                         }
-                        if(sub[0].equals("bias")){
+                        if(sub[0].trim().equals("bias")){
                             String[] sub2 = sub[1].split(",");
                             int layerindex=0;
                             for(int i=1;i<topology.length;i++){
                                 for(int j=0;j<topology[i];j++){
-                                    getBrain().getLayer(i).getNeuron(j).setBias(Double.parseDouble(sub2[layerindex++]));
+                                    getBrain().getLayer(i-1).getNeuron(j).setBias(Double.parseDouble(sub2[layerindex++]));
                                 }
                             }
-                        }if(sub[0].equals("weights")){
+                        }if(sub[0].trim().equals("weights")){
                             String[] sub2 = sub[1].split(",");
                             int neuronsIndex=0;
                             
@@ -141,7 +141,7 @@ public class entity {
                                     for(int f=0;f<topology[i-1];f++){
                                         weigh[f]= Double.parseDouble(sub2[neuronsIndex++]);
                                     }
-                                    getBrain().getLayer(i).getNeuron(j).setWeights(weigh);
+                                    getBrain().getLayer(i-1).getNeuron(j).setWeights(weigh);
                                 }
                             }
                         }
