@@ -110,19 +110,19 @@ public class console{
                     File[] subdirs = root.listFiles(File::isDirectory);
                     int index = 0;
                     for(File s : subdirs){
-                        System.out.println(index +"-"+s.getName());
+                        System.out.println(index +"] "+s.getName());
                         index++;
                     }
 
                     System.out.print("Quale salvataggio vuoi caricare: ");
                     Scanner scanner = new Scanner(System.in);
                     int n = scanner.nextInt();
-                    if(n>=0 && n<=index){
+                    if(n>=0 && n<=index-1){
                         try {
                             StringBuilder vs = new StringBuilder();
-                            vs.append("s-"+n);
-                            world.Load();
+                            vs.append(subdirs[n].getName());
                             Path path = Path.of("saving/"+vs.toString());
+                            world.Load(path);
                             String content = Files.readString(Path.of("saving/"+vs.toString()+"/entity.json"));
                             String[] entity = content.split("\\{");
                             for(int i=0;i<entity.length;i++){

@@ -24,24 +24,24 @@ public class world {
     public static boolean isPaused(){ return paused.get(); }
     public static boolean isRunning(){ return running.get(); }
 
-    public static void Load(){
+    public static void Load(Path path){
         try {
             
-            String content = Files.readString(Path.of("saving/world.json"));
+            String content = Files.readString(Path.of(path+"/world.json"));
             String[] str = content.split("-");
             for(String s:str){
                 String[] sub = s.split(":");
                 for(int i =0;i<sub.length;i++){
                     switch (sub[i].trim()) {
                         case "dimension":
-                            Dimension=Integer.parseInt(sub[i+1]);
+                            Dimension=Integer.parseInt(sub[i+1].trim());
                             world_setup();
                             break;
                         case "cycle":
-                            cycle=Integer.parseInt(sub[i+1]);
+                            cycle=Integer.parseInt(sub[i+1].trim());
                             break;
                         case "ground":
-                            ground.set(Integer.parseInt(sub[i+1]));
+                            ground.set(Integer.parseInt(sub[i+1].trim()));
                             break;
                         case "food":
                             String[] fd = sub[i+1].split(";");
@@ -57,8 +57,7 @@ public class world {
             }
             
 
-        } catch (Exception e) {
-        }
+        } catch (Exception e) {System.out.println("Errore Load World "+e.getLocalizedMessage());}
     }
 
     public static int getCycle(){
