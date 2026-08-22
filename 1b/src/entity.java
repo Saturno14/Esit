@@ -62,9 +62,9 @@ public class entity {
         Brain.mutate(MUTATION_RATE);
     }
 
-    public void entityLoad(int index){
+    public void entityLoad(int index, Path path){
         try {
-            String content = Files.readString(Path.of("saving/entity.json"));
+            String content = Files.readString(Path.of(path+"/entity.json"));
             String[] entit0 = content.split("\\{");
             entit0 = entit0[index].split(",");
             for(String a: entit0){
@@ -102,10 +102,10 @@ public class entity {
         } catch (Exception e) { System.out.println("Errore load Entity in entity "+e.getMessage());}
 
         try { //load brain
-            String content = Files.readString(Path.of("saving/brain.json"));
+            String content = Files.readString(Path.of(path+"/brain.json"));
             String[] entity = content.split("-");
             boolean isEntity = false;
-            int[] topology = new int[4]; 
+            int[] topology = getBrain().getTopology(); 
             for(String s:entity){
                 String[] info = s.split(";");
                 for(String a:info){

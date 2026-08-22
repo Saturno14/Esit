@@ -1,8 +1,10 @@
 package src;
 
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Scanner;
 
 public class console{
     public static String input(String input){
@@ -102,16 +104,34 @@ public class console{
                     break;
 
                 case "Load":
-                    try {
-                        world.Load();
-                        String content = Files.readString(Path.of("saving/entity.json"));
-                        String[] entity = content.split("\\{");
-                        for(int i=0;i<entity.length;i++){
-                            Entity_manager.Entity_add(new entity(0, 0, 0, 0, 0));
-                            Entity_manager.Entity_get(0).entityLoad(i);
-                        }
 
-                    } catch (Exception e) {System.err.println("Errore Load entity console: "+e.getMessage());}
+                    System.out.println("Lista Salvataggi");
+                    File root = new File("saving/");
+                    File[] subdirs = root.listFiles(File::isDirectory);
+                    int index = 0;
+                    for(File s : subdirs){
+                        System.out.println(index +"-"+s.getName());
+                        index++;
+                    }
+
+                    System.out.print("Quale salvataggio vuoi caricare: ");
+                    Scanner scanner = new Scanner(System.in);
+                    int n = scanner.nextInt();
+                    if(n>=0 && n<=index){
+                        try {
+                            StringBuilder vs = new StringBuilder();
+                            vs.append("s-"+n);
+                            world.Load();
+                            Path path = Path.of("saving/"+vs.toString());
+                            String content = Files.readString(Path.of("saving/"+vs.toString()+"/entity.json"));
+                            String[] entity = content.split("\\{");
+                            for(int i=0;i<entity.length;i++){
+                                Entity_manager.Entity_add(new entity(0, 0, 0, 0, 0));
+                                Entity_manager.Entity_get(0).entityLoad(i,path);
+                            }
+
+                        } catch (Exception e) {System.err.println("Errore Load entity console: "+e.getMessage());}
+                    }else{System.out.println("Numero salvataggio errato");}
                     break;
                     
                 default:

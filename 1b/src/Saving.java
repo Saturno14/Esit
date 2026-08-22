@@ -29,7 +29,7 @@ public class Saving {
                     biasStr.append(ent.getBrain().getLayer(j-1).getNeuron(o).getBias()+",");
                     double[] weigh = ent.getBrain().getLayer(j-1).getNeuron(o).getWeight();
                     for(int k=0;k<weigh.length;k++){
-                        weightStr.append(weigh[k]+", ");
+                        weightStr.append(weigh[k]+",");
                     }
                 }
             }
