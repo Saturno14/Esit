@@ -47,7 +47,7 @@ public class world {
                             String[] fd = sub[i+1].split(";");
                             for(String o: fd){
                                 String[] cord = o.split(",");
-                                add(Integer.parseInt(cord[0]),Integer.parseInt(cord[1]),Integer.parseInt(cord[2]),"M");
+                                add(Integer.parseInt(cord[0].trim()),Integer.parseInt(cord[1].trim()),Integer.parseInt(cord[2].trim()),"M");
                             }
                         default:
                             System.out.println("Errore nello switch World Load parametro arrivato: "+sub[i].trim());

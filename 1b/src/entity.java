@@ -71,22 +71,22 @@ public class entity {
                 String[] sub = a.split(":");
                 switch (sub[0].trim()) {
                     case "id":
-                        this.EntityID=Integer.parseInt(sub[1]);
+                        this.EntityID=Integer.parseInt(sub[1].trim());
                         break;
                     case "age":
-                        this.age=Integer.parseInt(sub[1]);
+                        this.age=Integer.parseInt(sub[1].trim());
                         break;
                     case "food":
-                        this.food=Integer.parseInt(sub[1]);
+                        this.food=Integer.parseInt(sub[1].trim());
                         break;
                     case "foodConsumed":
-                        this.food_count=Integer.parseInt(sub[1]);
+                        this.food_count=Integer.parseInt(sub[1].trim());
                         break;
                     case "healt":
-                        this.healt=Integer.parseInt(sub[1]);
+                        this.healt=Integer.parseInt(sub[1].trim());
                         break;
                     case "fitness":
-                        this.Netreward=Integer.parseInt(sub[1]);
+                        this.Netreward=Integer.parseInt(sub[1].trim());
                         break;
                     case "pos":
                         String[] tempos = sub[1].split(",");
@@ -95,7 +95,7 @@ public class entity {
                         }
                         break;
                     default:
-                        
+                        System.out.println("Errore Switch primo load entity");
                 }
             }
             
@@ -111,7 +111,7 @@ public class entity {
                 for(String a:info){
                     String[] sub = a.split(":");
                     if(sub[0].trim().equals("id")){
-                        if(Integer.parseInt(sub[1])==EntityID){
+                        if(Integer.parseInt(sub[1].trim())==EntityID){
                             isEntity = true;
                         }else{isEntity = false;}
                     }
