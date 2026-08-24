@@ -85,13 +85,16 @@ public class entity {
                     case "healt":
                         this.healt=Integer.parseInt(sub[1].trim());
                         break;
+                    case "sex":
+                        this.sex=Integer.parseInt(sub[1].trim());
+                        break;
                     case "fitness":
                         this.Netreward=Double.parseDouble(sub[1].trim());
                         break;
                     case "pos":
-                        String[] tempos = sub[1].split(",");
+                        String[] tempos = sub[1].split("|");
                         for(int i=0;i<tempos.length;i++){
-                            position[i].set(Integer.parseInt(tempos[i]));
+                            position[i].set(Integer.parseInt(tempos[i].trim()));
                         }
                         break;
                     default:
@@ -122,7 +125,7 @@ public class entity {
                             String[] sub2 = sub[1].split(",");
                             int inde=0;
                             for(String aa:sub2){
-                                topology[inde++]=Integer.parseInt(aa);
+                                topology[inde++]=Integer.parseInt(aa.trim());
                             }
                         }
                         if(sub[0].trim().equals("bias")){

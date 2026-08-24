@@ -65,7 +65,7 @@ public class Saving {
             Str.append(" sex"+" : "+Entity_manager.Entity_get(v).getSex()+",");
             Str.append(" fitness"+" : "+ Entity_manager.Entity_get(v).getFitness()+",");
             int[] tempos = Entity_manager.Entity_get(v).getPos();
-            Str.append(" pos"+" : "+tempos[0]+", "+tempos[1]+", "+tempos[2]);
+            Str.append(" pos"+" : "+tempos[0]+"|"+tempos[1]+"|"+tempos[2]);
             Str.append("},\n");
         }
         try {
