@@ -66,39 +66,43 @@ public class entity {
         try {
             String content = Files.readString(Path.of(path+"/entity.json"));
             String[] entit0 = java.util.Arrays.stream(content.split("\\{")).filter(s -> !s.isBlank()).toArray(String[]::new);
-            entit0 = entit0[index].split(",");
+            entit0 = entit0[index].split(";");
             for(String a: entit0){
-                String[] sub = a.split(":");
-                switch (sub[0].trim()) {
-                    case "id":
-                        this.EntityID=Integer.parseInt(sub[1].trim());
-                        break;
-                    case "age":
-                        this.age=Integer.parseInt(sub[1].trim());
-                        break;
-                    case "food":
-                        this.food=Integer.parseInt(sub[1].trim());
-                        break;
-                    case "foodConsumed":
-                        this.food_count=Integer.parseInt(sub[1].trim());
-                        break;
-                    case "healt":
-                        this.healt=Integer.parseInt(sub[1].trim());
-                        break;
-                    case "sex":
-                        this.sex=Integer.parseInt(sub[1].trim());
-                        break;
-                    case "fitness":
-                        this.Netreward=Double.parseDouble(sub[1].trim());
-                        break;
-                    case "pos":
-                        String[] tempos = sub[1].split("|");
-                        for(int i=0;i<tempos.length;i++){
-                            position[i].set(Integer.parseInt(tempos[i].trim()));
-                        }
-                        break;
-                    default:
-                        break;
+                a = a.replace("}", " ");
+                String[] b = a.split(",");
+                for(String c:b){
+                    String[] sub = c.split(":",2);
+                    switch (sub[0].trim()) {
+                        case "id":
+                            this.EntityID=Integer.parseInt(sub[1].trim());
+                            break;
+                        case "age":
+                            this.age=Integer.parseInt(sub[1].trim());
+                            break;
+                        case "food":
+                            this.food=Integer.parseInt(sub[1].trim());
+                            break;
+                        case "foodConsumed":
+                            this.food_count=Integer.parseInt(sub[1].trim());
+                            break;
+                        case "healt":
+                            this.healt=Integer.parseInt(sub[1].trim());
+                            break;
+                        case "sex":
+                            this.sex=Integer.parseInt(sub[1].trim());
+                            break;
+                        case "fitness":
+                            this.Netreward=Double.parseDouble(sub[1].trim());
+                            break;
+                        case "pos":
+                            String[] tempos = sub[1].split("\\|");
+                            for(int i=0;i<tempos.length;i++){
+                                position[i].set(Integer.parseInt(tempos[i].trim()));
+                            }
+                            break;
+                        default:
+                            break;
+                    }
                 }
             }
 
@@ -112,8 +116,9 @@ public class entity {
             boolean isEntity = false;
             int[] topology = getBrain().getTopology(); 
             for(String s:entity){
-                String[] info = s.split(";");
+                String[] info = s.trim().split(";");
                 for(String a:info){
+                    if(a.isBlank()){continue;}
                     String[] sub = a.split(":");
                     if(sub[0].trim().equals("id")){
                         if(Integer.parseInt(sub[1].trim())==EntityID){
@@ -125,7 +130,8 @@ public class entity {
                             String[] sub2 = sub[1].split(",");
                             int inde=0;
                             for(String aa:sub2){
-                                topology[inde++]=Integer.parseInt(aa.trim());
+                                topology[inde]=Integer.parseInt(aa.trim());
+                                inde++;
                             }
                         }
                         if(sub[0].trim().equals("bias")){
@@ -133,7 +139,8 @@ public class entity {
                             int layerindex=0;
                             for(int i=1;i<topology.length;i++){
                                 for(int j=0;j<topology[i];j++){
-                                    getBrain().getLayer(i-1).getNeuron(j).setBias(Double.parseDouble(sub2[layerindex++]));
+                                    getBrain().getLayer(i-1).getNeuron(j).setBias(Double.parseDouble(sub2[layerindex]));
+                                layerindex++;
                                 }
                             }
                         }if(sub[0].trim().equals("weights")){
@@ -144,7 +151,8 @@ public class entity {
                                 for(int j=0;j<topology[i];j++){
                                     double[] weigh = new double[topology[i-1]];
                                     for(int f=0;f<topology[i-1];f++){
-                                        weigh[f]= Double.parseDouble(sub2[neuronsIndex++]);
+                                        weigh[f]= Double.parseDouble(sub2[neuronsIndex]);
+                                        neuronsIndex++;
                                     }
                                     getBrain().getLayer(i-1).getNeuron(j).setWeights(weigh);
                                 }

@@ -30,8 +30,9 @@ public class world {
             String content = Files.readString(Path.of(path+"/world.json"));
             String[] str = content.split("-");
             for(String s:str){
-                String[] sub = s.split(":");
+                String[] sub = s.split(":",2);
                 for(int i =0;i<sub.length;i++){
+                    if(sub[i].trim().isBlank()){continue;}
                     switch (sub[i].trim()) {
                         case "dimension":
                             Dimension=Integer.parseInt(sub[i+1].trim());
@@ -46,6 +47,7 @@ public class world {
                         case "food":
                             String[] fd = sub[i+1].split(";");
                             for(String o: fd){
+                                if(o.isBlank()){continue;}
                                 String[] cord = o.split(",");
                                 add(Integer.parseInt(cord[0].trim()),Integer.parseInt(cord[1].trim()),Integer.parseInt(cord[2].trim()),"M");
                             }

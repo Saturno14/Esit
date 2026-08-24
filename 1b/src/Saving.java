@@ -66,7 +66,7 @@ public class Saving {
             Str.append(" fitness"+" : "+ Entity_manager.Entity_get(v).getFitness()+",");
             int[] tempos = Entity_manager.Entity_get(v).getPos();
             Str.append(" pos"+" : "+tempos[0]+"|"+tempos[1]+"|"+tempos[2]);
-            Str.append("},\n");
+            Str.append("};\n");
         }
         try {
             Files.writeString(Path.of(dir+"/entity.json"), Str.toString());
