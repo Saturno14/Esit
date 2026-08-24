@@ -49,6 +49,7 @@ public class world {
                                 String[] cord = o.split(",");
                                 add(Integer.parseInt(cord[0].trim()),Integer.parseInt(cord[1].trim()),Integer.parseInt(cord[2].trim()),"M");
                             }
+                            break;
                         default:
                             break;
                     }
@@ -196,9 +197,12 @@ public class world {
                         if(i<=low_site){
                             Enviroment[j][i][z].set_cellType("Terra");
                             Enviroment[j][i][z].set_obgect("X");
-                            System.out.println("set up cord: "+j+"-"+i+"-"+z+" == "+ Enviroment[j][i][z].get_cellType());}
-                        else{Enviroment[j][i][z].set_cellType("Air");
-                            System.out.println("set up cord: "+j+" +-"+i+"-"+z+" == "+ Enviroment[j][i][z].get_cellType());}
+                            // System.out.println("set up cord: "+j+"-"+i+"-"+z+" == "+ Enviroment[j][i][z].get_cellType());
+                            }
+                        else{
+                            Enviroment[j][i][z].set_cellType("Air");
+                            // System.out.println("set up cord: "+j+" +-"+i+"-"+z+" == "+ Enviroment[j][i][z].get_cellType());
+                            }
                     } catch (Exception e) {
                     }
                 }

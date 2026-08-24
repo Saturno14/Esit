@@ -65,7 +65,7 @@ public class entity {
     public void entityLoad(int index, Path path){
         try {
             String content = Files.readString(Path.of(path+"/entity.json"));
-            String[] entit0 = content.split("\\{");
+            String[] entit0 = java.util.Arrays.stream(content.split("\\{")).filter(s -> !s.isBlank()).toArray(String[]::new);
             entit0 = entit0[index].split(",");
             for(String a: entit0){
                 String[] sub = a.split(":");

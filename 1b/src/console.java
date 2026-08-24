@@ -127,7 +127,7 @@ public class console{
                             String[] entity = content.split("\\{");
                             for(int i=0;i<entity.length;i++){
                                 Entity_manager.Entity_add(new entity(0, 0, 0, 0, 0));
-                                Entity_manager.Entity_get(0).entityLoad(i,path);
+                                Entity_manager.Entity_get(Entity_manager.Entity_count()-1).entityLoad(i, path);
                             }
 
                         } catch (Exception e) {System.err.println("Errore Load entity console: "+e.getMessage());}
