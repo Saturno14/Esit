@@ -50,7 +50,7 @@ public class world {
                                 add(Integer.parseInt(cord[0].trim()),Integer.parseInt(cord[1].trim()),Integer.parseInt(cord[2].trim()),"M");
                             }
                         default:
-                            System.out.println("Errore nello switch World Load parametro arrivato: "+sub[i].trim());
+                            break;
                     }
                     
                 }

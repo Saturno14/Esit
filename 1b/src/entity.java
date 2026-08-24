@@ -86,7 +86,7 @@ public class entity {
                         this.healt=Integer.parseInt(sub[1].trim());
                         break;
                     case "fitness":
-                        this.Netreward=Integer.parseInt(sub[1].trim());
+                        this.Netreward=Double.parseDouble(sub[1].trim());
                         break;
                     case "pos":
                         String[] tempos = sub[1].split(",");
@@ -95,9 +95,11 @@ public class entity {
                         }
                         break;
                     default:
-                        System.out.println("Errore Switch primo load entity");
+                        break;
                 }
             }
+
+            
             
         } catch (Exception e) { System.out.println("Errore load Entity in entity "+e.getMessage());}
 
