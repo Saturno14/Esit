@@ -9,6 +9,12 @@ import java.net.Socket;
 import java.util.Scanner;
 
 public class utils{
+    public static String Clientoutput = "";
+
+    public static void ClientSendMsg(String msg){
+        Clientoutput = msg;
+    }
+
     public static void client(){
         try {
             Socket socket = null;
@@ -27,18 +33,25 @@ public class utils{
             new Thread(()->{
                 while(true){
                     try {
-                        String output = "";
                         String str = "";
                         str = in.readLine();
-                        System.out.println("report: "+str);
-                        output = console.input(str);
-                        out.println("Comand output: "+output);
+                        if(!str.isBlank()){
+                            System.out.println("report: "+str);
+                            Clientoutput = console.input(str);
+                        }
+                        if(!Clientoutput.isBlank()){
+                            out.println("Comand output: "+Clientoutput);
+                            Clientoutput = "";
+                        }
+                        
 
                     } catch (Exception e) {System.out.println("Errore in server in"+e.getMessage());}
                 }
             }).start();
         } catch (Exception e) {System.out.println("Errore in clint: "+e.getMessage());}
     }
+
+
 
     private static String Serverstr = "";
     public static void server(){
@@ -60,8 +73,6 @@ public class utils{
                     try {
                         Serverstr = in.readLine();
                         if(!Serverstr.isBlank()){System.out.println("report: "+Serverstr);}
-                        
-
                     } catch (Exception e) {System.out.println("Errore in server in "+e.getMessage());}
                 }
             }).start();

@@ -2,15 +2,35 @@ package src;
 
 import java.io.File;
 import java.util.Arrays;
-import java.util.Scanner;
 
 public class console{
+
+    private static int procedure = -1;
+
+    public void setProcedure(int value){
+        procedure = value;
+    }
+
     public static String input(String input){
         String out = "";
-        int procedure = -1;
+        
         String cmd = input;
+        
+        if(procedure != -1){
+            switch (procedure) {
+                case 1:
+                    StringBuilder str = new StringBuilder();
+                    str.append("Load "+cmd);
+                    cmd = str.toString();
+                    break;
+                default:
+                    throw new AssertionError();
+            }
+        }
+
+
         if(!cmd.isEmpty()){
-            String[] str = cmd.split(" ");
+            String[] str = cmd.trim().split(" ");
             switch (str[0]) {
                 case "layer":
                     if(Integer.parseInt(str[1])>=0 && Integer.parseInt(str[1])<world.getDim()){
@@ -104,23 +124,29 @@ public class console{
                     break;
 
                 case "Load":
-                    world.PauseCycle(true);
-                    System.out.println("Lista Salvataggi");
-                    File root = new File("saving/");
-                    File[] subdirs = root.listFiles(File::isDirectory);
                     int index = 0;
-                    for(File s : subdirs){
-                        System.out.println(index +"] "+s.getName());
-                        index++;
-                    }
+                    if(procedure != 1){
+                        world.PauseCycle(true);
+                        StringBuilder msg = new StringBuilder();
+                        msg.append("Lista Salvataggi\n");
+                        File root = new File("saving/");
+                        File[] subdirs = root.listFiles(File::isDirectory);
+                        for(File s : subdirs){
+                            msg.append(index +"] "+s.getName()+"\n");
+                            index++;
+                        }
 
-                    System.out.print("Quale salvataggio vuoi caricare: ");
-                    Scanner scanner = new Scanner(System.in);
-                    int n = scanner.nextInt();
-                    if(n>=0 && n<=index-1){
-                        if(Saving.Load(n, subdirs)){out = "Salvataggio caricato";}
-                        else{out= "errore caricamento salvataggio";}
-                    }else{System.out.println("Numero salvataggio errato");}
+                        msg.append("Quale salvataggio vuoi caricare: \n");
+                        procedure = 1;
+                        utils.ClientSendMsg(msg.toString());
+                    }else{
+                        int n= Integer.parseInt(str[1].trim());
+                        if(n>=0 && n<=index-1){
+                            if(Saving.Load(n)){out = "Salvataggio caricato";}
+                            else{out= "errore caricamento salvataggio";}
+                        }else{System.out.println("Numero salvataggio errato");}
+                        procedure = -1;
+                    }
                     break;
                     
                 default:

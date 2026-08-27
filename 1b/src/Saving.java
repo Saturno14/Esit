@@ -163,7 +163,7 @@ public class Saving {
         return flag;
     }
 
-    public static boolean Load(int n, File[] subdirs){
+    public static boolean Load(int n){
         boolean flag = false;    
         try {
             world.SetRunning(false);
@@ -173,6 +173,9 @@ public class Saving {
             }
         } catch (Exception e) { System.out.println("Errore prima fase Load");}
         try {
+
+            File root = new File("saving/");
+            File[] subdirs = root.listFiles(File::isDirectory);
             StringBuilder vs = new StringBuilder();
             vs.append(subdirs[n].getName());
             Path path = Path.of("saving/"+vs.toString());
