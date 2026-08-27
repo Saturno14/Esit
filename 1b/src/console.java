@@ -140,8 +140,9 @@ public class console{
                         procedure = 1;
                         utils.ClientSendMsg(msg.toString());
                     }else{
-                        int n= Integer.parseInt(str[1].trim());
-                        if(n>=0 && n<=index-1){
+                        File[] subdirs = new File("saving/").listFiles(File::isDirectory);
+                        int n = Integer.parseInt(str[1].trim());
+                        if(n>=0 && n<subdirs.length){
                             if(Saving.Load(n)){out = "Salvataggio caricato";}
                             else{out= "errore caricamento salvataggio";}
                         }else{System.out.println("Numero salvataggio errato");}

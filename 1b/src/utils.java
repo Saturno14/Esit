@@ -37,7 +37,10 @@ public class utils{
                         str = in.readLine();
                         if(!str.isBlank()){
                             System.out.println("report: "+str);
-                            Clientoutput = console.input(str);
+                            String result = console.input(str);
+                            if(!result.isBlank()){
+                                Clientoutput = result;
+                            }
                         }
                         if(!Clientoutput.isBlank()){
                             out.println("Comand output: "+Clientoutput);
