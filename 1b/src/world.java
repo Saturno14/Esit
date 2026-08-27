@@ -21,6 +21,8 @@ public class world {
         PrintGround = value;
     }
 
+    public static void SetRunning(boolean status){ running.set(false); }
+
     public static boolean isPaused(){ return paused.get(); }
     public static boolean isRunning(){ return running.get(); }
 
@@ -61,6 +63,7 @@ public class world {
             
 
         } catch (Exception e) {System.out.println("Errore Load World "+e.getLocalizedMessage());}
+        System.out.println("WorldLoaded");
     }
 
     public static int getCycle(){

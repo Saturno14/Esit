@@ -110,9 +110,11 @@ public class entity {
             
         } catch (Exception e) { System.out.println("Errore load Entity in entity "+e.getMessage());}
 
+        System.out.println("EntityLoaded");
+
         try { //load brain
             String content = Files.readString(Path.of(path+"/brain.json"));
-            String[] entity = content.split("-");
+            String[] entity = content.split("\\*");
             boolean isEntity = false;
             int[] topology = getBrain().getTopology(); 
             for(String s:entity){
@@ -162,6 +164,7 @@ public class entity {
                 }
             }    
         } catch (Exception e) { System.out.println("Errore load Brain "+e.getLocalizedMessage());}
+        System.out.println("BrainLoaded");
 
     }//vedi dopo
 

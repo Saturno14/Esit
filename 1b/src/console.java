@@ -1,14 +1,13 @@
 package src;
 
 import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Scanner;
 
 public class console{
     public static String input(String input){
         String out = "";
+        int procedure = -1;
         String cmd = input;
         if(!cmd.isEmpty()){
             String[] str = cmd.split(" ");
@@ -101,10 +100,11 @@ public class console{
                         Saving.Save();
                         world.PauseCycle(false);
                     } catch (Exception e) {System.out.println("Errore Save "+e.getMessage());}
+                    out = "Saved";
                     break;
 
                 case "Load":
-
+                    world.PauseCycle(true);
                     System.out.println("Lista Salvataggi");
                     File root = new File("saving/");
                     File[] subdirs = root.listFiles(File::isDirectory);
@@ -118,19 +118,8 @@ public class console{
                     Scanner scanner = new Scanner(System.in);
                     int n = scanner.nextInt();
                     if(n>=0 && n<=index-1){
-                        try {
-                            StringBuilder vs = new StringBuilder();
-                            vs.append(subdirs[n].getName());
-                            Path path = Path.of("saving/"+vs.toString());
-                            world.Load(path);
-                            String content = Files.readString(Path.of("saving/"+vs.toString()+"/entity.json"));
-                            String[] entity = content.split("\\{");
-                            for(int i=0;i<entity.length;i++){
-                                Entity_manager.Entity_add(new entity(0, 0, 0, 0, 0));
-                                Entity_manager.Entity_get(Entity_manager.Entity_count()-1).entityLoad(i, path);
-                            }
-
-                        } catch (Exception e) {System.err.println("Errore Load entity console: "+e.getMessage());}
+                        if(Saving.Load(n, subdirs)){out = "Salvataggio caricato";}
+                        else{out= "errore caricamento salvataggio";}
                     }else{System.out.println("Numero salvataggio errato");}
                     break;
                     
@@ -141,4 +130,5 @@ public class console{
         }
         return out;
     }
+    
 }

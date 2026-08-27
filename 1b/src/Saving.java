@@ -1,6 +1,7 @@
 package src;
 import java.io.File;
 import java.nio.file.*;
+import java.util.Arrays;
 
 
 //Riscrivi tutti i parser
@@ -40,10 +41,8 @@ public class Saving {
             Str.append(biasStr);
             Str.append(weightStr);
             Str.append("\n");
-            Str.append("-\n");
+            Str.append("*\n");
         }
-        
-
 
         try {
             Files.writeString(Path.of(dir+"/brain.json"), Str.toString());
@@ -160,6 +159,44 @@ public class Saving {
             System.out.println("Save2: "+f2);
             System.out.println("Save3: "+f3);
         } catch (Exception e) { System.out.println("Errore ultimo if Save: "+e.getMessage());}
+        
+        return flag;
+    }
+
+    public static boolean Load(int n, File[] subdirs){
+        boolean flag = false;    
+        try {
+            world.SetRunning(false);
+            for(int i=0;i<Entity_manager.Entity_count();i++){
+                Entity_manager.Entity_get(i).life.set(false);
+                Entity_manager.Entity_remuve(Entity_manager.Entity_get(i));
+            }
+        } catch (Exception e) { System.out.println("Errore prima fase Load");}
+        try {
+            StringBuilder vs = new StringBuilder();
+            vs.append(subdirs[n].getName());
+            Path path = Path.of("saving/"+vs.toString());
+            world.Load(path);
+            String content = Files.readString(Path.of("saving/"+vs.toString()+"/entity.json"));
+            String[] entity = Arrays.stream(content.split("\\{")).filter(s -> !s.isBlank()).toArray(String[]::new);
+            for(int i=0;i<entity.length;i++){
+                Entity_manager.Entity_add(new entity(0, 0, 0, 0, 0));
+                Entity_manager.Entity_get(Entity_manager.Entity_count()-1).entityLoad(i, path);
+            }
+            
+            for(int i=0;i<Entity_manager.Entity_count();i++){
+                entity temp1 = Entity_manager.Entity_get(i);
+                new Thread(()->{
+                    String temp = "";
+                    temp = Thread.currentThread().getName();
+                    temp1.setProcessId(temp);
+                    temp1.GoLife();
+                }).start();
+            }
+            world.PauseCycle(false);
+            world.DoCycle();
+            flag = true;
+        } catch (Exception e) {System.err.println("Errore Load entity console: "+e.getMessage());}
         
         return flag;
     }
