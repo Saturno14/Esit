@@ -1,3 +1,4 @@
+
 import org.lwjgl.glfw.*;
 import org.lwjgl.opengl.GL;
 import static org.lwjgl.glfw.GLFW.*;
@@ -63,6 +64,6 @@ public class graphic {
     }
 
     public static void main(String[] args) {
-        new EsitEngine().run();
+        new graphic().run();
     }
 }
