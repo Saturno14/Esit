@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "genes": [
     {
       "id": "body.torso_scale",
@@ -142,6 +142,16 @@
       "affects": ["stat:food_absorption"]
     },
     {
+      "id": "stat.attack_power",
+      "realMin": 5,
+      "realMax": 25,
+      "defaultValue": 0.5,
+      "mutationStdDev": 0.05,
+      "mutationChance": 0.10,
+      "dominanceMode": "additive",
+      "affects": ["stat:attack_power"]
+    },
+    {
       "id": "behavior.diet_bias",
       "realMin": 0.0,
       "realMax": 1.0,
@@ -176,6 +186,13 @@
       "terms": [
         { "gene": "stat.max_stamina", "weight": 1.0 },
         { "gene": "body.torso_scale", "weight": 0.4 }
+      ]
+    },
+    "stat.attack_power": {
+      "terms": [
+        { "gene": "stat.attack_power", "weight": 1.0 },
+        { "gene": "body.torso_scale",  "weight": 0.5 },
+        { "gene": "body.limb_length",  "weight": 0.3 }
       ]
     },
     "stat.food_absorption": {

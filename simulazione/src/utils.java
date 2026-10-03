@@ -35,6 +35,7 @@ public class utils{
                     try {
                         String str = "";
                         str = in.readLine();
+                        if(str == null){ System.out.println("Console chiusa"); break; }
                         if(!str.isBlank()){
                             System.out.println("report: "+str);
                             String result = console.input(str);
@@ -57,6 +58,8 @@ public class utils{
 
 
     private static String Serverstr = "";
+    /** Errori di lettura consecutivi dopo i quali la console si chiude da sola. */
+    private static final int MAX_CONSECUTIVE_ERRORS = 5;
     public static void server(){
 
         try {
@@ -72,11 +75,24 @@ public class utils{
             Scanner scanner = new Scanner(System.in);
 
             new Thread(()->{
+                int consecutiveErrors = 0;
                 while(true){
                     try {
                         Serverstr = in.readLine();
+                        if(Serverstr == null){ throw new java.io.IOException("connessione chiusa dal motore"); }
+                        consecutiveErrors = 0; // lettura riuscita: la connessione e' viva
                         if(!Serverstr.isBlank()){System.out.println("report: "+Serverstr);}
-                    } catch (Exception e) {System.out.println("Errore in server in "+e.getMessage());}
+                    } catch (Exception e) {
+                        consecutiveErrors++;
+                        System.out.println("Errore in server in "+e.getMessage());
+                        // Il motore grafico si e' chiuso: la connessione cade e l'errore si ripete
+                        // all'infinito. Dopo 5 errori di fila chiudo la console (con "cmd /c" la
+                        // finestra si chiude insieme al processo).
+                        if(consecutiveErrors >= MAX_CONSECUTIVE_ERRORS){
+                            System.out.println("Motore grafico disconnesso: chiudo la console.");
+                            System.exit(0);
+                        }
+                    }
                 }
             }).start();
 

@@ -77,6 +77,10 @@ public class Shader {
         glUniform3f(location, x, y, z);
     }
 
+    public void setUniformInt(String name, int value) {
+        glUniform1i(glGetUniformLocation(programId, name), value);
+    }
+
     public void destroy() {
         glDeleteProgram(programId);
     }

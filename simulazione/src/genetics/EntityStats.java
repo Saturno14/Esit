@@ -12,15 +12,18 @@ public final class EntityStats {
     public final double speed;
     public final double maxStamina;
     public final double foodAbsorption;
+    public final double attackPower;
     public final DietType diet;
 
     private EntityStats(double maxHealth, double sightDistance, double speed,
-                         double maxStamina, double foodAbsorption, DietType diet) {
+                         double maxStamina, double foodAbsorption, double attackPower,
+                         DietType diet) {
         this.maxHealth = maxHealth;
         this.sightDistance = sightDistance;
         this.speed = speed;
         this.maxStamina = maxStamina;
         this.foodAbsorption = foodAbsorption;
+        this.attackPower = attackPower;
         this.diet = diet;
     }
 
@@ -30,9 +33,10 @@ public final class EntityStats {
         double speed = PhenotypeResolver.resolve("stat.base_speed", genome, schema);
         double maxStamina = PhenotypeResolver.resolve("stat.max_stamina", genome, schema);
         double foodAbsorption = PhenotypeResolver.resolve("stat.food_absorption", genome, schema);
+        double attackPower = PhenotypeResolver.resolve("stat.attack_power", genome, schema);
         double dietBias = PhenotypeResolver.resolve("behavior.diet_bias", genome, schema);
 
         return new EntityStats(maxHealth, sightDistance, speed, maxStamina, foodAbsorption,
-                DietType.fromResolvedBias(dietBias));
+                attackPower, DietType.fromResolvedBias(dietBias));
     }
 }

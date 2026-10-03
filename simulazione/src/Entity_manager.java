@@ -1,5 +1,6 @@
 package src;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 
@@ -7,7 +8,17 @@ public class Entity_manager {
     private static ArrayList<entity> EntityList = new ArrayList<entity>(); 
     private static ArrayList<entity> FullEntityList = new ArrayList<entity>(); 
     public static int EntityNumber = 0;
+    private static int nextId = 0;
 
+    /** Id univoco per una nuova entita' (sicuro anche con piu' nascite nello stesso tick). */
+    public static synchronized int newId(){
+        return nextId++;
+    }
+
+    /** Copia delle entita' vive: si puo' iterare senza preoccuparsi di nascite/morti in corso. */
+    public static synchronized List<entity> snapshotAlive(){
+        return new ArrayList<>(EntityList);
+    }
 
     public static synchronized entity getRandomPartner(int excludeId, int neededSex){
         ArrayList<entity> candidates = new ArrayList<>();
@@ -41,6 +52,7 @@ public class Entity_manager {
         EntityList.add(a);
         FullEntityList.add(a);
         EntityNumber++;
+        if(a.getId() >= nextId){ nextId = a.getId() + 1; }
     }
 
     public static synchronized void Entity_remuve(entity a){
@@ -55,6 +67,19 @@ public class Entity_manager {
         for(int i=0;i<EntityList.size();i++){
             if(EntityList.get(i).getId() == id){EntityList.remove(i);}
         }
+    }
+
+    /** Tutte le entita' mai nate in questa sessione (vive e morte), per statistiche e genealogia. */
+    public static synchronized List<entity> snapshotAll(){
+        return new ArrayList<>(FullEntityList);
+    }
+
+    /** Svuota tutto (nuovo NewStart / Load). */
+    public static synchronized void clearAll(){
+        EntityList.clear();
+        FullEntityList.clear();
+        EntityNumber = 0;
+        nextId = 0;
     }
 
 }

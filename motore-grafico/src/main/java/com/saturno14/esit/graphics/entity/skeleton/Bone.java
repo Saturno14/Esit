@@ -8,12 +8,16 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Nodo di una gerarchia di bone dinamica. "restDirection" e' l'asse (in spazio locale del
- * genitore) lungo cui il bone si estende a riposo; "attachFraction" indica a quale
- * frazione della lunghezza del genitore si attacca l'origine di questo bone (1 = alla
- * punta, 0 = alla base — utile per gambe/braccia che partono dalla stessa origine del
- * bacino invece che dalla sua punta). length/radius vengono impostati ad ogni rebuild da
- * GenomeMeshApplier a partire dai valori fenotipici risolti dal genoma.
+ * Nodo di una gerarchia di bone dinamica. "restDirection" e' la direzione (in spazio del
+ * RIG, cioe' assoluta, NON relativa al genitore) lungo cui il bone si estende a riposo;
+ * "attachFraction" indica a quale frazione della lunghezza del genitore si attacca l'origine
+ * di questo bone (1 = alla punta, 0 = alla base — utile per gambe/braccia che partono dalla
+ * stessa origine del bacino invece che dalla sua punta). length/radius vengono impostati ad
+ * ogni rebuild da GenomeMeshApplier a partire dai valori fenotipici risolti dal genoma.
+ *
+ * Nota: le direzioni sono assolute di proposito. Se fossero relative all'asse del genitore,
+ * un avambraccio "verso il basso" rispetto a un braccio gia' rivolto verso il basso
+ * tornerebbe indietro (forma a V al gomito/ginocchio).
  */
 public class Bone {
 
@@ -26,7 +30,7 @@ public class Bone {
     public float length = 0.1f;
     public float radius = 0.05f;
 
-    private final Matrix4f localTransform = new Matrix4f();
+    private final Vector3f worldPosition = new Vector3f();
     private final Matrix4f worldTransform = new Matrix4f();
 
     public Bone(String name, Bone parent, Vector3f restDirection) {
@@ -44,24 +48,19 @@ public class Bone {
     }
 
     /**
-     * Da chiamare a partire dalla radice: ricalcola trasformazioni locali e mondiali
-     * dell'intero sottoalbero. L'offset e' sempre espresso lungo l'asse Y locale del
-     * genitore (0,1,0) scalato per la sua lunghezza: e' la rotazione applicata al genitore,
-     * gia' incorporata nel suo worldTransform, a orientarlo correttamente nello spazio.
+     * Da chiamare a partire dalla radice: ricalcola la trasformazione mondiale dell'intero
+     * sottoalbero. L'origine di ogni bone sta lungo la direzione (assoluta) del genitore, a
+     * attachFraction * lunghezza del genitore; il bone poi si orienta sulla propria direzione.
      */
     public void rebuildTransforms() {
-        Vector3f offset = parent != null
-                ? new Vector3f(0, 1, 0).mul(parent.length * this.attachFraction)
-                : new Vector3f();
+        if (parent == null) {
+            worldPosition.zero();
+        } else {
+            parent.restDirection.mul(parent.length * attachFraction, worldPosition).add(parent.worldPosition);
+        }
 
         Quaternionf rotation = new Quaternionf().rotationTo(new Vector3f(0, 1, 0), restDirection);
-        localTransform.identity().translate(offset).rotate(rotation);
-
-        if (parent == null) {
-            worldTransform.set(localTransform);
-        } else {
-            parent.worldTransform.mul(localTransform, worldTransform);
-        }
+        worldTransform.identity().translate(worldPosition).rotate(rotation);
 
         for (Bone child : children) {
             child.rebuildTransforms();

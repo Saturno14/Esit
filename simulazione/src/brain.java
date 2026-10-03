@@ -2,6 +2,18 @@ package src;
 import java.util.Random;
 public class brain {
 
+    // Generatore condiviso di tutta la parte "cervello": con brain.seed(...) i pesi iniziali,
+    // le mutazioni e i crossover diventano riproducibili (insieme al seed della simulazione).
+    private static Random RNG = new Random();
+
+    public static synchronized void seed(long seed){
+        RNG = new Random(seed);
+    }
+
+    private static Random rng(){
+        return RNG;
+    }
+
     public static class Neuron {
 
         private double[] weights;
@@ -9,7 +21,7 @@ public class brain {
 
         public Neuron(int inputCount) {
 
-            Random random = new Random();
+            Random random = rng();
 
             weights = new double[inputCount];
 
@@ -43,7 +55,7 @@ public class brain {
 
         public void mutate(double rate){
 
-            Random random = new Random();
+            Random random = rng();
             for(int i=0;i<weights.length;i++){
                 if(random.nextDouble() < 0.1){
                     weights[i] += random.nextGaussian()*rate;
@@ -190,9 +202,14 @@ public class brain {
             return child;
         }
 
+        /**
+         * Crossover a due genitori: ogni neurone viene preso da A o da B con probabilita' 50%.
+         * Richiede che i due cervelli abbiano la stessa topologia (vale per tutte le entita',
+         * la rete ha input e output fissi).
+         */
         public static NeuralNetwork crossover(NeuralNetwork parentA, NeuralNetwork parentB, double mutationRate){
             NeuralNetwork child = parentA.copy();
-            Random r = new Random();
+            Random r = rng();
             for(int l = 0; l < child.layers.length; l++){
                 for(int n = 0; n < child.layers[l].neurons.length; n++){
                     if(r.nextBoolean()){ // 50% dei neuroni presi dal genitore B
@@ -206,7 +223,6 @@ public class brain {
 
         public static NeuralNetwork Partenogenesi(NeuralNetwork parentA, double mutationRate){
             NeuralNetwork child = parentA.copy();
-            Random r = new Random();
             child.mutate(mutationRate);
             return child;
         }

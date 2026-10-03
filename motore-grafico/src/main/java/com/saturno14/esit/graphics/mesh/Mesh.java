@@ -11,6 +11,7 @@ public class Mesh {
     private int vao;
     private int positionVbo;
     private int normalVbo;
+    private int uvVbo;
     private int ebo;
     private int indexCount;
 
@@ -36,6 +37,16 @@ public class Mesh {
         glVertexAttribPointer(1, 3, GL_FLOAT, false, 0, 0);
         glEnableVertexAttribArray(1);
 
+        if (data.uvs != null) {
+            if (uvVbo == 0) uvVbo = glGenBuffers();
+            glBindBuffer(GL_ARRAY_BUFFER, uvVbo);
+            glBufferData(GL_ARRAY_BUFFER, data.uvs, GL_DYNAMIC_DRAW);
+            glVertexAttribPointer(2, 2, GL_FLOAT, false, 0, 0);
+            glEnableVertexAttribArray(2);
+        } else {
+            glDisableVertexAttribArray(2);
+        }
+
         if (ebo == 0) ebo = glGenBuffers();
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.indices, GL_DYNAMIC_DRAW);
@@ -54,6 +65,7 @@ public class Mesh {
     public void destroy() {
         glDeleteBuffers(positionVbo);
         glDeleteBuffers(normalVbo);
+        if (uvVbo != 0) glDeleteBuffers(uvVbo);
         glDeleteBuffers(ebo);
         glDeleteVertexArrays(vao);
     }

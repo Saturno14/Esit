@@ -1,0 +1,86 @@
+STATO DI LAVORO - PROGETTO ESIT (DIARIO)
+======================================================================
+Questo file e' il diario del progetto: a ogni aggiornamento si aggiunge in
+fondo una nuova voce datata (le piu' recenti sono in basso). All'inizio di
+una sessione si legge questo file e si riparte dall'ultima voce.
+
+Struttura: Esit/simulazione (logica), Esit/motore-grafico (LWJGL + pom.xml,
+compila anche ../simulazione), STATO_LAVORO.txt, TODO.md (da ricreare).
+
+COME LANCIARE SimRunner (senza grafica)
+----------------------------------------------------------------------
+NON usare "mvn exec:java -Dexec.mainClass=src.SimRunner": il pom fissa la
+mainClass sul motore grafico, quindi apre la GUI e la console sul desktop.
+Da Esit/motore-grafico, dopo "mvn -q compile":
+  java -cp "target\classes;C:\Users\anton\.m2\repository\org\json\json\20240303\json-20240303.jar" src.SimRunner [seed] [tick] [velocita'] [saveload] [train=<maxFood>] [instincts]
+Conviene redirigere l'output su file (> out.txt 2>&1) e leggere poi il CSV
+in logs/stats-session-N.csv (N compare nella riga "Sessione N").
+
+
+----------------------------------------------------------------------
+VOCE DEL 25/09/2026 (ricostruita il 29/09: il file originale e' andato perso
+e questa parte e' un riassunto, non il testo originale)
+----------------------------------------------------------------------
+- Lavoro sul motore grafico 3D (LWJGL/OpenGL) e sulla simulazione, mappa 50x50.
+- Modificato Vision.java: usa isWaterColumn al posto di isWater. Da
+  ricompilare e provare (fatto il 29/09, vedi sotto).
+- Test SimRunner (seed 42, 3000 tick, x500): la popolazione si estingue
+  (tick ~2840; 50 morti in combattimento, 42 per fame; le nascite si fermano
+  a 29 intorno al tick 1000). Problema combattimento/fame aperto.
+- Da provare: GUI con la console che si chiude da sola dopo 5 errori.
+- Da fare: aggiornare TODO.md.
+- File toccati in quella sessione: tra gli altri ConsoleLauncher.java.
+
+
+----------------------------------------------------------------------
+VOCE DEL 29/09/2026 - ADDESTRAMENTO E PESI SALVATI
+----------------------------------------------------------------------
+Fatto
+- Vision.java ricompilato: OK (mvn -q clean compile, nessun errore).
+- NUOVO, richiesta dell'utente: simulazione con riserva di cibo (fame
+  massima) molto alta; quando le entita' mangiano si copiano i pesi di quelle
+  che hanno mangiato piu' mele e le simulazioni successive partono da quei
+  pesi.
+    * simulazione/src/TrainedBrains.java (NUOVO): cattura automatica e
+      caricamento. Salva i bestBrain delle 10 entita' vive con piu' mele in
+      motore-grafico/trained/brains.json (il precedente va in
+      brains.prev.json). Trigger: >=25% delle vive (minimo 5) con >=8 mele.
+      Ogni 500 tick stampa una riga diagnostica "[addestramento] ...".
+    * entity.java: MAX_FOOD resta 200 come riferimento; nuova riserva
+      regolabile maxFood (getMaxFood/setMaxFood); input "food" della rete
+      normalizzato su 200 e limitato a 1; nuovo contatore applesEaten (solo
+      mele che hanno dato cibo), salvato nel JSON dell'entita'.
+    * console.java: comandi train [maxFood] (default 2000), maxfood <n>,
+      savebrains, trained on|off. NewStart normale ripristina la riserva a
+      200 e disarma la cattura. Le fondatrici usano i pesi salvati se
+      esistono e non si e' in addestramento (copia con mutazione 0.05, a
+      rotazione); altrimenti seedInstincts().
+    * Simulation.java: chiama TrainedBrains.checkCapture(tick) a ogni tick.
+    * SimRunner.java: argomenti train=<maxFood> (si ferma alla cattura) e
+      instincts (ignora i pesi salvati).
+
+Errori miei da non ripetere
+- Ho lanciato "mvn exec:java -Dexec.mainClass=src.SimRunner": due volte ha
+  aperto la GUI e la console sul desktop dell'utente, e il primo CSV letto
+  era quello vecchio. Vedi sopra come lanciare SimRunner.
+
+Risultati (seed 42, mappa 50x50, una sola corsa per caso)
+- Addestramento (riserva 2000): le entita' mangiano POCO: media ~1.4 mele a
+  tick 500, ~4.5 a tick 7600; massimo 14. La soglia e' scattata a tick 7662
+  solo perche' la popolazione era calata a 20 (5/20), non perche' mangiassero
+  di piu'. Azioni dominate da "dormi" (~50%); "mangia" ~4%. I figli nascono
+  con food=120, non con la riserva alta.
+- Confronto a riserva 200, 3000 tick, fondatrici dai pesi salvati vs istinti:
+  nascite 45 vs 27, generazione media 0.83 vs 0.54, vive a fine corsa 23 vs
+  24, morti per fame 65 vs 46. La popolazione cala in entrambi i casi: i pesi
+  salvati aumentano la riproduzione ma NON risolvono l'estinzione.
+
+Da fare / idee
+  1. Capire perche' mangiano cosi' poco e dormono tanto (rete/reward di
+     sleep e eat, costo stamina) prima di fidarsi dei pesi catturati.
+  2. Cambiare il trigger (ora dipende dalla popolazione viva) e far nascere i
+     figli con la riserva alta durante l'addestramento.
+  3. Ripetere il confronto con piu' seed.
+  4. Problema combattimento/fame su 50x50 ancora aperto.
+  5. Provare la GUI con la console che si chiude da sola (mai testata).
+  6. Ricreare TODO.md (anche questo e' sparito).

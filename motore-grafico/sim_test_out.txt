@@ -1,0 +1,341 @@
+Seed simulazione: 42
+Terreno: base=26 livello acqua=25 colonne allagate=233 (seed 42)
+Entity: 0 [30, 25, 13]
+Entity: 1 [19, 25, 25]
+Entity: 2 [22, 26, 18]
+Entity: 3 [18, 26, 28]
+Entity: 4 [44, 25, 40]
+Entity: 5 [3, 26, 21]
+Entity: 6 [28, 25, 33]
+Entity: 7 [16, 25, 6]
+Entity: 8 [0, 26, 1]
+Entity: 9 [28, 26, 48]
+Entity: 10 [11, 26, 32]
+Entity: 11 [24, 25, 48]
+Entity: 12 [16, 26, 3]
+Entity: 13 [26, 25, 47]
+Entity: 14 [40, 27, 20]
+Entity: 15 [24, 25, 48]
+Entity: 16 [15, 25, 37]
+Entity: 17 [0, 25, 3]
+Entity: 18 [22, 26, 43]
+Entity: 19 [23, 25, 48]
+Entity: 20 [46, 27, 13]
+Entity: 21 [40, 27, 16]
+Entity: 22 [40, 26, 48]
+Entity: 23 [25, 26, 15]
+Entity: 24 [22, 25, 38]
+Entity: 25 [49, 26, 11]
+Entity: 26 [40, 25, 2]
+Entity: 27 [1, 27, 40]
+Entity: 28 [44, 27, 47]
+Entity: 29 [23, 25, 2]
+Entity: 30 [43, 25, 39]
+Entity: 31 [15, 26, 27]
+Entity: 32 [38, 26, 46]
+Entity: 33 [12, 26, 6]
+Entity: 34 [18, 25, 6]
+Entity: 35 [30, 25, 47]
+Entity: 36 [42, 25, 40]
+Entity: 37 [46, 26, 45]
+Entity: 38 [40, 27, 17]
+Entity: 39 [12, 26, 5]
+Entity: 40 [47, 25, 25]
+Entity: 41 [33, 27, 37]
+Entity: 42 [42, 25, 7]
+Entity: 43 [30, 27, 19]
+Entity: 44 [14, 25, 12]
+Entity: 45 [15, 26, 11]
+Entity: 46 [47, 27, 41]
+Entity: 47 [49, 26, 34]
+Entity: 48 [20, 25, 35]
+Entity: 49 [24, 25, 32]
+Entity: 50 [32, 25, 47]
+Entity: 51 [39, 27, 15]
+Entity: 52 [26, 25, 12]
+Entity: 53 [6, 27, 37]
+Entity: 54 [0, 27, 44]
+Entity: 55 [24, 25, 44]
+Entity: 56 [22, 26, 42]
+Entity: 57 [38, 27, 31]
+Entity: 58 [8, 27, 35]
+Entity: 59 [16, 26, 2]
+Entity: 60 [11, 26, 18]
+Entity: 61 [6, 26, 1]
+Entity: 62 [0, 26, 19]
+Fondatrici: 63, mele iniziali: 375 (mappa 50x50)
+Nascita ID 63 da 21 e 51 (generazione 1)
+Nascita ID 64 da 46 e 37 (generazione 1)
+[tick 20] entita'=65 mele=375 cadaveri=0 nascite=2 morti(fame/combattimento)=0/0 azioni=[9, 26, 30, 20, 20, 22, 7, 5, 7, 133]
+Nascita ID 65 da 26 e 42 (generazione 1)
+[tick 40] entita'=66 mele=375 cadaveri=0 nascite=3 morti(fame/combattimento)=0/0 azioni=[17, 49, 55, 52, 43, 51, 13, 11, 12, 298]
+Nascita ID 66 da 53 e 58 (generazione 1)
+Nascita ID 67 da 4 e 30 (generazione 1)
+Nascita ID 68 da 15 e 11 (generazione 1)
+[tick 60] entita'=69 mele=375 cadaveri=0 nascite=6 morti(fame/combattimento)=0/0 azioni=[24, 82, 94, 88, 67, 79, 20, 16, 19, 441]
+Nascita ID 69 da 48 e 24 (generazione 1)
+[tick 80] entita'=70 mele=375 cadaveri=0 nascite=7 morti(fame/combattimento)=0/0 azioni=[33, 122, 131, 115, 98, 109, 28, 18, 33, 591]
+Nascita ID 70 da 1 e 2 (generazione 1)
+[tick 100] entita'=71 mele=375 cadaveri=0 nascite=8 morti(fame/combattimento)=0/0 azioni=[45, 156, 166, 138, 119, 125, 32, 18, 67, 754]
+[tick 120] entita'=71 mele=375 cadaveri=0 nascite=8 morti(fame/combattimento)=0/0 azioni=[53, 181, 208, 153, 131, 140, 39, 24, 110, 931]
+Nascita ID 71 da 25 e 14 (generazione 1)
+[tick 140] entita'=72 mele=375 cadaveri=0 nascite=9 morti(fame/combattimento)=0/0 azioni=[59, 216, 240, 172, 143, 158, 51, 28, 160, 1096]
+Nascita ID 72 da 31 e 10 (generazione 1)
+Nascita ID 73 da 59 e 7 (generazione 1)
+[tick 160] entita'=74 mele=375 cadaveri=0 nascite=11 morti(fame/combattimento)=0/0 azioni=[63, 260, 269, 190, 160, 165, 58, 32, 230, 1260]
+Nascita ID 74 da 34 e 39 (generazione 1)
+Nascita ID 75 da 44 e 60 (generazione 1)
+[tick 180] entita'=76 mele=375 cadaveri=0 nascite=13 morti(fame/combattimento)=0/0 azioni=[70, 299, 283, 222, 179, 185, 65, 39, 324, 1384]
+[tick 200] entita'=76 mele=375 cadaveri=0 nascite=13 morti(fame/combattimento)=0/0 azioni=[75, 334, 308, 239, 190, 197, 70, 43, 443, 1524]
+Nascita ID 76 da 26 e 42 (generazione 1)
+[tick 220] entita'=77 mele=375 cadaveri=0 nascite=14 morti(fame/combattimento)=0/0 azioni=[85, 362, 329, 266, 205, 217, 80, 47, 555, 1656]
+[tick 240] entita'=77 mele=375 cadaveri=0 nascite=14 morti(fame/combattimento)=0/0 azioni=[99, 378, 345, 287, 222, 236, 93, 49, 684, 1789]
+[tick 260] entita'=77 mele=375 cadaveri=0 nascite=14 morti(fame/combattimento)=0/0 azioni=[110, 391, 359, 297, 239, 245, 99, 55, 840, 1924]
+Nascita ID 77 da 50 e 15 (generazione 1)
+[tick 280] entita'=78 mele=375 cadaveri=0 nascite=15 morti(fame/combattimento)=0/0 azioni=[121, 410, 374, 310, 248, 258, 102, 61, 1006, 2055]
+Nascita ID 78 da 25 e 14 (generazione 1)
+Nascita ID 79 da 12 e 33 (generazione 1)
+[tick 300] entita'=80 mele=375 cadaveri=0 nascite=17 morti(fame/combattimento)=0/0 azioni=[129, 429, 386, 332, 253, 275, 106, 67, 1185, 2171]
+[tick 320] entita'=80 mele=375 cadaveri=0 nascite=17 morti(fame/combattimento)=0/0 azioni=[143, 439, 395, 345, 265, 292, 113, 77, 1370, 2289]
+Nascita ID 80 da 22 e 37 (generazione 1)
+[tick 340] entita'=81 mele=375 cadaveri=0 nascite=18 morti(fame/combattimento)=0/0 azioni=[156, 453, 404, 366, 280, 311, 120, 81, 1546, 2401]
+[tick 360] entita'=81 mele=375 cadaveri=0 nascite=18 morti(fame/combattimento)=0/0 azioni=[161, 468, 419, 384, 294, 322, 129, 84, 1738, 2525]
+Nascita ID 81 da 26 e 42 (generazione 1)
+[tick 380] entita'=82 mele=375 cadaveri=0 nascite=19 morti(fame/combattimento)=0/0 azioni=[165, 482, 435, 398, 314, 331, 136, 90, 1932, 2643]
+[tick 400] entita'=82 mele=375 cadaveri=0 nascite=19 morti(fame/combattimento)=0/0 azioni=[178, 493, 454, 414, 333, 340, 143, 95, 2139, 2737]
+Nascita ID 82 da 45 e 44 (generazione 1)
+[tick 420] entita'=83 mele=375 cadaveri=0 nascite=20 morti(fame/combattimento)=0/0 azioni=[187, 509, 474, 430, 347, 355, 145, 99, 2359, 2833]
+Nascita ID 83 da 67 e 55 (generazione 2)
+[tick 440] entita'=84 mele=375 cadaveri=0 nascite=21 morti(fame/combattimento)=0/0 azioni=[202, 523, 496, 450, 356, 359, 149, 104, 2590, 2922]
+Nascita ID 84 da 47 e 4 (generazione 1)
+[tick 460] entita'=85 mele=375 cadaveri=0 nascite=22 morti(fame/combattimento)=0/0 azioni=[215, 540, 510, 468, 373, 375, 158, 112, 2806, 3010]
+[tick 480] entita'=85 mele=375 cadaveri=0 nascite=22 morti(fame/combattimento)=0/0 azioni=[227, 555, 533, 485, 387, 387, 167, 119, 3050, 3087]
+[tick 500] entita'=85 mele=375 cadaveri=0 nascite=22 morti(fame/combattimento)=0/0 azioni=[233, 565, 549, 507, 398, 403, 173, 120, 3279, 3183]
+Nascita ID 85 da 16 e 9 (generazione 1)
+Morte ID 15 (fame) a eta' 260
+Nascita ID 86 da 53 e 58 (generazione 1)
+[tick 520] entita'=86 mele=375 cadaveri=1 nascite=24 morti(fame/combattimento)=1/0 azioni=[237, 568, 566, 515, 423, 421, 182, 127, 3523, 3275]
+Nascita ID 87 da 56 e 72 (generazione 2)
+[tick 540] entita'=87 mele=375 cadaveri=1 nascite=25 morti(fame/combattimento)=1/0 azioni=[248, 580, 578, 524, 440, 432, 191, 134, 3765, 3372]
+[tick 560] entita'=87 mele=375 cadaveri=1 nascite=25 morti(fame/combattimento)=1/0 azioni=[257, 589, 591, 537, 459, 439, 194, 143, 4017, 3468]
+[tick 580] entita'=87 mele=375 cadaveri=1 nascite=25 morti(fame/combattimento)=1/0 azioni=[271, 599, 593, 552, 475, 449, 199, 151, 4284, 3548]
+Morte ID 42 (fame) a eta' 276
+[tick 600] entita'=86 mele=375 cadaveri=2 nascite=25 morti(fame/combattimento)=2/0 azioni=[281, 610, 603, 565, 491, 466, 204, 161, 4545, 3623]
+[tick 620] entita'=86 mele=375 cadaveri=2 nascite=25 morti(fame/combattimento)=2/0 azioni=[294, 621, 620, 572, 504, 477, 218, 167, 4821, 3677]
+[tick 640] entita'=86 mele=375 cadaveri=2 nascite=25 morti(fame/combattimento)=2/0 azioni=[305, 636, 632, 582, 515, 489, 228, 172, 5118, 3720]
+Morte ID 67 (fame) a eta' 205
+Nascita ID 88 da 7 e 59 (generazione 1)
+Morte ID 14 (fame) a eta' 270
+[tick 660] entita'=85 mele=375 cadaveri=4 nascite=26 morti(fame/combattimento)=4/0 azioni=[311, 649, 646, 591, 528, 505, 232, 177, 5399, 3778]
+Nascita ID 89 da 25 e 78 (generazione 2)
+[tick 680] entita'=86 mele=375 cadaveri=4 nascite=27 morti(fame/combattimento)=4/0 azioni=[314, 662, 658, 601, 544, 527, 241, 183, 5655, 3844]
+Morte ID 59 (sete) a eta' 336
+[tick 700] entita'=85 mele=375 cadaveri=5 nascite=27 morti(fame/combattimento)=4/1 azioni=[319, 670, 668, 613, 560, 546, 251, 193, 5929, 3908]
+Morte ID 4 (sete) a eta' 332
+Morte ID 63 (fame) a eta' 239
+Morte ID 36 (sete) a eta' 341
+Morte ID 21 (sete) a eta' 335
+[tick 720] entita'=81 mele=375 cadaveri=9 nascite=27 morti(fame/combattimento)=5/4 azioni=[322, 682, 678, 623, 576, 565, 255, 196, 6199, 3964]
+[tick 740] entita'=81 mele=375 cadaveri=9 nascite=27 morti(fame/combattimento)=5/4 azioni=[328, 694, 685, 631, 592, 575, 263, 201, 6456, 4022]
+Morte ID 47 (fame) a eta' 340
+[tick 760] entita'=80 mele=375 cadaveri=9 nascite=27 morti(fame/combattimento)=6/4 azioni=[338, 708, 700, 636, 605, 589, 274, 206, 6727, 4059]
+Morte ID 17 (sete) a eta' 344
+Morte ID 51 (sete) a eta' 335
+[tick 780] entita'=78 mele=375 cadaveri=11 nascite=27 morti(fame/combattimento)=6/6 azioni=[347, 716, 716, 642, 616, 600, 277, 214, 6999, 4090]
+Morte ID 46 (fame) a eta' 334
+Morte ID 65 (sete) a eta' 260
+[tick 800] entita'=76 mele=375 cadaveri=13 nascite=27 morti(fame/combattimento)=7/7 azioni=[353, 729, 727, 650, 625, 615, 281, 224, 7248, 4135]
+Nascita ID 90 da 49 e 83 (generazione 3)
+[tick 820] entita'=77 mele=375 cadaveri=13 nascite=28 morti(fame/combattimento)=7/7 azioni=[361, 740, 742, 662, 642, 625, 287, 225, 7483, 4176]
+Morte ID 19 (sete) a eta' 321
+Morte ID 32 (sete) a eta' 342
+Morte ID 25 (fame) a eta' 342
+[tick 840] entita'=74 mele=375 cadaveri=15 nascite=28 morti(fame/combattimento)=8/9 azioni=[366, 748, 749, 672, 654, 634, 293, 228, 7731, 4227]
+Morte ID 24 (sete) a eta' 336
+Morte ID 69 (fame) a eta' 197
+Morte ID 12 (fame) a eta' 338
+Morte ID 26 (fame) a eta' 310
+Morte ID 61 (sete) a eta' 348
+[tick 860] entita'=69 mele=375 cadaveri=20 nascite=28 morti(fame/combattimento)=11/11 azioni=[372, 760, 756, 686, 662, 642, 299, 235, 7964, 4253]
+Morte ID 55 (fame) a eta' 340
+Morte ID 37 (sete) a eta' 346
+[tick 880] entita'=67 mele=375 cadaveri=22 nascite=28 morti(fame/combattimento)=12/12 azioni=[380, 772, 771, 701, 669, 647, 305, 237, 8196, 4273]
+Morte ID 23 (sete) a eta' 346
+Morte ID 44 (fame) a eta' 273
+Morte ID 53 (sete) a eta' 341
+[tick 900] entita'=64 mele=375 cadaveri=23 nascite=28 morti(fame/combattimento)=13/14 azioni=[384, 778, 780, 712, 671, 654, 307, 242, 8423, 4295]
+Morte ID 2 (fame) a eta' 304
+Morte ID 9 (sete) a eta' 338
+Morte ID 40 (sete) a eta' 341
+[tick 920] entita'=61 mele=375 cadaveri=26 nascite=28 morti(fame/combattimento)=14/16 azioni=[389, 786, 786, 717, 679, 662, 311, 245, 8631, 4326]
+Morte ID 31 (sete) a eta' 354
+Morte ID 13 (sete) a eta' 335
+[tick 940] entita'=59 mele=375 cadaveri=27 nascite=28 morti(fame/combattimento)=14/18 azioni=[391, 793, 796, 725, 684, 670, 318, 248, 8833, 4345]
+Morte ID 68 (sete) a eta' 244
+Morte ID 43 (sete) a eta' 340
+Morte ID 64 (fame) a eta' 244
+Morte ID 81 (fame) a eta' 164
+Morte ID 16 (fame) a eta' 329
+Morte ID 45 (fame) a eta' 323
+Morte ID 18 (fame) a eta' 342
+[tick 960] entita'=52 mele=375 cadaveri=30 nascite=28 morti(fame/combattimento)=19/20 azioni=[396, 800, 808, 730, 690, 677, 320, 250, 9032, 4358]
+Morte ID 52 (sete) a eta' 358
+Morte ID 30 (sete) a eta' 342
+[tick 980] entita'=50 mele=375 cadaveri=32 nascite=28 morti(fame/combattimento)=19/22 azioni=[401, 803, 810, 734, 699, 685, 321, 254, 9208, 4375]
+[tick 1000] entita'=50 mele=375 cadaveri=31 nascite=28 morti(fame/combattimento)=19/22 azioni=[406, 806, 811, 741, 701, 695, 323, 259, 9385, 4385]
+Morte ID 41 (fame) a eta' 359
+Nascita ID 91 da 78 e 38 (generazione 2)
+[tick 1020] entita'=50 mele=375 cadaveri=30 nascite=29 morti(fame/combattimento)=20/22 azioni=[410, 808, 816, 748, 703, 705, 326, 264, 9552, 4399]
+Morte ID 27 (fame) a eta' 371
+[tick 1040] entita'=49 mele=375 cadaveri=28 nascite=29 morti(fame/combattimento)=21/22 azioni=[413, 812, 823, 760, 710, 715, 331, 268, 9707, 4411]
+Morte ID 73 (sete) a eta' 239
+Morte ID 39 (fame) a eta' 312
+Morte ID 62 (sete) a eta' 349
+Morte ID 34 (fame) a eta' 306
+Morte ID 72 (fame) a eta' 241
+[tick 1060] entita'=44 mele=375 cadaveri=33 nascite=29 morti(fame/combattimento)=24/24 azioni=[417, 817, 827, 771, 715, 720, 335, 275, 9848, 4427]
+Morte ID 6 (sete) a eta' 343
+[tick 1080] entita'=43 mele=375 cadaveri=32 nascite=29 morti(fame/combattimento)=24/25 azioni=[420, 820, 833, 781, 723, 723, 341, 277, 9988, 4441]
+Morte ID 54 (sete) a eta' 327
+Morte ID 74 (fame) a eta' 238
+Morte ID 48 (sete) a eta' 339
+[tick 1100] entita'=40 mele=375 cadaveri=30 nascite=29 morti(fame/combattimento)=25/27 azioni=[421, 821, 836, 790, 727, 729, 342, 279, 10132, 4456]
+Morte ID 84 (sete) a eta' 236
+Morte ID 82 (fame) a eta' 196
+[tick 1120] entita'=38 mele=375 cadaveri=29 nascite=29 morti(fame/combattimento)=26/28 azioni=[423, 821, 840, 801, 731, 733, 344, 281, 10266, 4466]
+[tick 1140] entita'=38 mele=375 cadaveri=26 nascite=29 morti(fame/combattimento)=26/28 azioni=[427, 823, 843, 810, 735, 735, 346, 286, 10387, 4475]
+[tick 1160] entita'=38 mele=375 cadaveri=23 nascite=29 morti(fame/combattimento)=26/28 azioni=[428, 828, 847, 817, 737, 740, 348, 288, 10516, 4481]
+Morte ID 71 (sete) a eta' 243
+[tick 1180] entita'=37 mele=375 cadaveri=22 nascite=29 morti(fame/combattimento)=26/29 azioni=[429, 835, 847, 821, 740, 745, 351, 290, 10644, 4486]
+[tick 1200] entita'=37 mele=375 cadaveri=16 nascite=29 morti(fame/combattimento)=26/29 azioni=[431, 842, 849, 829, 746, 747, 352, 293, 10766, 4490]
+Morte ID 33 (sete) a eta' 345
+Morte ID 83 (fame) a eta' 220
+Morte ID 78 (sete) a eta' 247
+Morte ID 77 (fame) a eta' 252
+[tick 1220] entita'=33 mele=375 cadaveri=18 nascite=29 morti(fame/combattimento)=28/31 azioni=[435, 846, 853, 834, 750, 750, 357, 293, 10883, 4493]
+Morte ID 87 (fame) a eta' 166
+Morte ID 7 (sete) a eta' 453
+Morte ID 22 (fame) a eta' 342
+Morte ID 50 (fame) a eta' 303
+[tick 1240] entita'=29 mele=375 cadaveri=22 nascite=29 morti(fame/combattimento)=31/32 azioni=[437, 848, 856, 840, 752, 754, 362, 295, 10985, 4493]
+Morte ID 10 (sete) a eta' 348
+Morte ID 1 (fame) a eta' 296
+[tick 1260] entita'=27 mele=375 cadaveri=22 nascite=29 morti(fame/combattimento)=32/33 azioni=[438, 852, 858, 842, 757, 757, 362, 297, 11078, 4496]
+Morte ID 28 (sete) a eta' 341
+[tick 1280] entita'=26 mele=375 cadaveri=22 nascite=29 morti(fame/combattimento)=32/34 azioni=[439, 857, 859, 843, 762, 757, 363, 298, 11174, 4498]
+[tick 1300] entita'=26 mele=375 cadaveri=17 nascite=29 morti(fame/combattimento)=32/34 azioni=[440, 859, 860, 847, 767, 761, 363, 302, 11260, 4498]
+Morte ID 80 (fame) a eta' 212
+Morte ID 38 (sete) a eta' 344
+Morte ID 88 (sete) a eta' 240
+Morte ID 8 (sete) a eta' 350
+Morte ID 56 (sete) a eta' 347
+[tick 1320] entita'=21 mele=375 cadaveri=21 nascite=29 morti(fame/combattimento)=33/38 azioni=[441, 863, 861, 854, 771, 765, 364, 302, 11336, 4499]
+Morte ID 66 (sete) a eta' 247
+[tick 1340] entita'=20 mele=375 cadaveri=20 nascite=29 morti(fame/combattimento)=33/39 azioni=[443, 864, 863, 859, 775, 766, 364, 302, 11407, 4500]
+[tick 1360] entita'=20 mele=375 cadaveri=18 nascite=29 morti(fame/combattimento)=33/39 azioni=[444, 865, 866, 859, 776, 766, 366, 302, 11478, 4501]
+Morte ID 0 (sete) a eta' 387
+[tick 1380] entita'=19 mele=375 cadaveri=19 nascite=29 morti(fame/combattimento)=33/40 azioni=[446, 867, 869, 862, 778, 768, 369, 309, 11531, 4501]
+[tick 1400] entita'=19 mele=375 cadaveri=19 nascite=29 morti(fame/combattimento)=33/40 azioni=[446, 868, 874, 866, 781, 771, 374, 309, 11587, 4503]
+[tick 1420] entita'=19 mele=375 cadaveri=18 nascite=29 morti(fame/combattimento)=33/40 azioni=[446, 873, 881, 867, 782, 775, 375, 311, 11640, 4505]
+Morte ID 76 (sete) a eta' 381
+Morte ID 49 (fame) a eta' 489
+Morte ID 5 (sete) a eta' 350
+[tick 1440] entita'=16 mele=375 cadaveri=21 nascite=29 morti(fame/combattimento)=34/42 azioni=[448, 874, 887, 868, 783, 775, 377, 312, 11692, 4506]
+Morte ID 20 (fame) a eta' 342
+[tick 1460] entita'=15 mele=375 cadaveri=18 nascite=29 morti(fame/combattimento)=35/42 azioni=[449, 875, 891, 869, 783, 776, 378, 313, 11742, 4506]
+Morte ID 57 (sete) a eta' 447
+[tick 1480] entita'=14 mele=375 cadaveri=15 nascite=29 morti(fame/combattimento)=35/43 azioni=[449, 876, 893, 870, 787, 778, 379, 313, 11785, 4506]
+[tick 1500] entita'=14 mele=375 cadaveri=13 nascite=29 morti(fame/combattimento)=35/43 azioni=[449, 877, 895, 871, 792, 780, 379, 313, 11831, 4506]
+Morte ID 60 (fame) a eta' 300
+[tick 1520] entita'=13 mele=375 cadaveri=13 nascite=29 morti(fame/combattimento)=36/43 azioni=[451, 877, 900, 872, 795, 780, 380, 313, 11871, 4506]
+[tick 1540] entita'=13 mele=375 cadaveri=13 nascite=29 morti(fame/combattimento)=36/43 azioni=[452, 877, 906, 872, 796, 780, 380, 313, 11912, 4508]
+Morte ID 79 (sete) a eta' 249
+[tick 1560] entita'=12 mele=375 cadaveri=9 nascite=29 morti(fame/combattimento)=36/44 azioni=[452, 877, 911, 873, 796, 781, 380, 315, 11955, 4508]
+[tick 1580] entita'=12 mele=375 cadaveri=8 nascite=29 morti(fame/combattimento)=36/44 azioni=[452, 879, 914, 874, 797, 783, 380, 316, 11990, 4508]
+[tick 1600] entita'=12 mele=375 cadaveri=8 nascite=29 morti(fame/combattimento)=36/44 azioni=[452, 880, 917, 874, 798, 785, 380, 318, 12030, 4509]
+Morte ID 89 (sete) a eta' 246
+[tick 1620] entita'=11 mele=375 cadaveri=8 nascite=29 morti(fame/combattimento)=36/45 azioni=[453, 881, 920, 875, 798, 785, 380, 319, 12064, 4510]
+[tick 1640] entita'=11 mele=375 cadaveri=8 nascite=29 morti(fame/combattimento)=36/45 azioni=[453, 883, 926, 876, 799, 785, 380, 319, 12097, 4510]
+[tick 1660] entita'=11 mele=375 cadaveri=8 nascite=29 morti(fame/combattimento)=36/45 azioni=[454, 883, 927, 876, 799, 785, 381, 321, 12130, 4512]
+Morte ID 90 (sete) a eta' 242
+Morte ID 91 (fame) a eta' 156
+Morte ID 70 (sete) a eta' 298
+[tick 1680] entita'=8 mele=375 cadaveri=8 nascite=29 morti(fame/combattimento)=37/47 azioni=[455, 883, 929, 877, 799, 786, 381, 322, 12156, 4513]
+[tick 1700] entita'=8 mele=375 cadaveri=7 nascite=29 morti(fame/combattimento)=37/47 azioni=[455, 884, 933, 878, 799, 787, 381, 323, 12177, 4513]
+[tick 1720] entita'=8 mele=375 cadaveri=6 nascite=29 morti(fame/combattimento)=37/47 azioni=[455, 884, 937, 879, 800, 787, 382, 323, 12197, 4513]
+[tick 1740] entita'=8 mele=375 cadaveri=6 nascite=29 morti(fame/combattimento)=37/47 azioni=[456, 886, 939, 879, 801, 787, 382, 323, 12219, 4513]
+[tick 1760] entita'=8 mele=375 cadaveri=5 nascite=29 morti(fame/combattimento)=37/47 azioni=[457, 887, 941, 879, 801, 788, 382, 325, 12239, 4513]
+[tick 1780] entita'=8 mele=375 cadaveri=5 nascite=29 morti(fame/combattimento)=37/47 azioni=[457, 887, 942, 880, 802, 790, 383, 325, 12261, 4513]
+[tick 1800] entita'=8 mele=375 cadaveri=4 nascite=29 morti(fame/combattimento)=37/47 azioni=[457, 887, 945, 880, 804, 791, 383, 326, 12281, 4513]
+[tick 1820] entita'=8 mele=375 cadaveri=4 nascite=29 morti(fame/combattimento)=37/47 azioni=[458, 890, 948, 880, 809, 791, 383, 327, 12295, 4513]
+[tick 1840] entita'=8 mele=375 cadaveri=4 nascite=29 morti(fame/combattimento)=37/47 azioni=[459, 893, 952, 880, 813, 791, 384, 327, 12310, 4514]
+[tick 1860] entita'=8 mele=375 cadaveri=3 nascite=29 morti(fame/combattimento)=37/47 azioni=[459, 896, 954, 881, 814, 792, 384, 327, 12329, 4514]
+[tick 1880] entita'=8 mele=375 cadaveri=3 nascite=29 morti(fame/combattimento)=37/47 azioni=[459, 898, 954, 884, 814, 792, 384, 329, 12350, 4515]
+[tick 1900] entita'=8 mele=375 cadaveri=3 nascite=29 morti(fame/combattimento)=37/47 azioni=[459, 898, 954, 887, 814, 792, 385, 329, 12374, 4515]
+[tick 1920] entita'=8 mele=375 cadaveri=0 nascite=29 morti(fame/combattimento)=37/47 azioni=[460, 898, 957, 892, 815, 792, 385, 330, 12390, 4516]
+Morte ID 85 (sete) a eta' 244
+[tick 1940] entita'=7 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=37/48 azioni=[460, 899, 961, 892, 817, 793, 386, 331, 12405, 4516]
+[tick 1960] entita'=7 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=37/48 azioni=[461, 903, 967, 893, 817, 795, 386, 331, 12415, 4516]
+[tick 1980] entita'=7 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=37/48 azioni=[461, 907, 974, 893, 817, 795, 387, 332, 12427, 4516]
+Morte ID 86 (sete) a eta' 251
+[tick 2000] entita'=6 mele=375 cadaveri=2 nascite=29 morti(fame/combattimento)=37/49 azioni=[461, 909, 980, 893, 817, 796, 387, 332, 12442, 4516]
+[tick 2020] entita'=6 mele=375 cadaveri=2 nascite=29 morti(fame/combattimento)=37/49 azioni=[461, 909, 986, 893, 817, 796, 389, 332, 12454, 4516]
+Morte ID 58 (fame) a eta' 341
+[tick 2040] entita'=5 mele=375 cadaveri=3 nascite=29 morti(fame/combattimento)=38/49 azioni=[461, 910, 993, 893, 817, 797, 389, 332, 12465, 4516]
+Morte ID 3 (fame) a eta' 628
+[tick 2060] entita'=4 mele=375 cadaveri=4 nascite=29 morti(fame/combattimento)=39/49 azioni=[461, 910, 1003, 893, 818, 797, 389, 332, 12470, 4516]
+[tick 2080] entita'=4 mele=375 cadaveri=4 nascite=29 morti(fame/combattimento)=39/49 azioni=[461, 910, 1009, 893, 818, 797, 389, 332, 12477, 4516]
+[tick 2100] entita'=4 mele=375 cadaveri=4 nascite=29 morti(fame/combattimento)=39/49 azioni=[461, 910, 1011, 893, 819, 797, 389, 333, 12486, 4516]
+[tick 2120] entita'=4 mele=375 cadaveri=4 nascite=29 morti(fame/combattimento)=39/49 azioni=[461, 910, 1013, 893, 819, 797, 389, 334, 12496, 4516]
+[tick 2140] entita'=4 mele=375 cadaveri=4 nascite=29 morti(fame/combattimento)=39/49 azioni=[462, 910, 1016, 895, 819, 797, 389, 334, 12502, 4516]
+Morte ID 11 (fame) a eta' 435
+[tick 2160] entita'=3 mele=375 cadaveri=5 nascite=29 morti(fame/combattimento)=40/49 azioni=[463, 910, 1021, 898, 820, 797, 389, 334, 12505, 4516]
+[tick 2180] entita'=3 mele=375 cadaveri=4 nascite=29 morti(fame/combattimento)=40/49 azioni=[463, 910, 1027, 898, 821, 797, 389, 334, 12508, 4516]
+[tick 2200] entita'=3 mele=375 cadaveri=4 nascite=29 morti(fame/combattimento)=40/49 azioni=[463, 910, 1034, 898, 821, 797, 389, 334, 12511, 4516]
+[tick 2220] entita'=3 mele=375 cadaveri=4 nascite=29 morti(fame/combattimento)=40/49 azioni=[463, 910, 1042, 898, 821, 797, 389, 334, 12513, 4516]
+[tick 2240] entita'=3 mele=375 cadaveri=3 nascite=29 morti(fame/combattimento)=40/49 azioni=[463, 910, 1050, 898, 821, 797, 389, 334, 12516, 4516]
+[tick 2260] entita'=3 mele=375 cadaveri=3 nascite=29 morti(fame/combattimento)=40/49 azioni=[464, 910, 1051, 900, 821, 797, 389, 334, 12522, 4516]
+[tick 2280] entita'=3 mele=375 cadaveri=2 nascite=29 morti(fame/combattimento)=40/49 azioni=[465, 910, 1051, 903, 821, 797, 389, 334, 12528, 4516]
+[tick 2300] entita'=3 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=40/49 azioni=[465, 911, 1053, 905, 821, 797, 389, 334, 12533, 4516]
+[tick 2320] entita'=3 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=40/49 azioni=[466, 911, 1058, 907, 821, 797, 389, 334, 12535, 4516]
+[tick 2340] entita'=3 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=40/49 azioni=[466, 911, 1064, 907, 822, 797, 389, 334, 12538, 4516]
+[tick 2360] entita'=3 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=40/49 azioni=[466, 911, 1067, 907, 823, 797, 389, 334, 12544, 4516]
+[tick 2380] entita'=3 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=40/49 azioni=[466, 911, 1069, 907, 824, 797, 390, 334, 12549, 4517]
+[tick 2400] entita'=3 mele=375 cadaveri=0 nascite=29 morti(fame/combattimento)=40/49 azioni=[466, 911, 1072, 908, 824, 797, 390, 334, 12555, 4517]
+[tick 2420] entita'=3 mele=375 cadaveri=0 nascite=29 morti(fame/combattimento)=40/49 azioni=[466, 911, 1075, 908, 824, 797, 391, 334, 12561, 4517]
+[tick 2440] entita'=3 mele=375 cadaveri=0 nascite=29 morti(fame/combattimento)=40/49 azioni=[466, 911, 1077, 908, 825, 797, 392, 334, 12567, 4517]
+[tick 2460] entita'=3 mele=375 cadaveri=0 nascite=29 morti(fame/combattimento)=40/49 azioni=[466, 912, 1081, 908, 825, 797, 392, 335, 12571, 4517]
+Morte ID 35 (fame) a eta' 595
+[tick 2480] entita'=2 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=41/49 azioni=[466, 912, 1085, 908, 825, 797, 392, 335, 12573, 4517]
+[tick 2500] entita'=2 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=41/49 azioni=[466, 912, 1088, 908, 825, 797, 392, 336, 12575, 4517]
+[tick 2520] entita'=2 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=41/49 azioni=[466, 912, 1091, 908, 825, 797, 392, 336, 12578, 4517]
+[tick 2540] entita'=2 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=41/49 azioni=[466, 912, 1094, 908, 825, 797, 392, 336, 12580, 4518]
+Morte ID 75 (sete) a eta' 366
+[tick 2560] entita'=1 mele=375 cadaveri=2 nascite=29 morti(fame/combattimento)=41/50 azioni=[466, 912, 1096, 908, 825, 797, 392, 336, 12582, 4519]
+[tick 2580] entita'=1 mele=375 cadaveri=2 nascite=29 morti(fame/combattimento)=41/50 azioni=[466, 913, 1096, 908, 825, 798, 392, 337, 12582, 4519]
+[tick 2600] entita'=1 mele=375 cadaveri=2 nascite=29 morti(fame/combattimento)=41/50 azioni=[466, 914, 1096, 908, 825, 798, 392, 337, 12584, 4519]
+[tick 2620] entita'=1 mele=375 cadaveri=2 nascite=29 morti(fame/combattimento)=41/50 azioni=[466, 914, 1096, 908, 825, 798, 392, 337, 12587, 4519]
+[tick 2640] entita'=1 mele=375 cadaveri=2 nascite=29 morti(fame/combattimento)=41/50 azioni=[466, 914, 1096, 908, 825, 799, 392, 337, 12589, 4519]
+[tick 2660] entita'=1 mele=375 cadaveri=2 nascite=29 morti(fame/combattimento)=41/50 azioni=[466, 914, 1096, 909, 825, 799, 392, 337, 12591, 4519]
+[tick 2680] entita'=1 mele=375 cadaveri=2 nascite=29 morti(fame/combattimento)=41/50 azioni=[466, 914, 1096, 909, 825, 799, 392, 337, 12594, 4519]
+[tick 2700] entita'=1 mele=375 cadaveri=2 nascite=29 morti(fame/combattimento)=41/50 azioni=[466, 914, 1096, 909, 825, 799, 392, 337, 12597, 4519]
+[tick 2720] entita'=1 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=41/50 azioni=[466, 914, 1096, 909, 825, 799, 392, 337, 12600, 4519]
+[tick 2740] entita'=1 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=41/50 azioni=[466, 914, 1096, 909, 825, 799, 392, 337, 12603, 4519]
+[tick 2760] entita'=1 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=41/50 azioni=[466, 914, 1096, 909, 825, 799, 392, 337, 12606, 4519]
+[tick 2780] entita'=1 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=41/50 azioni=[466, 914, 1096, 909, 825, 799, 392, 337, 12609, 4519]
+[tick 2800] entita'=1 mele=375 cadaveri=0 nascite=29 morti(fame/combattimento)=41/50 azioni=[466, 914, 1096, 909, 825, 799, 392, 337, 12612, 4519]
+[tick 2820] entita'=1 mele=375 cadaveri=0 nascite=29 morti(fame/combattimento)=41/50 azioni=[466, 914, 1096, 909, 825, 799, 392, 337, 12615, 4519]
+Morte ID 29 (fame) a eta' 531
+[tick 2840] entita'=0 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=42/50 azioni=[466, 914, 1096, 909, 825, 799, 392, 337, 12618, 4519]
+[tick 2860] entita'=0 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=42/50 azioni=[466, 914, 1096, 909, 825, 799, 392, 337, 12618, 4519]
+[tick 2880] entita'=0 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=42/50 azioni=[466, 914, 1096, 909, 825, 799, 392, 337, 12618, 4519]
+[tick 2900] entita'=0 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=42/50 azioni=[466, 914, 1096, 909, 825, 799, 392, 337, 12618, 4519]
+[tick 2920] entita'=0 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=42/50 azioni=[466, 914, 1096, 909, 825, 799, 392, 337, 12618, 4519]
+[tick 2940] entita'=0 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=42/50 azioni=[466, 914, 1096, 909, 825, 799, 392, 337, 12618, 4519]
+[tick 2960] entita'=0 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=42/50 azioni=[466, 914, 1096, 909, 825, 799, 392, 337, 12618, 4519]
+[tick 2980] entita'=0 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=42/50 azioni=[466, 914, 1096, 909, 825, 799, 392, 337, 12618, 4519]
+[tick 3000] entita'=0 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=42/50 azioni=[466, 914, 1096, 909, 825, 799, 392, 337, 12618, 4519]
+[tick 3020] entita'=0 mele=375 cadaveri=1 nascite=29 morti(fame/combattimento)=42/50 azioni=[466, 914, 1096, 909, 825, 799, 392, 337, 12618, 4519]
+---- Fine: tick 3023
+Sessione 3: 92 entita' (63 fondatrici, 0 vive), generazione massima 3
+Entita' vive: 0

@@ -22,6 +22,7 @@ public class Window {
     private double mouseDeltaX;
     private double mouseDeltaY;
     private boolean firstMouseMove = true;
+    private boolean leftButtonDown = false;
 
     public Window(int width, int height, String title) {
         this.width = width;
@@ -64,10 +65,25 @@ public class Window {
                 lastMouseY = ypos;
                 firstMouseMove = false;
             }
-            mouseDeltaX += xpos - lastMouseX;
-            mouseDeltaY += ypos - lastMouseY;
+            // La visuale si muove solo trascinando con il tasto sinistro premuto.
+            // lastMouse viene aggiornato sempre, cosi' alla pressione del tasto non c'e' nessun salto.
+            if (leftButtonDown) {
+                mouseDeltaX += xpos - lastMouseX;
+                mouseDeltaY += ypos - lastMouseY;
+            }
             lastMouseX = xpos;
             lastMouseY = ypos;
+        });
+
+        glfwSetMouseButtonCallback(handle, (win, button, action, mods) -> {
+            if (button == GLFW_MOUSE_BUTTON_LEFT) {
+                leftButtonDown = (action == GLFW_PRESS);
+                if (!leftButtonDown) {
+                    // A fine trascinamento scarta eventuale delta residuo
+                    mouseDeltaX = 0;
+                    mouseDeltaY = 0;
+                }
+            }
         });
 
         glfwMakeContextCurrent(handle);

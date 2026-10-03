@@ -1,0 +1,1877 @@
+{
+ "nodes": [
+  {
+   "generation": 0,
+   "deathTick": 2773,
+   "parentA": -1,
+   "id": 0,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 6923,
+   "parentA": -1,
+   "id": 1,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 1563,
+   "parentA": -1,
+   "id": 2,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 6435,
+   "parentA": -1,
+   "id": 3,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 677,
+   "parentA": -1,
+   "id": 4,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 1918,
+   "parentA": -1,
+   "id": 5,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 2617,
+   "parentA": -1,
+   "id": 6,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 2031,
+   "parentA": -1,
+   "id": 7,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 1291,
+   "parentA": -1,
+   "id": 8,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 3123,
+   "parentA": -1,
+   "id": 9,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "ucciso da #154"
+  },
+  {
+   "generation": 0,
+   "deathTick": 2469,
+   "parentA": -1,
+   "id": 10,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 2208,
+   "parentA": -1,
+   "id": 11,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 3103,
+   "parentA": -1,
+   "id": 12,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 2162,
+   "parentA": -1,
+   "id": 13,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 923,
+   "parentA": -1,
+   "id": 14,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 917,
+   "parentA": -1,
+   "id": 15,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 2670,
+   "parentA": -1,
+   "id": 16,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 769,
+   "parentA": -1,
+   "id": 17,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 2829,
+   "parentA": -1,
+   "id": 18,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": -1,
+   "parentA": -1,
+   "id": 19,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": ""
+  },
+  {
+   "generation": 0,
+   "deathTick": 1729,
+   "parentA": -1,
+   "id": 20,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 732,
+   "parentA": -1,
+   "id": 21,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 1222,
+   "parentA": -1,
+   "id": 22,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "ucciso da #28"
+  },
+  {
+   "generation": 0,
+   "deathTick": 7565,
+   "parentA": -1,
+   "id": 23,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 0,
+   "deathTick": 7637,
+   "parentA": -1,
+   "id": 24,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 4756,
+   "parentA": -1,
+   "id": 25,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 2159,
+   "parentA": -1,
+   "id": 26,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 3238,
+   "parentA": -1,
+   "id": 27,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 1258,
+   "parentA": -1,
+   "id": 28,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": -1,
+   "parentA": -1,
+   "id": 29,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": ""
+  },
+  {
+   "generation": 0,
+   "deathTick": 987,
+   "parentA": -1,
+   "id": 30,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 2005,
+   "parentA": -1,
+   "id": 31,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 1991,
+   "parentA": -1,
+   "id": 32,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 1233,
+   "parentA": -1,
+   "id": 33,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 4694,
+   "parentA": -1,
+   "id": 34,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 4983,
+   "parentA": -1,
+   "id": 35,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 719,
+   "parentA": -1,
+   "id": 36,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 925,
+   "parentA": -1,
+   "id": 37,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 4153,
+   "parentA": -1,
+   "id": 38,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 1245,
+   "parentA": -1,
+   "id": 39,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 3218,
+   "parentA": -1,
+   "id": 40,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": -1,
+   "parentA": -1,
+   "id": 41,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": ""
+  },
+  {
+   "generation": 0,
+   "deathTick": 2805,
+   "parentA": -1,
+   "id": 42,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 1442,
+   "parentA": -1,
+   "id": 43,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": -1,
+   "parentA": -1,
+   "id": 44,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": ""
+  },
+  {
+   "generation": 0,
+   "deathTick": 2933,
+   "parentA": -1,
+   "id": 45,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "ucciso da #70"
+  },
+  {
+   "generation": 0,
+   "deathTick": 862,
+   "parentA": -1,
+   "id": 46,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 790,
+   "parentA": -1,
+   "id": 47,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 1134,
+   "parentA": -1,
+   "id": 48,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 1491,
+   "parentA": -1,
+   "id": 49,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 3581,
+   "parentA": -1,
+   "id": 50,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 771,
+   "parentA": -1,
+   "id": 51,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 5021,
+   "parentA": -1,
+   "id": 52,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 1310,
+   "parentA": -1,
+   "id": 53,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 5193,
+   "parentA": -1,
+   "id": 54,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 1167,
+   "parentA": -1,
+   "id": 55,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 2686,
+   "parentA": -1,
+   "id": 56,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "ucciso da #136"
+  },
+  {
+   "generation": 0,
+   "deathTick": 3437,
+   "parentA": -1,
+   "id": 57,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": -1,
+   "parentA": -1,
+   "id": 58,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": ""
+  },
+  {
+   "generation": 0,
+   "deathTick": 1173,
+   "parentA": -1,
+   "id": 59,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 4913,
+   "parentA": -1,
+   "id": 60,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 863,
+   "parentA": -1,
+   "id": 61,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 1035,
+   "parentA": -1,
+   "id": 62,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1480,
+   "parentA": 21,
+   "id": 63,
+   "birthTick": 10,
+   "parentB": 51,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 911,
+   "parentA": 46,
+   "id": 64,
+   "birthTick": 14,
+   "parentB": 37,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1041,
+   "parentA": 39,
+   "id": 65,
+   "birthTick": 25,
+   "parentB": 33,
+   "deathCause": "ucciso da #107"
+  },
+  {
+   "generation": 1,
+   "deathTick": 760,
+   "parentA": 36,
+   "id": 66,
+   "birthTick": 33,
+   "parentB": 30,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 1,
+   "deathTick": 3195,
+   "parentA": 23,
+   "id": 67,
+   "birthTick": 40,
+   "parentB": 52,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1870,
+   "parentA": 19,
+   "id": 68,
+   "birthTick": 61,
+   "parentB": 11,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1024,
+   "parentA": 55,
+   "id": 69,
+   "birthTick": 69,
+   "parentB": 15,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 5033,
+   "parentA": 44,
+   "id": 70,
+   "birthTick": 98,
+   "parentB": 60,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1200,
+   "parentA": 47,
+   "id": 71,
+   "birthTick": 104,
+   "parentB": 14,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 1,
+   "deathTick": 2079,
+   "parentA": 21,
+   "id": 72,
+   "birthTick": 149,
+   "parentB": 38,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1717,
+   "parentA": 46,
+   "id": 73,
+   "birthTick": 199,
+   "parentB": 37,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1321,
+   "parentA": 52,
+   "id": 74,
+   "birthTick": 201,
+   "parentB": 23,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 1,
+   "deathTick": 743,
+   "parentA": 30,
+   "id": 75,
+   "birthTick": 240,
+   "parentB": 36,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 2002,
+   "parentA": 33,
+   "id": 76,
+   "birthTick": 275,
+   "parentB": 39,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 3222,
+   "parentA": 57,
+   "id": 77,
+   "birthTick": 278,
+   "parentB": 41,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 1,
+   "deathTick": -1,
+   "parentA": 19,
+   "id": 78,
+   "birthTick": 293,
+   "parentB": 13,
+   "deathCause": ""
+  },
+  {
+   "generation": 1,
+   "deathTick": 847,
+   "parentA": 7,
+   "id": 79,
+   "birthTick": 299,
+   "parentB": 12,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 2644,
+   "parentA": 47,
+   "id": 80,
+   "birthTick": 316,
+   "parentB": 14,
+   "deathCause": "ucciso da #140"
+  },
+  {
+   "generation": 2,
+   "deathTick": 913,
+   "parentA": 40,
+   "id": 81,
+   "birthTick": 431,
+   "parentB": 63,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 4109,
+   "parentA": 45,
+   "id": 82,
+   "birthTick": 437,
+   "parentB": 44,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 1,
+   "deathTick": 2721,
+   "parentA": 12,
+   "id": 83,
+   "birthTick": 462,
+   "parentB": 34,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1346,
+   "parentA": 19,
+   "id": 84,
+   "birthTick": 462,
+   "parentB": 35,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 2538,
+   "parentA": 47,
+   "id": 85,
+   "birthTick": 522,
+   "parentB": 14,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1919,
+   "parentA": 49,
+   "id": 86,
+   "birthTick": 535,
+   "parentB": 6,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 4385,
+   "parentA": 58,
+   "id": 87,
+   "birthTick": 615,
+   "parentB": 53,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1219,
+   "parentA": 59,
+   "id": 88,
+   "birthTick": 622,
+   "parentB": 33,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 3938,
+   "parentA": 52,
+   "id": 89,
+   "birthTick": 654,
+   "parentB": 2,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1751,
+   "parentA": 10,
+   "id": 90,
+   "birthTick": 692,
+   "parentB": 31,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1991,
+   "parentA": 14,
+   "id": 91,
+   "birthTick": 699,
+   "parentB": 47,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1324,
+   "parentA": 13,
+   "id": 92,
+   "birthTick": 704,
+   "parentB": 19,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 3140,
+   "parentA": 41,
+   "id": 93,
+   "birthTick": 711,
+   "parentB": 57,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 2,
+   "deathTick": 1880,
+   "parentA": 74,
+   "id": 94,
+   "birthTick": 729,
+   "parentB": 23,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1903,
+   "parentA": 34,
+   "id": 95,
+   "birthTick": 745,
+   "parentB": 59,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1808,
+   "parentA": 42,
+   "id": 96,
+   "birthTick": 774,
+   "parentB": 26,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 2905,
+   "parentA": 49,
+   "id": 97,
+   "birthTick": 781,
+   "parentB": 55,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 1281,
+   "parentA": 38,
+   "id": 98,
+   "birthTick": 787,
+   "parentB": 63,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1842,
+   "parentA": 37,
+   "id": 99,
+   "birthTick": 841,
+   "parentB": 46,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 2223,
+   "parentA": 44,
+   "id": 100,
+   "birthTick": 856,
+   "parentB": 62,
+   "deathCause": "ucciso da #44"
+  },
+  {
+   "generation": 1,
+   "deathTick": 5959,
+   "parentA": 2,
+   "id": 101,
+   "birthTick": 862,
+   "parentB": 52,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 3284,
+   "parentA": 24,
+   "id": 102,
+   "birthTick": 927,
+   "parentB": 49,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 1663,
+   "parentA": 23,
+   "id": 103,
+   "birthTick": 958,
+   "parentB": 74,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 2253,
+   "parentA": 6,
+   "id": 104,
+   "birthTick": 962,
+   "parentB": 86,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 7061,
+   "parentA": 45,
+   "id": 105,
+   "birthTick": 996,
+   "parentB": 76,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 5355,
+   "parentA": 38,
+   "id": 106,
+   "birthTick": 1001,
+   "parentB": 63,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1696,
+   "parentA": 7,
+   "id": 107,
+   "birthTick": 1035,
+   "parentB": 12,
+   "deathCause": "ucciso da #116"
+  },
+  {
+   "generation": 2,
+   "deathTick": 2341,
+   "parentA": 95,
+   "id": 108,
+   "birthTick": 1180,
+   "parentB": 82,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1916,
+   "parentA": 43,
+   "id": 109,
+   "birthTick": 1181,
+   "parentB": 23,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 2213,
+   "parentA": 78,
+   "id": 110,
+   "birthTick": 1200,
+   "parentB": 53,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 2497,
+   "parentA": 28,
+   "id": 111,
+   "birthTick": 1212,
+   "parentB": 22,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 1,
+   "deathTick": 3493,
+   "parentA": 60,
+   "id": 112,
+   "birthTick": 1261,
+   "parentB": 44,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 2323,
+   "parentA": 80,
+   "id": 113,
+   "birthTick": 1263,
+   "parentB": 72,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1926,
+   "parentA": 24,
+   "id": 114,
+   "birthTick": 1299,
+   "parentB": 49,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 2184,
+   "parentA": 90,
+   "id": 115,
+   "birthTick": 1326,
+   "parentB": 6,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 2104,
+   "parentA": 12,
+   "id": 116,
+   "birthTick": 1362,
+   "parentB": 34,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 6749,
+   "parentA": 29,
+   "id": 117,
+   "birthTick": 1369,
+   "parentB": 83,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 3490,
+   "parentA": 87,
+   "id": 118,
+   "birthTick": 1443,
+   "parentB": 10,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 2903,
+   "parentA": 86,
+   "id": 119,
+   "birthTick": 1478,
+   "parentB": 24,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 2455,
+   "parentA": 77,
+   "id": 120,
+   "birthTick": 1484,
+   "parentB": 93,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 2,
+   "deathTick": 3309,
+   "parentA": 78,
+   "id": 121,
+   "birthTick": 1496,
+   "parentB": 90,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 2,
+   "deathTick": 4123,
+   "parentA": 7,
+   "id": 122,
+   "birthTick": 1496,
+   "parentB": 82,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 2300,
+   "parentA": 102,
+   "id": 123,
+   "birthTick": 1559,
+   "parentB": 41,
+   "deathCause": "ucciso da #132"
+  },
+  {
+   "generation": 1,
+   "deathTick": 2466,
+   "parentA": 31,
+   "id": 124,
+   "birthTick": 1622,
+   "parentB": 16,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 2589,
+   "parentA": 12,
+   "id": 125,
+   "birthTick": 1640,
+   "parentB": 34,
+   "deathCause": "ucciso da #82"
+  },
+  {
+   "generation": 1,
+   "deathTick": 3403,
+   "parentA": 26,
+   "id": 126,
+   "birthTick": 1658,
+   "parentB": 42,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 2534,
+   "parentA": 89,
+   "id": 127,
+   "birthTick": 1686,
+   "parentB": 29,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 4591,
+   "parentA": 77,
+   "id": 128,
+   "birthTick": 1723,
+   "parentB": 80,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 2,
+   "deathTick": 3740,
+   "parentA": 60,
+   "id": 129,
+   "birthTick": 1769,
+   "parentB": 70,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 2451,
+   "parentA": 97,
+   "id": 130,
+   "birthTick": 1774,
+   "parentB": 41,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 2999,
+   "parentA": 16,
+   "id": 131,
+   "birthTick": 1802,
+   "parentB": 1,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 3,
+   "deathTick": 2829,
+   "parentA": 24,
+   "id": 132,
+   "birthTick": 1854,
+   "parentB": 104,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 3,
+   "deathTick": 3631,
+   "parentA": 87,
+   "id": 133,
+   "birthTick": 1894,
+   "parentB": 118,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": -1,
+   "parentA": 9,
+   "id": 134,
+   "birthTick": 1900,
+   "parentB": 19,
+   "deathCause": ""
+  },
+  {
+   "generation": 2,
+   "deathTick": 2744,
+   "parentA": 57,
+   "id": 135,
+   "birthTick": 1915,
+   "parentB": 91,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 2757,
+   "parentA": 41,
+   "id": 136,
+   "birthTick": 1963,
+   "parentB": 102,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 3938,
+   "parentA": 67,
+   "id": 137,
+   "birthTick": 2011,
+   "parentB": 29,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 3,
+   "deathTick": 3128,
+   "parentA": 24,
+   "id": 138,
+   "birthTick": 2042,
+   "parentB": 119,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 4036,
+   "parentA": 97,
+   "id": 139,
+   "birthTick": 2099,
+   "parentB": 9,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": -1,
+   "parentA": 77,
+   "id": 140,
+   "birthTick": 2108,
+   "parentB": 80,
+   "deathCause": ""
+  },
+  {
+   "generation": 1,
+   "deathTick": 3114,
+   "parentA": 35,
+   "id": 141,
+   "birthTick": 2125,
+   "parentB": 19,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 4529,
+   "parentA": 26,
+   "id": 142,
+   "birthTick": 2131,
+   "parentB": 42,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 3,
+   "deathTick": 3291,
+   "parentA": 120,
+   "id": 143,
+   "birthTick": 2273,
+   "parentB": 93,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 1,
+   "deathTick": 3280,
+   "parentA": 19,
+   "id": 144,
+   "birthTick": 2305,
+   "parentB": 9,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 4474,
+   "parentA": 42,
+   "id": 145,
+   "birthTick": 2321,
+   "parentB": 126,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 3921,
+   "parentA": 35,
+   "id": 146,
+   "birthTick": 2387,
+   "parentB": 97,
+   "deathCause": "ucciso da #139"
+  },
+  {
+   "generation": 2,
+   "deathTick": 7006,
+   "parentA": 77,
+   "id": 147,
+   "birthTick": 2406,
+   "parentB": 80,
+   "deathCause": "ucciso da #203"
+  },
+  {
+   "generation": 1,
+   "deathTick": 5216,
+   "parentA": 57,
+   "id": 148,
+   "birthTick": 2493,
+   "parentB": 50,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 4122,
+   "parentA": 41,
+   "id": 149,
+   "birthTick": 2587,
+   "parentB": 19,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 3,
+   "deathTick": 3819,
+   "parentA": 117,
+   "id": 150,
+   "birthTick": 2599,
+   "parentB": 0,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 1,
+   "deathTick": 5569,
+   "parentA": 24,
+   "id": 151,
+   "birthTick": 2764,
+   "parentB": 18,
+   "deathCause": "ucciso da #188"
+  },
+  {
+   "generation": 2,
+   "deathTick": 3943,
+   "parentA": 89,
+   "id": 152,
+   "birthTick": 2774,
+   "parentB": 29,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 3,
+   "deathTick": -1,
+   "parentA": 140,
+   "id": 153,
+   "birthTick": 2784,
+   "parentB": 145,
+   "deathCause": ""
+  },
+  {
+   "generation": 3,
+   "deathTick": 4181,
+   "parentA": 139,
+   "id": 154,
+   "birthTick": 2802,
+   "parentB": 41,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 4517,
+   "parentA": 44,
+   "id": 155,
+   "birthTick": 2805,
+   "parentB": 112,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 4282,
+   "parentA": 50,
+   "id": 156,
+   "birthTick": 2930,
+   "parentB": 57,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 2,
+   "deathTick": 3822,
+   "parentA": 102,
+   "id": 157,
+   "birthTick": 2968,
+   "parentB": 41,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 3,
+   "deathTick": 4971,
+   "parentA": 122,
+   "id": 158,
+   "birthTick": 3008,
+   "parentB": 12,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 1,
+   "deathTick": 4286,
+   "parentA": 44,
+   "id": 159,
+   "birthTick": 3010,
+   "parentB": 60,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 4426,
+   "parentA": 29,
+   "id": 160,
+   "birthTick": 3073,
+   "parentB": 89,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 5340,
+   "parentA": 19,
+   "id": 161,
+   "birthTick": 3096,
+   "parentB": 149,
+   "deathCause": "ucciso da #24"
+  },
+  {
+   "generation": 4,
+   "deathTick": 6717,
+   "parentA": 143,
+   "id": 162,
+   "birthTick": 3137,
+   "parentB": 77,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 4485,
+   "parentA": 57,
+   "id": 163,
+   "birthTick": 3174,
+   "parentB": 50,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 3,
+   "deathTick": 4098,
+   "parentA": 148,
+   "id": 164,
+   "birthTick": 3180,
+   "parentB": 139,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 3,
+   "deathTick": 4506,
+   "parentA": 128,
+   "id": 165,
+   "birthTick": 3204,
+   "parentB": 117,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 4,
+   "deathTick": 4178,
+   "parentA": 150,
+   "id": 166,
+   "birthTick": 3283,
+   "parentB": 142,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 1,
+   "deathTick": -1,
+   "parentA": 44,
+   "id": 167,
+   "birthTick": 3316,
+   "parentB": 60,
+   "deathCause": ""
+  },
+  {
+   "generation": 4,
+   "deathTick": 4575,
+   "parentA": 158,
+   "id": 168,
+   "birthTick": 3386,
+   "parentB": 101,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 3,
+   "deathTick": 6002,
+   "parentA": 148,
+   "id": 169,
+   "birthTick": 3561,
+   "parentB": 139,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 5,
+   "deathTick": 4863,
+   "parentA": 166,
+   "id": 170,
+   "birthTick": 3644,
+   "parentB": 128,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 6192,
+   "parentA": 156,
+   "id": 171,
+   "birthTick": 3663,
+   "parentB": 38,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 3,
+   "deathTick": 4496,
+   "parentA": 24,
+   "id": 172,
+   "birthTick": 3738,
+   "parentB": 161,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 3,
+   "deathTick": 6016,
+   "parentA": 148,
+   "id": 173,
+   "birthTick": 3767,
+   "parentB": 139,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 4,
+   "deathTick": 5305,
+   "parentA": 150,
+   "id": 174,
+   "birthTick": 3819,
+   "parentB": 142,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 2,
+   "deathTick": 6273,
+   "parentA": 156,
+   "id": 175,
+   "birthTick": 3875,
+   "parentB": 38,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 3,
+   "deathTick": -1,
+   "parentA": 44,
+   "id": 176,
+   "birthTick": 3893,
+   "parentB": 155,
+   "deathCause": ""
+  },
+  {
+   "generation": 4,
+   "deathTick": 5106,
+   "parentA": 158,
+   "id": 177,
+   "birthTick": 4033,
+   "parentB": 101,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 2,
+   "deathTick": 5055,
+   "parentA": 38,
+   "id": 178,
+   "birthTick": 4099,
+   "parentB": 156,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 6,
+   "deathTick": 5163,
+   "parentA": 170,
+   "id": 179,
+   "birthTick": 4102,
+   "parentB": 23,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 5640,
+   "parentA": 60,
+   "id": 180,
+   "birthTick": 4130,
+   "parentB": 70,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 3,
+   "deathTick": 5603,
+   "parentA": 24,
+   "id": 181,
+   "birthTick": 4193,
+   "parentB": 161,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 6,
+   "deathTick": 6210,
+   "parentA": 140,
+   "id": 182,
+   "birthTick": 4290,
+   "parentB": 170,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 2,
+   "deathTick": 5832,
+   "parentA": 87,
+   "id": 183,
+   "birthTick": 4323,
+   "parentB": 44,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 4,
+   "deathTick": 5524,
+   "parentA": 169,
+   "id": 184,
+   "birthTick": 4330,
+   "parentB": 148,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 3,
+   "deathTick": 5067,
+   "parentA": 161,
+   "id": 185,
+   "birthTick": 4370,
+   "parentB": 78,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 3,
+   "deathTick": -1,
+   "parentA": 128,
+   "id": 186,
+   "birthTick": 4548,
+   "parentB": 117,
+   "deathCause": ""
+  },
+  {
+   "generation": 3,
+   "deathTick": 5552,
+   "parentA": 151,
+   "id": 187,
+   "birthTick": 4630,
+   "parentB": 161,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 5642,
+   "parentA": 19,
+   "id": 188,
+   "birthTick": 4680,
+   "parentB": 1,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 4,
+   "deathTick": 6121,
+   "parentA": 175,
+   "id": 189,
+   "birthTick": 4795,
+   "parentB": 169,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 3,
+   "deathTick": -1,
+   "parentA": 171,
+   "id": 190,
+   "birthTick": 4837,
+   "parentB": 24,
+   "deathCause": ""
+  },
+  {
+   "generation": 3,
+   "deathTick": 5512,
+   "parentA": 151,
+   "id": 191,
+   "birthTick": 4861,
+   "parentB": 161,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 7,
+   "deathTick": 6864,
+   "parentA": 162,
+   "id": 192,
+   "birthTick": 4972,
+   "parentB": 182,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 4,
+   "deathTick": 6464,
+   "parentA": 169,
+   "id": 193,
+   "birthTick": 5147,
+   "parentB": 175,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 8,
+   "deathTick": 6753,
+   "parentA": 192,
+   "id": 194,
+   "birthTick": 5448,
+   "parentB": 29,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 4,
+   "deathTick": -1,
+   "parentA": 169,
+   "id": 195,
+   "birthTick": 5478,
+   "parentB": 175,
+   "deathCause": ""
+  },
+  {
+   "generation": 4,
+   "deathTick": -1,
+   "parentA": 117,
+   "id": 196,
+   "birthTick": 5518,
+   "parentB": 186,
+   "deathCause": ""
+  },
+  {
+   "generation": 8,
+   "deathTick": 7038,
+   "parentA": 192,
+   "id": 197,
+   "birthTick": 5781,
+   "parentB": 29,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 4,
+   "deathTick": 7150,
+   "parentA": 186,
+   "id": 198,
+   "birthTick": 5850,
+   "parentB": 117,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 8,
+   "deathTick": 6586,
+   "parentA": 192,
+   "id": 199,
+   "birthTick": 5931,
+   "parentB": 162,
+   "deathCause": "ucciso da #192"
+  },
+  {
+   "generation": 1,
+   "deathTick": -1,
+   "parentA": 41,
+   "id": 200,
+   "birthTick": 6179,
+   "parentB": 19,
+   "deathCause": ""
+  },
+  {
+   "generation": 8,
+   "deathTick": 7635,
+   "parentA": 192,
+   "id": 201,
+   "birthTick": 6187,
+   "parentB": 23,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 8,
+   "deathTick": 7280,
+   "parentA": 23,
+   "id": 202,
+   "birthTick": 6354,
+   "parentB": 192,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 9,
+   "deathTick": -1,
+   "parentA": 147,
+   "id": 203,
+   "birthTick": 6448,
+   "parentB": 199,
+   "deathCause": ""
+  },
+  {
+   "generation": 2,
+   "deathTick": -1,
+   "parentA": 41,
+   "id": 204,
+   "birthTick": 6662,
+   "parentB": 200,
+   "deathCause": ""
+  },
+  {
+   "generation": 5,
+   "deathTick": 7334,
+   "parentA": 147,
+   "id": 205,
+   "birthTick": 6677,
+   "parentB": 196,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": -1,
+   "parentA": 167,
+   "id": 206,
+   "birthTick": 7047,
+   "parentB": 44,
+   "deathCause": ""
+  },
+  {
+   "generation": 10,
+   "deathTick": -1,
+   "parentA": 203,
+   "id": 207,
+   "birthTick": 7195,
+   "parentB": 23,
+   "deathCause": ""
+  }
+ ],
+ "session": 8
+}

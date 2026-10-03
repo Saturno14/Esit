@@ -1,0 +1,149 @@
+{
+ "nodes": [
+  {
+   "generation": 0,
+   "deathTick": 675,
+   "parentA": -1,
+   "id": 0,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 1205,
+   "parentA": -1,
+   "id": 1,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 858,
+   "parentA": -1,
+   "id": 2,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 985,
+   "parentA": -1,
+   "id": 3,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 1073,
+   "parentA": -1,
+   "id": 4,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 957,
+   "parentA": -1,
+   "id": 5,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 801,
+   "parentA": -1,
+   "id": 6,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 0,
+   "deathTick": 1199,
+   "parentA": -1,
+   "id": 7,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 0,
+   "deathTick": 943,
+   "parentA": -1,
+   "id": 8,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 0,
+   "deathTick": 847,
+   "parentA": -1,
+   "id": 9,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 0,
+   "deathTick": 1133,
+   "parentA": -1,
+   "id": 10,
+   "birthTick": 0,
+   "parentB": -1,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1050,
+   "parentA": 5,
+   "id": 11,
+   "birthTick": 69,
+   "parentB": 1,
+   "deathCause": "sete"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1089,
+   "parentA": 8,
+   "id": 12,
+   "birthTick": 219,
+   "parentB": 9,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1396,
+   "parentA": 10,
+   "id": 13,
+   "birthTick": 257,
+   "parentB": 6,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 1,
+   "deathTick": 1540,
+   "parentA": 6,
+   "id": 14,
+   "birthTick": 449,
+   "parentB": 10,
+   "deathCause": "fame"
+  },
+  {
+   "generation": 2,
+   "deathTick": 1493,
+   "parentA": 2,
+   "id": 15,
+   "birthTick": 644,
+   "parentB": 12,
+   "deathCause": "sete"
+  }
+ ],
+ "session": 0
+}

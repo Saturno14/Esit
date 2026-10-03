@@ -114,6 +114,35 @@ public final class Genome {
         return new Genome(migrated, lineage, currentSchema.schemaVersion());
     }
 
+    /**
+     * Deriva genetica legata all'eta' (mutazione somatica): restituisce un NUOVO genoma con
+     * stesso lineage e schemaVersion, in cui ogni allele puo' spostarsi leggermente.
+     * intensity in [0,1] scala sia la probabilita' sia l'ampiezza dello spostamento (piu' e'
+     * vecchia l'entita', piu' deriva). La classe resta immutabile: chi possiede l'entita'
+     * sostituisce il proprio riferimento al genoma con quello restituito.
+     */
+    public Genome ageDrift(GenomeSchema schema, Random rng, double intensity) {
+        double k = Math.max(0.0, Math.min(1.0, intensity));
+        Map<String, Allele> drifted = new LinkedHashMap<>();
+        for (GeneDefinition def : schema.allGenes()) {
+            Allele current = genes.get(def.id);
+            if (current == null) {
+                current = new Allele(def.defaultValue, def.defaultValue);
+            }
+            drifted.put(def.id, new Allele(
+                    driftValue(current.alleleA, def, rng, k),
+                    driftValue(current.alleleB, def, rng, k)));
+        }
+        return new Genome(drifted, lineage, schemaVersion);
+    }
+
+    private static double driftValue(double value, GeneDefinition def, Random rng, double k) {
+        if (rng.nextDouble() < def.mutationChance * k) {
+            return Allele.clamp(value + rng.nextGaussian() * def.mutationStdDev * k);
+        }
+        return value;
+    }
+
     public JSONObject toJson() {
         JSONObject root = new JSONObject();
         root.put("schemaVersion", schemaVersion);

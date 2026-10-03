@@ -1,81 +1,54 @@
 package src;
+
 import java.io.File;
-import java.nio.file.*;
-import java.util.Arrays;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
 
-//Riscrivi tutti i parser
-
+/**
+ * Salvataggi in JSON versionato. Ogni salvataggio e' una cartella saving/s-N con:
+ *  - meta.json      : versione formato, seed, tick di simulazione
+ *  - world.json     : dimensione, ciclo, livello del terreno e mele (formato del mondo)
+ *  - entities.json  : per ogni entita' viva stato, GENOMA completo e cervelli
+ *  - genealogy.json : albero genealogico della sessione
+ * I cadaveri non vengono salvati (scadono comunque dopo pochi tick).
+ */
 public class Saving {
-    private static boolean SaveEntityBrain(String dir){
-        boolean flag = false;
-        StringBuilder Str = new StringBuilder();
-        for(int i=0; i<Entity_manager.Entity_count(); i++){
-            entity ent = Entity_manager.Entity_get(i);
-            int[] topology = ent.getBrain().getTopology();
-            Str.append("id : "+ent.getId()+";\n");
-            Str.append("topology : ");
-            for(int c:ent.getBrain().getTopology()){
-                Str.append(c+",");
-            }
-            Str.delete(Str.length()-1, Str.length());
-            Str.append(";\n");
-            
-            StringBuilder biasStr = new StringBuilder();
-            StringBuilder weightStr = new StringBuilder();
-            biasStr.append("bias: ");
-            weightStr.append("weights: ");
-            for(int j=1;j<topology.length ;j++){
-                for(int o=0;o<topology[j];o++){
-                    biasStr.append(ent.getBrain().getLayer(j-1).getNeuron(o).getBias()+",");
-                    double[] weigh = ent.getBrain().getLayer(j-1).getNeuron(o).getWeight();
-                    for(int k=0;k<weigh.length;k++){
-                        weightStr.append(weigh[k]+",");
-                    }
-                }
-            }
-            biasStr.deleteCharAt(biasStr.length()-1);
-            biasStr.append(";\n");
-            weightStr.deleteCharAt(weightStr.length()-1);
-            weightStr.append(";\n");
-            Str.append(biasStr);
-            Str.append(weightStr);
-            Str.append("\n");
-            Str.append("*\n");
-        }
 
+    public static final int FORMAT_VERSION = 2;
+
+    private static boolean SaveMeta(Path dir){
         try {
-            Files.writeString(Path.of(dir+"/brain.json"), Str.toString());
-            flag = true;
-        } catch (Exception e) {System.out.println("Errore Saving brain "+e.getMessage());}
-        return flag;
+            JSONObject meta = new JSONObject();
+            meta.put("formatVersion", FORMAT_VERSION);
+            meta.put("seed", Simulation.getSeed());
+            meta.put("tick", Simulation.getTick());
+            meta.put("genealogySession", Genealogy.getSession());
+            Files.writeString(dir.resolve("meta.json"), meta.toString(2));
+            return true;
+        } catch (Exception e) {System.out.println("Errore Saving meta "+e.getMessage());}
+        return false;
     }
 
-    private static boolean SaveEntity(String dir){
-        boolean flag = false;
-        StringBuilder Str = new StringBuilder();
-        for(int v=0; v<Entity_manager.Entity_count();v++){
-            Str.append("{ ");
-            Str.append("id"+" : "+Entity_manager.Entity_get(v).getId()+",");
-            Str.append(" age"+" : "+Entity_manager.Entity_get(v).getAge()+",");
-            Str.append(" food"+" : "+Entity_manager.Entity_get(v).getFood()+",");
-            Str.append(" foodConsumed"+" : "+Entity_manager.Entity_get(v).getFoodConsumed()+",");
-            Str.append(" healt"+" : "+Entity_manager.Entity_get(v).getHealt()+",");
-            Str.append(" sex"+" : "+Entity_manager.Entity_get(v).getSex()+",");
-            Str.append(" fitness"+" : "+ Entity_manager.Entity_get(v).getFitness()+",");
-            int[] tempos = Entity_manager.Entity_get(v).getPos();
-            Str.append(" pos"+" : "+tempos[0]+"|"+tempos[1]+"|"+tempos[2]);
-            Str.append("};\n");
-        }
+    private static boolean SaveEntities(Path dir){
         try {
-            Files.writeString(Path.of(dir+"/entity.json"), Str.toString());
-            flag = true;
-        } catch (Exception e) {System.out.println("Errore Saving brain"+e.getMessage());}
-        return flag;
+            JSONArray arr = new JSONArray();
+            for(entity e : Entity_manager.snapshotAlive()){
+                arr.put(e.toJson());
+            }
+            JSONObject root = new JSONObject();
+            root.put("formatVersion", FORMAT_VERSION);
+            root.put("entities", arr);
+            Files.writeString(dir.resolve("entities.json"), root.toString(1));
+            return true;
+        } catch (Exception e) {System.out.println("Errore Saving entities "+e.getMessage());}
+        return false;
     }
 
-    private static boolean SaveWorld(String dir){
-        boolean flag = false;
+    private static boolean SaveWorld(Path dir){
         StringBuilder Str = new StringBuilder();
 
         Str.append("-dimension : ").append(world.getDim()+"\n");
@@ -83,124 +56,105 @@ public class Saving {
         Str.append("-ground : ").append(world.getGround()+"\n");
         Str.append("-food : \n");
 
-        java.util.List<int[]> foodCells = new java.util.ArrayList<>();
         int dim = world.getDim();
         for(int x=0; x<dim; x++){
             for(int y=0; y<dim; y++){
                 for(int z=0; z<dim; z++){
                     if("M".equals(world.getSymbol(x, y, z))){
-                        foodCells.add(new int[]{x, y, z});
+                        Str.append(x+","+y+","+z+";\n");
                     }
                 }
             }
         }
 
-        for(int i=0; i<foodCells.size(); i++){
-            int[] pos = foodCells.get(i);
-            Str.append(pos[0]+","+pos[1]+","+pos[2]+";\n");
-        }
-
         try {
-            Files.writeString(Path.of(dir+"/world.json"), Str.toString());
-            flag = true;
+            Files.writeString(dir.resolve("world.json"), Str.toString());
+            return true;
         } catch (Exception e) {System.out.println("Errore Saving world "+e.getMessage());}
-        return flag;
+        return false;
+    }
+
+    private static boolean SaveGenealogy(Path dir){
+        try {
+            Genealogy.saveTo(dir.resolve("genealogy.json"));
+            return true;
+        } catch (Exception e) {System.out.println("Errore Saving genealogy "+e.getMessage());}
+        return false;
     }
 
     public static boolean Save(){
         boolean flag = false;
-        File root = new File(".");
-        File[] subdirs = root.listFiles(File::isDirectory);
-        boolean flag2 = false;
-        for(File e: subdirs){
-            if(e.getName().equals("saving")){
-                flag2 = true;
-            }
-        }
         try {
-            if(!flag2){Files.createDirectories(Path.of(root+"/saving"));}
+            Files.createDirectories(Path.of("saving"));
         } catch (Exception e) {System.out.println("Errore creazione cartella Saving "+e.getMessage());}
 
-        root = new File("saving/");
-        subdirs = root.listFiles(File::isDirectory);
-
-        StringBuilder name = new StringBuilder();
-        //ordinamento copiato
+        File[] subdirs = new File("saving/").listFiles(File::isDirectory);
         int maxN = -1;
-        for(File d : subdirs){
-            String[] parts = d.getName().split("-");
-            try { maxN = Math.max(maxN, Integer.parseInt(parts[1])); } catch(Exception ignored) {}
+        if(subdirs != null){
+            for(File d : subdirs){
+                String[] parts = d.getName().split("-");
+                try { maxN = Math.max(maxN, Integer.parseInt(parts[1])); } catch(Exception ignored) {}
+            }
         }
-        name.append("s-").append(maxN + 1);
-
-        String[] str = name.toString().split("-");
-        int n = Integer.parseInt(str[1]);
-        name.replace(name.length()-str[1].length(), name.length(), Integer.toString(n));
+        Path dir = Path.of("saving/s-" + (maxN + 1));
         try{
-            Files.createDirectories(Path.of("saving/" + name.toString()));
+            Files.createDirectories(dir);
         }catch(Exception e){System.out.println("Errore creazione cartella "+e.getMessage());}
-        String dir = "saving/"+name.toString();
-        try {
-            boolean f1 = false;
-            boolean f2 = false;
-            boolean f3 = false;
 
-            try {
-                if(SaveWorld(dir)){f1 = true;}
-            } catch (Exception e) {System.out.println("Errore SaveWorld in Save "+e.getMessage());}
-            try {
-                if(SaveEntity(dir)){f2 = true;}
-            } catch (Exception e) {System.out.println("Errore SaveEntity in Save "+e.getMessage());}
-            try {
-                if(SaveEntityBrain(dir)){f3 = true;}
-            } catch (Exception e) {System.out.println("Errore SaveEntityBrain in Save "+e.getMessage());}
-
-            System.out.println("Save1: "+f1);
-            System.out.println("Save2: "+f2);
-            System.out.println("Save3: "+f3);
-        } catch (Exception e) { System.out.println("Errore ultimo if Save: "+e.getMessage());}
-        
+        // Il lock del ciclo garantisce che non ci sia un tick a meta' mentre si fotografa il mondo
+        synchronized (Simulation.LOCK) {
+            boolean f1 = SaveMeta(dir);
+            boolean f2 = SaveWorld(dir);
+            boolean f3 = SaveEntities(dir);
+            boolean f4 = SaveGenealogy(dir);
+            flag = f1 && f2 && f3 && f4;
+            System.out.println("Save meta/world/entities/genealogy: "+f1+" "+f2+" "+f3+" "+f4);
+        }
         return flag;
     }
 
     public static boolean Load(int n){
-        boolean flag = false;    
+        boolean flag = false;
         try {
-            world.SetRunning(false);
-            for(int i=0;i<Entity_manager.Entity_count();i++){
-                Entity_manager.Entity_get(i).life.set(false);
-                Entity_manager.Entity_remuve(Entity_manager.Entity_get(i));
+            File[] subdirs = new File("saving/").listFiles(File::isDirectory);
+            Path path = subdirs[n].toPath();
+            if(!Files.exists(path.resolve("entities.json"))){
+                System.err.println("Salvataggio in formato vecchio (manca entities.json): non supportato.");
+                return false;
             }
-        } catch (Exception e) { System.out.println("Errore prima fase Load");}
-        try {
 
-            File root = new File("saving/");
-            File[] subdirs = root.listFiles(File::isDirectory);
-            StringBuilder vs = new StringBuilder();
-            vs.append(subdirs[n].getName());
-            Path path = Path.of("saving/"+vs.toString());
-            world.Load(path);
-            String content = Files.readString(Path.of("saving/"+vs.toString()+"/entity.json"));
-            String[] entity = Arrays.stream(content.split("\\{")).filter(s -> !s.isBlank()).toArray(String[]::new);
-            for(int i=0;i<entity.length;i++){
-                Entity_manager.Entity_add(new entity(0, 0, 0, 0, 0));
-                Entity_manager.Entity_get(Entity_manager.Entity_count()-1).entityLoad(i, path);
-            }
-            
-            for(int i=0;i<Entity_manager.Entity_count();i++){
-                entity temp1 = Entity_manager.Entity_get(i);
-                new Thread(()->{
-                    String temp = "";
-                    temp = Thread.currentThread().getName();
-                    temp1.setProcessId(temp);
-                    temp1.GoLife();
-                }).start();
+            Simulation.stop();
+            synchronized (Simulation.LOCK) {
+                Entity_manager.clearAll();
+                Simulation.reset();
+
+                JSONObject meta = new JSONObject(Files.readString(path.resolve("meta.json")));
+                Simulation.setSeed(meta.optLong("seed", Simulation.getSeed()));
+                Simulation.setTick(meta.optLong("tick", 0));
+
+                world.Load(path);
+
+                JSONObject root = new JSONObject(Files.readString(path.resolve("entities.json")));
+                JSONArray arr = root.getJSONArray("entities");
+                for(int i=0;i<arr.length();i++){
+                    Entity_manager.Entity_add(entity.fromJson(arr.getJSONObject(i)));
+                }
+
+                if(Files.exists(path.resolve("genealogy.json"))){
+                    Genealogy.loadFrom(path.resolve("genealogy.json"));
+                }else{
+                    Genealogy.newSession();
+                }
+                StatsLog.open(Genealogy.getSession());
             }
             world.PauseCycle(false);
             world.DoCycle();
             flag = true;
-        } catch (Exception e) {System.err.println("Errore Load entity console: "+e.getMessage());}
-        
+        } catch (Exception e) {
+            System.err.println("Errore Load: "+e);
+            e.printStackTrace();
+        }
+
         return flag;
     }
 }

@@ -44,6 +44,18 @@ public class GenomeMeshApplier {
             appendBoneEllipsoid(bone, positions, normals, indices);
         }
 
+        // Le gambe ora scendono sotto il bacino: traslo il corpo in modo che il punto piu' basso
+        // (piedi) stia a y = 0, cosi' l'entita' poggia sul terreno invece di affondarci.
+        float minY = Float.MAX_VALUE;
+        for (int i = 1; i < positions.size(); i += 3) {
+            minY = Math.min(minY, positions.get(i));
+        }
+        if (minY != Float.MAX_VALUE) {
+            for (int i = 1; i < positions.size(); i += 3) {
+                positions.set(i, positions.get(i) - minY);
+            }
+        }
+
         return new MeshData(toFloatArray(positions), toFloatArray(normals), toIntArray(indices));
     }
 

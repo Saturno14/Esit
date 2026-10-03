@@ -3,28 +3,38 @@ package src;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class world {
-    private static int Dimension = 20;
+    private static int Dimension = 50;
     private static cell[][][] Enviroment = new cell[Dimension][Dimension][Dimension];
-    private static AtomicInteger ground = new AtomicInteger();
+    private static AtomicInteger ground = new AtomicInteger();   // livello medio del terreno (riferimento)
     private static int PrintGround = 0;
     private static int cycle = 0;
 
-    private static volatile Thread cycleThread;          // riferimento persistente
-    private static final AtomicBoolean running = new AtomicBoolean(false); // "deve girare"
+    // Terreno: per ogni colonna (x,z) l'indice y della prima cella d'aria; le celle d'aria piu'
+    // in basso di waterLevel sono acqua (le depressioni si allagano).
+    private static int[][] surface = new int[Dimension][Dimension];
+    private static boolean[][] waterColumn = new boolean[Dimension][Dimension];
+    private static int waterLevel = 0;
+    private static boolean flatTerrain = false;
+    private static volatile int terrainVersion = 0;
+
     private static final AtomicBoolean paused  = new AtomicBoolean(false);
 
     public static void ChengePrintGround(int value){
         PrintGround = value;
     }
 
-    public static void SetRunning(boolean status){ running.set(false); }
+    /** Con false ferma il ciclo di simulazione (vedi Simulation); true non fa nulla: si riparte con DoCycle(). */
+    public static void SetRunning(boolean status){
+        if(!status){ Simulation.stop(); }
+    }
 
     public static boolean isPaused(){ return paused.get(); }
-    public static boolean isRunning(){ return running.get(); }
+    public static boolean isRunning(){ return Simulation.isRunning(); }
 
     public static void Load(Path path){
         try {
@@ -70,59 +80,85 @@ public class world {
         return cycle;
     }
 
+    /** Passa al giorno successivo (chiamato dal ciclo centrale ogni Simulation.TICKS_PER_DAY tick). */
+    public static void advanceCycle(){
+        cycle++;
+    }
+
     public static int getGround(){
         return ground.get();
     }
 
+    /** Avvia il ciclo di simulazione centrale (mele, entita', cadaveri: vedi Simulation). */
     public static void DoCycle(){
-        AtomicBoolean CycleFlag = new AtomicBoolean();
-        ChengePrintGround(ground_search());
-
-        if(!running.compareAndSet(false, true)){
-            System.out.println("Cycle già attivo, ignoro");
-            return;
-        }
-        cycleThread = new Thread(() -> {
-            while(running.get()){
-                if(paused.get()){
-                    try { Thread.sleep(100); } catch(InterruptedException ignored){}
-                    continue; 
-                }
-                int ore = 0;
-                System.out.println("Cycle start");
-                try {
-                    Thread.sleep(1000);//5 secondo
-                    System.out.println("Dentro doCycle flag= "+CycleFlag.get()+"threadN: "+Thread.currentThread());
-                    System.out.println("Cycle: "+cycle+" - ore: "+ore);
-                    System.out.println("print layer: "+ground.get());
-                    System.out.println("Total Entity: "+Entity_manager.get_EntityN());
-                    System.out.println("Entity count: "+Entity_manager.Entity_count());
-                    try {
-                        for(int i = 0; i<Entity_manager.Entity_count()%2; i++){
-                            add((int)(Math.random()*20), ground.get(), (int)(Math.random()*20), "M");
-                        }
-                        world.planetPrint();
-                    } catch (Exception e) {System.out.println("Errore try cycle: "+e.getMessage());}
-                    ore++;
-                    if(ore == 24){
-                        ore = 0;
-                        cycle++;
-                        System.out.println("Nuovo cyclo");
-                    }
-                } catch (Exception e) {
-                    System.out.println("Errore DoCycle thread: "+e.getMessage());
-                }
-            }
-            System.out.println("Cycle terminato");
-        });
-        cycleThread.start();
-        
+        ChengePrintGround(ground.get());
+        Simulation.start();
     }
 
     public static void PauseCycle(boolean status){
         paused.set(status);
     }
 
+    // ------------------------------------------------------------------ terreno e acqua
+
+    /** Terreno piatto (per confronti) invece del terreno irregolare; vale dal prossimo world_setup. */
+    public static void setFlatTerrain(boolean flat){
+        flatTerrain = flat;
+    }
+
+    public static boolean isFlatTerrain(){
+        return flatTerrain;
+    }
+
+    /** Aumenta a ogni ricostruzione del terreno: il motore grafico lo usa per rifare la mesh dell'acqua. */
+    public static int getTerrainVersion(){
+        return terrainVersion;
+    }
+
+    /** Indice y della prima cella d'aria della colonna: e' dove stanno entita' e mele. */
+    public static int surfaceY(int x, int z){
+        return surface[x][z];
+    }
+
+    /** True se la colonna e' allagata (le entita' non ci possono entrare, ma ci possono bere accanto). */
+    public static boolean isWaterColumn(int x, int z){
+        return waterColumn[x][z];
+    }
+
+    /** Indice y della prima cella d'aria sopra l'acqua: la superficie dell'acqua sta a waterLevel - 0.5. */
+    public static int getWaterLevel(){
+        return waterLevel;
+    }
+
+    /** True se la cella contiene acqua. */
+    public static boolean isWater(int x,int y, int z){
+        return Enviroment[x][y][z].type[2] == 2;
+    }
+
+    /** Colonna casuale asciutta (per far nascere entita' e mele). Ritorna {x, z}. */
+    public static int[] randomLandColumn(Random random){
+        for(int attempt=0; attempt<200; attempt++){
+            int x = random.nextInt(Dimension);
+            int z = random.nextInt(Dimension);
+            if(!waterColumn[x][z]){ return new int[]{x, z}; }
+        }
+        return new int[]{0, 0};
+    }
+
+    /** Numero di mele presenti nel mondo. */
+    public static int countApples(){
+        int count = 0;
+        for(int x=0;x<Dimension;x++){
+            for(int y=0;y<Dimension;y++){
+                for(int z=0;z<Dimension;z++){
+                    try {
+                        if("M".equals(Enviroment[x][y][z].get_obgect())){ count++; }
+                    } catch (Exception e) { }
+                }
+            }
+        }
+        return count;
+    }
 
     public static void planetPrint(){
         try {
@@ -142,15 +178,16 @@ public class world {
             for (int i = 0; i < rows; i++) {
                 str = i + "\t|\t";
                 for (int j = 0; j < columns; j++) {
-                    int[] cord = {i,PrintGround,j};
+                    int[] cord = {i,surface[i][j],j};
                     String str2 = "";
-                    for(int z=0;z<Entity_manager.Entity_count();z++){
-                        int[] a = Entity_manager.Entity_get(z).getPos();
-                        if(Arrays.equals(a, cord) && Entity_manager.Entity_get(z).isAlive()){
-                            str2 = " E"+Entity_manager.Entity_get(z).getId();
+                    for(entity e : Entity_manager.snapshotAlive()){
+                        int[] a = e.getPos();
+                        if(Arrays.equals(a, cord) && e.isAlive()){
+                            str2 = " E"+e.getId();
                         }
                     }
-                    str +=  getSymbol(i, PrintGround, j)+str2+"\t";
+                    String cellSymbol = waterColumn[i][j] ? "~" : getSymbol(i, surface[i][j], j);
+                    str +=  cellSymbol+str2+"\t";
                 }
                 System.out.println(str + "|");
             }
@@ -162,7 +199,6 @@ public class world {
     public static boolean world_setup(){
         if(!cell_setup()){return false;}
         if(!terrein_set()){return false;}
-        ground.set(ground_search());
 
         return true;
     }
@@ -177,6 +213,7 @@ public class world {
     }
 
     private static boolean cell_setup(){
+        Enviroment = new cell[Dimension][Dimension][Dimension];
         for(int i=0;i<Dimension;i++){ //y
             for(int j=0;j<Dimension;j++){//x
                 for(int f=0;f<Dimension;f++){//z
@@ -189,45 +226,46 @@ public class world {
 
 
 
+    /**
+     * Genera il terreno dal seed della simulazione: mappa delle altezze (irregolare, oppure
+     * piatta se flatTerrain), terra sotto la superficie, aria sopra, e acqua nelle depressioni
+     * (celle d'aria sotto waterLevel).
+     */
     private static boolean terrein_set(){
-        //imposto che la metà bassa dellìaltezza è terra, e la metà alta aria, per ora non c'è acqua
-        int low_site = 0;
-        if(Dimension%2==0){low_site = Dimension/2;}else{low_site = (Dimension-1)/2;} //altezza fissa
-        System.out.println("Low_site= "+low_site);
+        int base = (Dimension / 2) + 1;      // livello medio: prima cella d'aria di un terreno piatto
+        waterLevel = base - 1;
+        ground.set(base);
 
-        for(int i=0; i<Dimension;i++){
-            for(int j=0;j<Dimension;j++){
-                for(int z=0;z<Dimension;z++){
-                    try {
-                        if(i<=low_site){
-                            Enviroment[j][i][z].set_cellType("Terra");
-                            Enviroment[j][i][z].set_obgect("X");
-                            // System.out.println("set up cord: "+j+"-"+i+"-"+z+" == "+ Enviroment[j][i][z].get_cellType());
-                            }
-                        else{
-                            Enviroment[j][i][z].set_cellType("Air");
-                            // System.out.println("set up cord: "+j+" +-"+i+"-"+z+" == "+ Enviroment[j][i][z].get_cellType());
-                            }
-                    } catch (Exception e) {
+        surface = TerrainGenerator.generate(Dimension, base, Simulation.getSeed(), flatTerrain);
+        waterColumn = new boolean[Dimension][Dimension];
+        int flooded = 0;
+
+        for(int x=0; x<Dimension; x++){
+            for(int z=0; z<Dimension; z++){
+                int h = surface[x][z];
+                waterColumn[x][z] = !flatTerrain && h < waterLevel;
+                if(waterColumn[x][z]){ flooded++; }
+                for(int y=0; y<Dimension; y++){
+                    if(y < h){
+                        Enviroment[x][y][z].set_cellType("Terra");
+                        Enviroment[x][y][z].set_obgect("X");
+                    }else if(y < waterLevel){
+                        Enviroment[x][y][z].set_cellType("Water");
+                    }else{
+                        Enviroment[x][y][z].set_cellType("Air");
                     }
                 }
             }
         }
+        terrainVersion++;
+        System.out.println("Terreno: base="+base+" livello acqua="+waterLevel
+                +" colonne allagate="+flooded+" (seed "+Simulation.getSeed()+(flatTerrain?", piatto":"")+")");
         return true;
         
     }
 
     public static int ground_search(){
-        int ground=0;
-        for(int i= 0;i<Dimension;i++){
-            System.out.println("check cord: 0-"+i+"-0 == "+check_cord_type(0,i,0));
-            if(check_cord_type(0,i,0).equals("Air")){
-                break;
-            }
-            ground++;
-        }
-        System.out.println("ground trove: "+ground);
-        return ground;
+        return ground.get();
     }    
 
     public static String check_cord_type(int x,int y, int z){
@@ -256,7 +294,7 @@ public class world {
 
     private static class cell{
         private int[] cordinate = new int[3]; //x,y,z
-        private int[] type = {0,0,0}; //entità, oggetti, tipo di blocco
+        private int[] type = {0,0,0}; //entità, oggetti, tipo di blocco (0 aria, 1 terra, 2 acqua)
         
         public cell(int x, int y, int z){
             cordinate[0] = x; //enviroment [x][][]
@@ -264,9 +302,10 @@ public class world {
             cordinate[2] = y; //enviroment [][x][]
         }
 
-        private  void set_cellType(String tipo){//aria/ground
+        private  void set_cellType(String tipo){//aria/terra/acqua
             if(tipo.equals("Air")){type[2] = 0;}
             else if(tipo.equals("Terra")){type[2] = 1;}
+            else if(tipo.equals("Water")){type[2] = 2;}
             
         }
 
@@ -288,6 +327,7 @@ public class world {
 
         private  String get_cellType(){
             if(type[2] == 1){return "Terra";}
+            else if(type[2] == 2){return "Water";}
             else if(type[2] == 0){return "Air";}
             return  "";
         }
