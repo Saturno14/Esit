@@ -84,3 +84,383 @@ Da fare / idee
   4. Problema combattimento/fame su 50x50 ancora aperto.
   5. Provare la GUI con la console che si chiude da sola (mai testata).
   6. Ricreare TODO.md (anche questo e' sparito).
+
+
+----------------------------------------------------------------------
+VOCE DEL 03/10/2026 - CORPO ARTICOLATO (AUTOMA) PER LA LOCOMOZIONE
+----------------------------------------------------------------------
+Obiettivo (richiesta dell'utente)
+- Strutturare il corpo delle entita' come quello di un automa e usare un
+  simulatore fisico (Isaac o simili) per insegnare loro a muoversi. Cosi' si
+  semplificano anche gli urti tra entita', che servono per il sistema di
+  attacchi.
+
+Fatto (FASE A: modello del corpo, senza toccare la logica della simulazione)
+- NUOVO pacchetto simulazione/src/body (src.body), senza dipendenze grafiche:
+  il corpo deve esistere anche in SimRunner. Il pom NON va modificato
+  (simulazione e' gia' una source root).
+    * Automaton.java: 18 link a capsula + 17 giunti anatomici = 25 gradi di
+      liberta' (spine 3, neck 2, shoulder 3x2, elbow 1x2, hip 3x2, knee 1x2,
+      ankle 2x2; testa, mani e dita sono fisse per ora). Massa e inerzia dal
+      volume (densita' 1000 kg/m3), coppie massime euristiche, cinematica
+      diretta pose(angoli, posizione, rotazione).
+    * BodyParams.java: i valori body.* risolti da PhenotypeResolver + crescita
+      (stesse proporzioni di GenomeMeshApplier.applyPhenotype).
+    * Link, Joint, Dof, BodyPose, V3, Rot: tipi di supporto.
+    * BodyCollision.java: collisione capsula-capsula. strike(attaccante,
+      bersaglio, portata) dice QUALE parte del corpo colpisce QUALE parte
+      (es. finger_R -> arm_upper_R). Il controllo a celle puo' restare come
+      broadphase: sono ~18x18 confronti, da fare solo tra entita' vicine.
+    * BodyExport.java: URDF (Z su, X avanti; i giunti sferici diventano 3
+      cerniere in serie con link virtuali; capsula = cilindro + 2 sfere) e
+      JSON con ordine dei gradi di liberta', limiti, coppie e link.
+    * BodyTool.java: genera i file per l'addestramento (corpo medio di
+      riferimento + N corpi da genomi casuali).
+    * BodySelfTest.java: 335 verifiche, tutte superate.
+- entity.java: aggiunto getBody() (con cache, si ricostruisce se cambiano
+  genoma o crescita). Nessun altro cambiamento: la simulazione si comporta
+  come prima (SimRunner seed 42 provato, nessuna regressione).
+
+Come usarlo (da Esit/motore-grafico, dopo "mvn -q compile")
+  java -cp "target\classes;C:\Users\anton\.m2\repository\org\json\json\20240303\json-20240303.jar" src.body.BodySelfTest
+  java -cp "target\classes;C:\Users\anton\.m2\repository\org\json\json\20240303\json-20240303.jar" src.body.BodyTool <cartellaOut> [N=20] [seed=1]
+  (BodyTool scrive esit_reference.urdf/.json e esit_genome_NNN.urdf/.json)
+
+Verifiche fatte
+- Cinematica Java confrontata con yourdfpy (implementazione indipendente)
+  sull'URDF esportato: 8 pose casuali, 18 link, errore massimo 6e-16 m.
+  Quindi URDF e modello Java descrivono lo STESSO corpo; l'ordine dei 25 gdl
+  e' identico nel JSON e nell'URDF.
+- Formule d'inerzia della capsula confrontate con un calcolo Monte Carlo.
+- 200 genomi casuali: nessun NaN, masse e coppie sempre valide.
+
+CONTRATTO con la policy di locomozione (non cambiare senza riaddestrare)
+- Ordine dei gdl = Automaton.dofs() = campo "dofs" del JSON.
+- Angoli in radianti, regola della mano destra attorno all'asse del gdl.
+  Convenzioni: anca/spalla angolo NEGATIVO = braccio/gamba in avanti;
+  ginocchio positivo = piega, gomito negativo = piega; lato "L" a X negativo
+  (come il vecchio BoneRig).
+- Unita' SI. Posa di riposo = tutti gli angoli a 0: braccia lungo i fianchi,
+  gambe dritte, piedi piatti.
+
+Cose da sapere / possibili trappole
+- NON ho scritto ne' provato nulla di Isaac: qui non ho GPU e non ho
+  verificato le API della versione che avrai. Isaac Sim/Lab richiede una GPU
+  NVIDIA RTX; senza, lo stesso URDF funziona con MuJoCo/PyBullet/Genesis.
+- Le coppie massime sono EURISTICHE (2.5 x peso del sottoalbero x braccio):
+  da calibrare in addestramento. I limiti articolari sono valori ragionevoli
+  da umanoide, non misurati.
+- GenomeMeshApplier/BoneRig (grafica) NON usano ancora il nuovo corpo: hanno
+  duplicate le stesse proporzioni, e il rig visivo tiene le braccia aperte
+  (posa a T) mentre l'automa le tiene giu'. Va fatto passare la mesh da
+  Automaton (fase C) per avere una sola fonte di verita'.
+- Discrepanza gia' presente: la crescita grafica arriva a 200 tick
+  (GenomeMeshApplier.MATURITY_AGE), ma entity.MATURITY_AGE e' 100. BodyParams
+  usa 200 come la grafica; da decidere quale e' giusto.
+- Un corpo fisico con 25 gdl per OGNI entita' dentro il motore Java a x500 e'
+  probabilmente troppo pesante: la scelta tra fisica reale in tempo reale e
+  andatura addestrata riprodotta in modo cinematico e' ANCORA APERTA (vedi
+  sotto).
+
+Da fare / prossime fasi
+  B. Addestramento: task di locomozione (comando di velocita' vx, vz, imbardata;
+     osservazioni: gravita' nel frame del corpo, velocita' del bacino, angoli e
+     velocita' dei gdl, ultima azione, parametri del corpo; azione: angoli
+     target PD per i 25 gdl). Domain randomization sulle proporzioni usando gli
+     URDF di BodyTool, cosi' UNA policy vale per tutti i genomi. Export dei pesi
+     in JSON per far girare la rete in Java puro (come NeuralNetwork).
+  C. Far derivare la mesh da Automaton (BoneRig/GenomeMeshApplier) e animarla
+     con gli angoli dei giunti.
+  D. Mondo continuo + attacco con BodyCollision.strike al posto di
+     "cella adiacente" in entity.attack(); danno legato a quale parte colpisce
+     e a quanto veloce si muove. Questo cambia il bilanciamento: da
+     ricontrollare l'estinzione (problema combattimento/fame ancora aperto).
+  E. Restano aperte le voci del 29/09 (perche' mangiano poco, trigger della
+     cattura, piu' seed, GUI, TODO.md).
+
+
+----------------------------------------------------------------------
+VOCE DEL 03/10/2026 (2) - CORPO COMPLETAMENTE MUTABILE
+----------------------------------------------------------------------
+Richiesta: togliere la limitazione degli alleli per il corpo. Il corpo deve
+poter cambiare tutto: giunti spostati o spariti, da umanoide a serpente (senza
+arti) o con un terzo braccio/gamba. Questa voce SUPERA la voce precedente (1)
+dove dice che il corpo e' una forma fissa con 8 proporzioni.
+
+Decisione di design
+- Il corpo NON e' piu' fatto di alleli [0,1]. Nuova classe BodyPlan
+  (simulazione/src/genetics/BodyPlan.java): un albero di segmenti. Ogni segmento
+  ha lunghezza, raggio, direzione, punto di attacco sul genitore (frazione + scarto
+  laterale), scostamento della capsula e 0-3 cerniere (asse + limiti). 0 cerniere =
+  giunto fisso. Un segmento con id uguale in due genitori e' lo stesso segmento
+  ereditato.
+- Mutazioni (BodyPlan.mutate, frequenze in BodyPlan.MutationRates):
+  variazione continua di tutto (misure, attacco, orientamento, assi e limiti),
+  aggiungere un segmento (catena o ramo), togliere un arto intero, DUPLICARE un
+  arto (anche specchiato: nasce il terzo braccio), spostare un arto su un altro
+  genitore, cambiare il tipo di giunto (aggiungere/togliere cerniere).
+- Crossover (BodyPlan.cross) stile NEAT: segmenti con lo stesso id vengono fusi, quelli
+  presenti in un solo genitore passano con probabilita' 1/2 se il loro genitore
+  sopravvive. Tra corpi senza antenati comuni cade circa meta' dei segmenti.
+
+Fatto
+- Genome ora porta il piano del corpo (campo "body" nel JSON). bodyPlan(schema)
+  lo restituisce; i SALVATAGGI VECCHI (senza "body") vengono letti e ricostruiti
+  umanoidi dagli alleli body.*. reproduce() fa cross + mutate. Frequenze:
+  Genome.BODY_MUTATION (volatile; BodyPlan.MutationRates.NONE per spegnere,
+  DEFAULT di base: circa 4% aggiunta, 4% rimozione, 3% duplicazione per nascita).
+- Automaton.fromPlan(piano, crescita) costruisce qualsiasi corpo. humanoid() e'
+  ora fromPlan(BodyPlan.humanoid(..)): verificato IDENTICO a prima (istantanea di 30
+  corpi, 1953 righe, differenza 0).
+- entity.getBody() usa il piano del genoma.
+- BodyCollision.strike(attaccante, parti_colpitrici, bersaglio, portata): le parti
+  che colpiscono sono Automaton.extremities() (link senza figli), non piu' i nomi
+  umanoidi; vale per serpente (coda, testa) e per arti in piu'.
+- GRAFICA (fase C): GenomeMeshApplier genera la mesh dai link di Automaton, quindi
+  la forma che si vede e' quella reale. Compilato qui con JOML ma NON provato in
+  OpenGL ne' con Maven: va provato lanciando avvia.bat. Bone/BoneRig non sono piu'
+  usati (non cancellati). La posa di riposo ha le braccia lungo i fianchi (prima
+  aperte a T): l'aspetto cambia.
+- BodyTool ora scrive: umanoide di riferimento, serpente e N corpi evoluti
+  (parametri: cartella N seed generazioni).
+- Test: BodyPlanTest 2421 verifiche (serpente, senza arti, terzo braccio, specchio
+  speculare, JSON, salvataggi vecchi, 800 corpi evoluti con mutazioni molto forti,
+  determinismo) e BodySelfTest 335, tutte superate.
+- URDF di 14 corpi (anche strani) caricati da yourdfpy: cinematica Java uguale entro
+  2.4e-10 m, cilindri allineati. Scrittura URDF portata a 10 decimali (con 6 con assi
+  arbitrari l'errore saliva a 3e-6 m).
+- Simulazione reale (seed 42, 6000 tick): dalla generazione 1 compaiono corpi con
+  15, 16, 19, 20 segmenti, uno senza una gamba; nessun errore.
+
+Limiti rimasti (solo sanita' numerica, non di design; modificabili in BodyPlan)
+- lunghezze 1 cm - 12 m, raggi 4 mm - 3 m, angoli dei giunti +-3.3 rad, massimo 3
+  cerniere per giunto, tetto di 64 segmenti per corpo (MutationRates.maxSegments).
+
+ATTENZIONE / cose da sapere
+- Il corpo NON influenza ancora la sopravvivenza: stat, cervello e azioni non
+  dipendono dalla morfologia. Quindi le mutazioni del corpo sono NEUTRE (deriva senza
+  selezione): non emergeranno corpi "migliori" finche' massa, portata, numero di
+  arti ecc. non entrano in stat/azioni/locomozione.
+- I geni body.* (le 8 proporzioni) nello schema servono ORA SOLO a seminare i
+  fondatori; nei discendenti il corpo non dipende piu' da loro (geni morti).
+  body.skin_hue vale ancora. Da rimuovere con aumento di schemaVersion.
+- withDuplicatedSubtree e' una copia esatta (senza specchio coincide con
+  l'originale finche' una mutazione non la sposta); la mutazione casuale aggiunge
+  un piccolo scarto.
+- Specchio: l'asse di una cerniera specchiata diventa (ax,-ay,-az) con gli stessi
+  limiti (verificato: stessi angoli = movimento speculare).
+
+CAMBIA IL PIANO DI ADDESTRAMENTO (supera la "Fase B" della voce 1)
+- Il numero e i nomi dei gradi di liberta' ora DIPENDONO dal corpo (da 0 a ~40).
+  L'ordine resta quello di Automaton.dofs()/campo "dofs" del JSON, ma e' per
+  corpo: una policy con ingresso/uscita di dimensione fissa NON puo' funzionare.
+  Anche l'idea di una policy unica condizionata sulle 8 proporzioni non basta piu'.
+- Strade per la locomozione (decisione APERTA):
+  a) policy "morphology-agnostic" (stessa rete applicata a ogni giunto con scambio di
+     messaggi tra giunti, GNN/transformer) addestrata in Isaac su topologie casuali
+     generate da BodyPlan.mutate. E' ricerca: generalizza solo in parte a topologie mai
+     viste.
+  b) controllore evoluto insieme al corpo (oscillatori per giunto accoppiati,
+     parametri nel genoma). Si adatta davvero a ogni discendente e costa poco a
+     runtime, ma serve una fitness: simulazioni fisiche offline o in-sim.
+  c) andatura procedurale cinematica per topologia (ondulazione per catene,
+     alternanza per arti a coppie), senza apprendimento.
+- Il costo di fisica reale per ogni entita' resta il problema (vedi voce 1).
+
+Da fare
+  B'. Scegliere la strada di locomozione (a/b/c o una combinazione).
+  D'. Far dipendere stat/azioni dal corpo (massa -> salute, portata -> attacco,
+      numero di estremita' -> ...) cosi' la selezione agisce sulla morfologia; poi
+      attacco con BodyCollision.strike al posto di "cella adiacente".
+  E'. Togliere i geni body.* (tranne skin_hue) con aumento di schemaVersion.
+  F'. Provare la grafica con avvia.bat (mesh nuova) e decidere se cancellare Bone/BoneRig.
+  G'. Restano aperte le voci del 29/09 (mangiano poco, trigger cattura, piu' seed, GUI,
+      TODO.md).
+
+
+----------------------------------------------------------------------
+VOCE DEL 03/10/2026 (3) - LIMITE DI VELOCITA' 50 E PESI DELLE AZIONI (ESTINZIONE)
+----------------------------------------------------------------------
+Decisioni dell'utente: usare il sistema dei controllori (moduli neurali nel BodyPlan);
+costo fisico risolto con velocita' massima 50; rischio di estinzione iniziale da
+affrontare aumentando i pesi di mangiare e riproduzione e riducendo il sonno.
+
+Fatto
+- Simulation.MAX_TIME_SCALE = 50: setTimeScale limita a 0.1-50 (console "speed" e
+  SimRunner compresi; SimRunner di default usa 50). A x50 un tick dura almeno 10 ms
+  (circa 100 tick/s). Verificato: richiesto 500 -> 50.
+- ActionWeights.java: i pesi (ricompense in Netreward e istinti delle fondatrici) sono
+  ora in un solo posto, con due profili: balanced() (in uso) e legacy() (valori di prima).
+  entity.java li legge da li'. I campi sono volatili.
+- Experiment.java (src.Experiment): cassa di prova SENZA attese del ritmo reale, una
+  simulazione per processo, argomenti: profilo seed tick campo=valore,... Con il tetto a 50
+  SimRunner e' troppo lento per confronti; Experiment fa 6000 tick in circa 7 s.
+
+RISULTATI DELLE MISURE (12 seed x 6000 tick; "finestra" = media vivi tra tick 3000 e 6000)
+  base (valori di prima)             0/12 estinzioni, vivi finali 4.6, finestra 12.9, nascite 44
+  TUTTO il profilo richiesto         3/8 estinzioni, vivi finali 1.5, finestra 6.2 -> PEGGIORA
+  solo ricompensa mangiare x2        neutro
+  solo ricompensa riproduzione x2    neutro / appena positivo (5.9, 14.5)
+  solo ricompensa sonno ridotta      neutro (5.0, 13.6)
+  solo peso istinto mangia 8->12     neutro
+  solo bias riposo 3->1.5            neutro / appena positivo
+  solo mateBias -9 -> -6             DANNOSO: 2/12 estinzioni, vivi 1.7, bere 9% -> 24%
+  sottoinsieme sicuro (tutto tranne mateBias)   1/12 estinzioni, 4.3, 13.5: INDISTINGUIBILE dalla base
+- Quindi balanced() = profilo richiesto SENZA mateBias. Effetto misurabile sulla
+  sopravvivenza: nullo (non peggiora, non migliora). Il cervello rimodella i pesi
+  durante la vita e annulla gran parte di questi ritocchi.
+
+SCOPERTA: ERRORE DI CABLAGGIO IN seedInstincts (NON corretto)
+- I neuroni dello strato 1 sono nell'ordine: 4 mosse, MANGIA, BEVI, RIPOSA, RIPRODUCI.
+  L'elenco delle uscite e' {1,2,3,4,5,7,8,9} cioe' mosse, MANGIA, DORMI, RIPRODUCI, BEVI.
+  Risultato: il neurone "bevi" fa DORMIRE, il neurone "riposa" fa RIPRODURRE, il neurone
+  "riproduci" fa BERE. Probabile causa: quando e' stata aggiunta l'azione bevi (9) il neurone
+  e' stato inserito in quarta posizione ma l'elenco delle uscite non e' stato aggiornato.
+  Spiega perche' mateBias cambia il bere e perche' le fondatrici dormono il 70% del tempo.
+- Correggerlo da solo (uscite {1,2,3,4,5,9,7,8}) PEGGIORA TUTTO: 12/12 estinzioni, bere 67%
+  delle azioni. Motivo: il resto del bilanciamento si e' assestato intorno all'errore.
+  drink() costa 1 di stamina e da' +3 di ricompensa ogni volta che la sete non e' al massimo,
+  qualunque sia il bisogno; con il cablaggio giusto le entita' restano a bere vicino all'acqua.
+- Con cablaggio corretto + bere guidato dal bisogno (peso sete -6 -> -20, ricompensa
+  6 * (1 - sete/MAX)) le estinzioni scendono a 2/12 e le nascite salgono da 44 a 115 (la
+  riproduzione passa da 6% a 24% delle azioni), ma la popolazione finale resta bassa (2.0) e
+  i combattimenti salgono (55 morti contro 17). Un istinto di avvicinamento ai possibili
+  partner (peso 2, 4, 6 sulle direzioni verso entita' visibili) NON aiuta (3-6/12 estinzioni).
+- Dinamica di fondo: la popolazione cala da ~80 a ~5 in 6000 tick perche' le nascite (44 in
+  tutto, tutte entro ~2000 tick) sono meno delle morti (85 fame + 17 combattimento). Morire di
+  fame avviene in una finestra di eta' stretta (circa 1200-1300 azioni): sospetto
+  l'invecchiamento (applyAgeDrift) piu' che la scarsita' di mele (le mele restano al massimo, 375).
+  NON verificato.
+
+Da fare (estinzione)
+  E1. Capire il vero limite: verificare se la morte per fame a ~1250 azioni e' invecchiamento
+      (applyAgeDrift), e perche' le entita' mangiano solo il 2% delle azioni con 375 mele.
+  E2. Correggere il cablaggio insieme a un nuovo bilanciamento del bere (e di dormire), non
+      da solo; misurare con src.Experiment su almeno 12 seed prima e dopo.
+  E3. Le nascite si fermano quando il numero di individui scende: studiare la ricerca del
+      partner (PARTNER_RANGE = 3) e il costo di riprodursi (40 cibo).
+
+Prossimo passo per il corpo (approvato): moduli neurali per segmento dentro BodyPlan
+(controllore evoluto insieme al corpo, con propriocezione), poi il prototipo di misura della
+fisica (Jolt, benchmark a 1/10/70 corpi). Non iniziato in questa voce.
+
+
+----------------------------------------------------------------------
+VOCE DEL 03/10/2026 (4) - ESTINZIONE: MASCHERA DELLE AZIONI E ISTINTI NUOVI
+----------------------------------------------------------------------
+Richiesta: "sistema tutto ed esegui un test". Interpretata come: risolvere i problemi di
+estinzione trovati nella voce (3) e misurare con src.Experiment. Questa voce corregge
+anche affermazioni sbagliate della voce (3).
+
+CORREZIONI ALLA VOCE (3)
+- NON e' invecchiamento: applyAgeDrift e' rumore simmetrico sulle stat, non uccide in modo
+  sistematico. Il valore "1250 azioni" veniva da una sola entita': la mediana reale di morte
+  per fame nei valori originali e' 446 azioni.
+- Il contatore "morti(fame/combattimento)" mette in "combattimento" TUTTO cio' che non e'
+  fame, SETE compresa (Simulation, riga con startsWith("fame")). Le cause vere (12 seed):
+  valori originali: fame 83%, sete 15%, uccisi 2%.
+- Il neurone "bevi" scattava appena c'era acqua in vista, ma drink() funziona solo da
+  adiacenti all'acqua e la rete non ne aveva l'informazione (l'ingresso "qui acqua" valeva
+  solo per la cella occupata). Le entita' restavano a "bere" a vuoto fino a morire di sete.
+- Trappola vista in una traccia: un'entita' adiacente all'acqua spingeva per muoversi VERSO
+  l'acqua (cella non percorribile): la mossa fallisce senza costo e si ripete all'infinito.
+- Ogni istinto che non si puo' soddisfare diventa un ciclo infinito (bere a distanza, riprodursi
+  senza partner: 43% delle azioni). Correggere un istinto alla volta scopre la trappola successiva.
+
+COSA E' STATO FATTO (profilo ActionWeights.structured(), ora PREDEFINITO)
+1. MASCHERA DELLE AZIONI (entity.feasibleActions): la scelta avviene solo tra le azioni che in
+   quel momento possono riuscire: muoversi solo in celle in griglia e non d'acqua con stamina
+   sufficiente; mangiare solo con cibo/carogna sotto i piedi; bere solo con acqua adiacente;
+   attaccare solo con un vicino, stamina sufficiente e FAME (cibo < 40%, attackHungerMax);
+   riprodursi solo con maturita', cibo, cooldown, spazio in popolazione e partner valido a
+   portata; dormire e stare fermi sempre. Anche l'esplorazione casuale sceglie tra queste.
+2. ISTINTI GRADUATI (entity.seedInstinctsV3): spinte non saturate (strato 2 sigmoid(4*h1-2), uscite
+   sigmoid(8*h2-4)) cosi' le priorita' tra azioni sono vere; CABLAGGIO USCITE CORRETTO
+   ({1,2,3,4,5,9,7,8}); attrazione per mele e acqua modulata da fame e sete; nessuna spinta verso
+   l'acqua se si e' gia' adiacenti; IDLE e ATTACK quasi spente come uscite (nessun istinto).
+3. Vision: l'ingresso "qui acqua" vale ora anche per le 8 celle adiacenti (come drink()); controllato
+   da ActionWeights.hereWaterAdj.
+4. Ricompensa del bere proporzionale alla sete (6 * (1 - sete/MAX)) invece di +3 fissi.
+5. ActionWeights: profili legacy() (originale, compreso il cablaggio sfasato), balanced() (voce 3,
+   effetto nullo) e structured() (in uso). src.Experiment accetta il profilo e campo=valore.
+
+RISULTATI (src.Experiment, stessi seed per tutti i profili)
+  6000 tick, tutti gli attacchi sempre possibili:
+    originale (12 seed)   0 estinzioni, media popolazione su tutta la corsa 36, vivi finali 4.6, nascite 44
+    structured senza limite agli attacchi (11-12 seed)   0 estinzioni, media 125, finali 117-125, nascite 646
+  15000 tick, attacchi sempre possibili (6 seed): SOLO 2 su 6 stabili (~380); 4 su 6 in declino, 2 estinte.
+  15000 tick, ATTACCHI DISATTIVATI (allowAttack=0), seed 2, 4, 5: tutti e 3 stabili a ~380 (prima in declino).
+  Quindi la causa del declino a lungo termine erano gli attacchi (uccisi 61% delle morti, eta' mediana 196).
+  Con attacchi solo se affamati (attackHungerMax=0.4, ATTUALE):
+    6000 tick, 7 seed completi: 0 estinzioni, media su tutta la corsa 231, vivi finali 342, nascite 1065
+    (12 seed era il piano: la corsa e' stata interrotta dal tempo, solo i primi 7 completi)
+    cause di morte (12 seed incompleti): fame 50%, uccisi 45%, sete 6%
+    15000 tick: seed 2, 3, 4, 5, 6, 7 non crollano (~375-392; 2 e 7 osservati fino a 12000 tick)
+- Non e' una dimostrazione di stabilita' per sempre: 15000 tick su 6 seed, nessuna corsa piu' lunga.
+
+COSA NON E' STATO VERIFICATO / LIMITI
+- Il valore ~380 sembra una saturazione (apple 375 e/o maxPopulation): NON controllato. Con la popolazione
+  alla saturazione la selezione e' debole.
+- Le corse con ~380 entita' sono lente (30-50 s per 6000-15000 tick senza pacing): il ritmo reale a x50
+  con 380 entita' NON e' stato provato.
+- La corsa a 6000 tick con attacchi solo da affamati e' su 7 seed, non 12.
+- Mangiare resta circa il 2% delle azioni: la fame e' ancora la prima causa di morte (50%).
+- I pesi addestrati (trained/brains.json, comando "trained on") nascono con la semantica degli ingressi
+  del profilo legacy; con structured() l'ingresso "qui acqua" cambia significato: non provato.
+- GUI / motore grafico non provati con il nuovo profilo.
+- I test sul corpo (335 + 2421) passano; la logica dei profili non ha test automatici, solo le misure.
+
+PROSSIMI PASSI
+  1. Allungare le corse (50000+ tick) e capire se la saturazione a ~380 e' un tetto o una scelta del sistema.
+  2. Perche' mangiano ancora cosi' poco (2%) e muoiono di fame nel 50% dei casi.
+  3. Poi il corpo: moduli neurali nel BodyPlan (voce 2) e prototipo di misura della fisica.
+
+
+----------------------------------------------------------------------
+VOCE DEL 03/10/2026 (5) - ATTACCHI LIBERI (richiesta dell'utente)
+----------------------------------------------------------------------
+Richiesta: togliere la limitazione "attacchi solo per fame"; si deve poter attaccare quando si vuole,
+anche se non ci sono altre entita' nei dintorni.
+
+Fatto
+- Rimosso ActionWeights.attackHungerMax e il controllo sul cibo in entity.feasibleActions.
+- Rimosso anche il requisito di un vicino: ATTACK e' sempre possibile con stamina sufficiente
+  (ActionWeights.allowAttack resta come interruttore da esperimento, predefinito 1). Senza
+  bersaglio attack() fa un colpo a vuoto (-1 di ricompensa), gia' gestito.
+- Test sul corpo: 335/335 e 2421/2421.
+
+CONSEGUENZE MISURATE (src.Experiment, profilo structured)
+- 6000 tick, 8 seed: nessuna estinzione ma risultato BIMODALE, vivi finali
+  [377, 80, 375, 8, 99, 11, 376, 32]; media su tutta la corsa 159; cause di morte: uccisi 66%,
+  fame 31%, sete 3%.
+- 15000 tick, seed 4, 5, 6, 8 (quelli bassi a 6000): TUTTI ESTINTI, ai tick 8971, 9121, 10474 e 14130.
+  Seed 1, 3, 7 saturano a ~376 (osservati a 6000 tick; 3 e 7 stabili fino a 15000 e 12000 con il
+  limite di fame, NON riverificati con attacchi liberi oltre 6000).
+- Confronto: con attacchi solo se affamati (cibo < 40%) i seed 2, 3, 4, 5, 6, 7 restavano stabili a 15000
+  tick. Era quel limite a evitare il crollo. Senza di esso, la popolazione crolla in 4 seed su 4 tra quelli
+  bassi.
+- Non misurato: l'effetto di altre contromisure (danno minore, stamina d'attacco maggiore, penalita'
+  per il colpo a vuoto, regole sociali) che non fissano un limite sull'azione.
+
+Da decidere / fare
+  - Se l'estinzione con attacchi liberi e' accettabile o va controbilanciata in altro modo
+    (costo dell'attacco, danno, penalita', ricompense di cibo da cadavere, ecc.).
+  - Le corse sono: 8 seed a 6000 tick e 4 seed a 15000; non e' una statistica ampia.
+
+
+----------------------------------------------------------------------
+VOCE DEL 03/10/2026 (6) - AGGIORNAMENTO APPLICATO ALLA CARTELLA DEL PROGETTO
+----------------------------------------------------------------------
+- Su richiesta dell'utente ("applica questa modifica", "continua a lavorare nella cartella del
+  progetto") tutte le voci (1)-(5) sono state scritte direttamente in questa cartella: 24 file
+  (8 modificati, 16 nuovi). Prima e' stato fatto un backup completo in
+  Claude_Workspace/Esit_backup_20261003 (la cartella non e' un repository git).
+- I 8 file modificati coincidevano con la versione GitHub (controllato con confronto normalizzato
+  rispetto ai fine riga) prima di essere sovrascritti.
+- Nella radice di Claude_Workspace e' rimasto un file temporaneo _hash.ps1 (non serve: si puo' cancellare).
+- NON e' stato lanciato "mvn compile" su questa macchina: i file sono gli stessi che compilano con javac nell'ambiente
+  di sviluppo di Claude (corpo 335 + 2421 test superati) e la grafica (GenomeMeshApplier) e' stata compilata
+  con JOML ma mai eseguita in OpenGL. Primo passo consigliato: "mvn -q compile" da Esit/motore-grafico, poi
+  src.body.BodySelfTest e src.body.BodyPlanTest, poi avvia.bat per vedere la nuova mesh.
+- Stato predefinito della simulazione: profilo ActionWeights.structured() con ATTACCHI LIBERI, che a lungo
+  termine (15000 tick) porta all'estinzione in 4 seed su 4 tra quelli bassi (voce 5).

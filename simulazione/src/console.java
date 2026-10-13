@@ -155,7 +155,7 @@ public class console{
                         Simulation.setTimeScale(scale);
                         out = "Velocita' simulazione: x"+Simulation.getTimeScale();
                     } catch (Exception e) {
-                        out = "Uso: speed <fattore>  (attuale: x"+Simulation.getTimeScale()+")";
+                        out = "Uso: speed <fattore 0.1-"+(int)Simulation.MAX_TIME_SCALE+">  (attuale: x"+Simulation.getTimeScale()+")";
                     }
                     break;
                 case "seed":

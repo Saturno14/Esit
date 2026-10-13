@@ -19,7 +19,7 @@ public class SimRunner {
     public static void main(String[] args) throws Exception {
         long seed = args.length > 0 ? Long.parseLong(args[0]) : 42;
         long ticks = args.length > 1 ? Long.parseLong(args[1]) : 3000;
-        double scale = args.length > 2 ? Double.parseDouble(args[2]) : 200;
+        double scale = args.length > 2 ? Double.parseDouble(args[2]) : Simulation.MAX_TIME_SCALE;
         boolean saveLoad = false;
         int trainMaxFood = 0;
         for (int i = 3; i < args.length; i++) {

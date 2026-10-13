@@ -115,8 +115,14 @@ public class Simulation {
         deathsKilled = 0;
     }
 
+    /**
+     * Velocita' massima della simulazione. Il tetto lascia a ogni tick abbastanza tempo per la fisica dei
+     * corpi (TICK_MS / 50 = 10 ms per tick); con la fisica attiva il limite ha senso tenerlo basso.
+     */
+    public static final double MAX_TIME_SCALE = 50.0;
+
     public static void setTimeScale(double scale) {
-        timeScale = Math.max(0.1, Math.min(200.0, scale));
+        timeScale = Math.max(0.1, Math.min(MAX_TIME_SCALE, scale));
     }
 
     public static double getTimeScale() {

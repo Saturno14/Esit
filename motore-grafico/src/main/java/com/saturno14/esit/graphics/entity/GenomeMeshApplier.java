@@ -1,25 +1,24 @@
 package com.saturno14.esit.graphics.entity;
 
-import com.saturno14.esit.graphics.entity.skeleton.Bone;
-import com.saturno14.esit.graphics.entity.skeleton.BoneRig;
 import src.genetics.Genome;
 import src.genetics.GenomeSchema;
 import src.genetics.PhenotypeResolver;
 import com.saturno14.esit.graphics.mesh.MeshData;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Applica il fenotipo (valori body.* gia' risolti da PhenotypeResolver, MAI il genoma letto
- * direttamente) al BoneRig e genera la mesh procedurale dell'entita': ogni bone diventa un
- * ellissoide allungato lungo il proprio asse, trasformato nello spazio mondo del rig e
- * unito in un'unica MeshData. Nessuna formula di genetica hardcoded qui dentro.
+ * Genera la mesh procedurale dell'entita' dal suo corpo articolato (src.body.Automaton, costruito dal
+ * piano del corpo del genoma): ogni link diventa un ellissoide allungato lungo il proprio asse, nello
+ * spazio mondo, e tutto viene unito in un'unica MeshData. La struttura del corpo e' libera (umanoide,
+ * serpente, arti in piu'...) e la mesh la segue; il colore dipende ancora da body.skin_hue.
  *
- * La crescita con l'eta' (growthFactor) e' un meccanismo del motore grafico, non del
- * genoma: scala uniformemente tutte le lunghezze/spessori gia' risolti.
+ * La crescita con l'eta' (growthFactor) scala uniformemente tutte le misure del corpo.
+ * Bone/BoneRig (skeleton/) non sono piu' usati qui.
  */
 public class GenomeMeshApplier {
 
@@ -29,23 +28,31 @@ public class GenomeMeshApplier {
     private static final int MATURITY_AGE = 200;
     private static final float BABY_SCALE = 0.35f;
 
+    /**
+     * Mesh del corpo: un ellissoide per ogni link dell'automa dell'entita' (src.body.Automaton), costruito
+     * dal suo piano del corpo. Cosi' la forma che si vede e' la stessa usata da fisica e collisioni, qualunque
+     * sia la struttura (umanoide, serpente, arti in piu'...). Posa di riposo: tutti gli angoli a zero.
+     */
     public static MeshData generateBody(Genome genome, GenomeSchema schema, int age) {
-        float growth = growthFactor(age);
-
-        BoneRig rig = BoneRig.buildHumanoid();
-        applyPhenotype(rig, genome, schema, growth);
+        src.body.Automaton body = src.body.Automaton.fromPlan(genome.bodyPlan(schema), growthFactor(age));
+        src.body.BodyPose pose = body.pose(null, src.body.V3.ZERO, src.body.Rot.IDENTITY);
 
         List<Float> positions = new ArrayList<>();
         List<Float> normals = new ArrayList<>();
         List<Integer> indices = new ArrayList<>();
 
-        for (Bone bone : rig.getBones()) {
-            if (bone.length <= 0f) continue;
-            appendBoneEllipsoid(bone, positions, normals, indices);
+        for (src.body.Link link : body.links()) {
+            src.body.BodyPose.LinkPose lp = pose.get(link.name);
+            src.body.V3 start = lp.origin().add(lp.rot().apply(link.start()));
+            src.body.V3 dir = lp.rot().apply(link.dir);
+            Matrix4f world = new Matrix4f()
+                    .translate((float) start.x(), (float) start.y(), (float) start.z())
+                    .rotate(new Quaternionf().rotationTo(new Vector3f(0, 1, 0),
+                            new Vector3f((float) dir.x(), (float) dir.y(), (float) dir.z())));
+            appendEllipsoid(world, (float) link.radius, (float) link.length, positions, normals, indices);
         }
 
-        // Le gambe ora scendono sotto il bacino: traslo il corpo in modo che il punto piu' basso
-        // (piedi) stia a y = 0, cosi' l'entita' poggia sul terreno invece di affondarci.
+        // Il punto piu' basso del corpo sta a y = 0, cosi' l'entita' poggia sul terreno invece di affondarci.
         float minY = Float.MAX_VALUE;
         for (int i = 1; i < positions.size(); i += 3) {
             minY = Math.min(minY, positions.get(i));
@@ -57,49 +64,6 @@ public class GenomeMeshApplier {
         }
 
         return new MeshData(toFloatArray(positions), toFloatArray(normals), toIntArray(indices));
-    }
-
-    private static void applyPhenotype(BoneRig rig, Genome genome, GenomeSchema schema, float growth) {
-        double torso = PhenotypeResolver.resolve("body.torso_scale", genome, schema);
-        double neck = PhenotypeResolver.resolve("body.neck_length", genome, schema);
-        double head = PhenotypeResolver.resolve("body.head_scale", genome, schema);
-        double limbLength = PhenotypeResolver.resolve("body.limb_length", genome, schema);
-        double limbThickness = PhenotypeResolver.resolve("body.limb_thickness", genome, schema);
-        double hand = PhenotypeResolver.resolve("body.hand_length", genome, schema);
-        double finger = PhenotypeResolver.resolve("body.finger_length", genome, schema);
-        double foot = PhenotypeResolver.resolve("body.foot_length", genome, schema);
-
-        rig.setBoneLength("pelvis", (float) torso * 0.15f * growth);
-        rig.setBoneRadius("pelvis", (float) limbThickness * 1.3f * growth);
-
-        rig.setBoneLength("torso", (float) torso * growth);
-        rig.setBoneRadius("torso", (float) limbThickness * 1.3f * growth);
-
-        rig.setBoneLength("neck", (float) neck * growth);
-        rig.setBoneRadius("neck", (float) limbThickness * 0.6f * growth);
-
-        rig.setBoneLength("head", (float) head * growth);
-        rig.setBoneRadius("head", (float) head * 0.5f * growth);
-
-        for (String side : new String[]{"L", "R"}) {
-            rig.setBoneLength("arm_upper_" + side, (float) limbLength * 0.55f * growth);
-            rig.setBoneRadius("arm_upper_" + side, (float) limbThickness * growth);
-            rig.setBoneLength("arm_lower_" + side, (float) limbLength * 0.45f * growth);
-            rig.setBoneRadius("arm_lower_" + side, (float) limbThickness * 0.85f * growth);
-            rig.setBoneLength("hand_" + side, (float) hand * growth);
-            rig.setBoneRadius("hand_" + side, (float) limbThickness * 0.6f * growth);
-            rig.setBoneLength("finger_" + side, (float) finger * growth);
-            rig.setBoneRadius("finger_" + side, (float) limbThickness * 0.35f * growth);
-
-            rig.setBoneLength("leg_upper_" + side, (float) limbLength * 0.55f * growth);
-            rig.setBoneRadius("leg_upper_" + side, (float) limbThickness * 1.2f * growth);
-            rig.setBoneLength("leg_lower_" + side, (float) limbLength * 0.45f * growth);
-            rig.setBoneRadius("leg_lower_" + side, (float) limbThickness * growth);
-            rig.setBoneLength("foot_" + side, (float) foot * growth);
-            rig.setBoneRadius("foot_" + side, (float) limbThickness * 0.7f * growth);
-        }
-
-        rig.rebuild();
     }
 
     /** 0 alla nascita, 1 a maturita': meccanismo del motore, indipendente dal genoma. */
@@ -132,13 +96,12 @@ public class GenomeMeshApplier {
         return new Vector3f(1 - sat + sat * r, 1 - sat + sat * g, 1 - sat + sat * b);
     }
 
-    private static void appendBoneEllipsoid(Bone bone, List<Float> positions, List<Float> normals,
-                                             List<Integer> indices) {
-        float radius = Math.max(bone.radius, 0.01f);
-        float halfLength = Math.max(bone.length, 0.01f) * 0.5f;
+    private static void appendEllipsoid(Matrix4f world, float boneRadius, float boneLength, List<Float> positions,
+                                         List<Float> normals, List<Integer> indices) {
+        float radius = Math.max(boneRadius, 0.01f);
+        float halfLength = Math.max(boneLength, 0.01f) * 0.5f;
 
         int indexOffset = positions.size() / 3;
-        Matrix4f world = bone.getWorldTransform();
 
         for (int lat = 0; lat <= LAT_SEGMENTS; lat++) {
             float theta = (float) Math.PI * lat / LAT_SEGMENTS;

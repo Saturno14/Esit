@@ -83,6 +83,17 @@ public final class Vision {
             }
         }
 
+        // Acqua adiacente (o sotto i piedi): e' la condizione reale per bere (vedi entity.drink())
+        if (ActionWeights.hereWaterAdj > 0) {
+            for (int dx = -1; dx <= 1; dx++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    int x = px + dx, z = pz + dz;
+                    if (x < 0 || x >= dim || z < 0 || z >= dim) continue;
+                    if (world.isWaterColumn(x, z)) here[CAT_WATER] = 1.0;
+                }
+            }
+        }
+
         double[] out = new double[SIZE];
         int idx = 0;
         for (int cat = 0; cat < CATEGORIES; cat++) {

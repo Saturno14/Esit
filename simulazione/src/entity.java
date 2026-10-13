@@ -255,6 +255,27 @@ public class entity {
     public Genome getGenome(){ return genome; }
     public EntityStats getStats(){ return stats; }
     public static GenomeSchema getSchema(){ return SCHEMA; }
+
+    // ------------------------------------------------------------------ corpo articolato
+
+    // Cache del corpo: si ricostruisce solo se cambia il genoma o la fase di crescita (letto anche dal thread grafico).
+    private volatile src.body.Automaton body;
+    private volatile Genome bodyGenome;
+    private volatile int bodyGrowthKey = -1;
+
+    /** Corpo articolato (automa) dell'entita': costruito dal suo piano del corpo (struttura mutabile), scalato dalla crescita. */
+    public src.body.Automaton getBody(){
+        Genome g = genome;
+        int key = src.body.BodyParams.growthKey(age);
+        src.body.Automaton b = body;
+        if(b == null || bodyGenome != g || bodyGrowthKey != key){
+            b = src.body.Automaton.fromPlan(g.bodyPlan(SCHEMA), src.body.BodyParams.growthFactor(age));
+            body = b;
+            bodyGenome = g;
+            bodyGrowthKey = key;
+        }
+        return b;
+    }
     public boolean isAlive(){ return life.get(); }
     public double getNetreward(){return Netreward;}
     public int getFoodConsumed(){ return consumedFood; }
@@ -290,6 +311,10 @@ public class entity {
         int hereCorpse = hereBase + Vision.CAT_CORPSE;
         int inFood = self + 1, inThirst = self + 2, inStamina = self + 3, inMature = self + 6;
 
+        if(ActionWeights.seedVersion >= 3){
+            seedInstinctsV3(aBase, wBase, eBase, hereBase, hereApple, hereCorpse, inFood, inThirst, inStamina, inMature);
+            return;
+        }
         // Strato 1: 9 neuroni dedicati (4 direzioni verso mele/acqua, mangia, bevi, dormi, riproduci)
         int[][] moveSectors = {{3, 4}, {7, 0}, {5, 6}, {1, 2}}; // +x, -x, +z, -z
         for(int d = 0; d < 4; d++){
@@ -301,8 +326,8 @@ public class entity {
             setNeuron(0, d, w, -1);
         }
         double[] eat = new double[INPUT_SIZE];
-        eat[hereApple] = 8;
-        eat[hereCorpse] = 8;
+        eat[hereApple] = ActionWeights.eatNeuronWeight;
+        eat[hereCorpse] = ActionWeights.eatNeuronWeight;
         setNeuron(0, 4, eat, -4);
         double[] drinkN = new double[INPUT_SIZE];
         for(int s = 0; s < Vision.SECTORS; s++){ drinkN[wBase + s] = 6; }
@@ -310,12 +335,12 @@ public class entity {
         setNeuron(0, 5, drinkN, -1);
         double[] rest = new double[INPUT_SIZE];
         rest[inStamina] = -8;
-        setNeuron(0, 6, rest, 3);
+        setNeuron(0, 6, rest, ActionWeights.restBias);
         double[] mate = new double[INPUT_SIZE];
         mate[inFood] = 4;
         mate[inMature] = 4;
         for(int s = 0; s < Vision.SECTORS; s++){ mate[eBase + s] = 2; }
-        setNeuron(0, 7, mate, -9);
+        setNeuron(0, 7, mate, ActionWeights.mateBias);
 
         // Strato 2: ogni neurone dedicato ripete il corrispondente dello strato 1
         for(int j = 0; j < 8; j++){
@@ -331,6 +356,58 @@ public class entity {
             w[j] = j < 4 ? 10 : 12;
             setNeuron(2, outputs[j], w, -6);
         }
+        bestBrain = Brain.copy();
+    }
+
+    /** Istinti v3: spinte graduate (niente saturazione) cosi' le priorita' tra le azioni sono vere. */
+    private void seedInstinctsV3(int aBase, int wBase, int eBase, int hereBase, int hereApple, int hereCorpse,
+                                 int inFood, int inThirst, int inStamina, int inMature){
+        int[][] moveSectors = {{3, 4}, {7, 0}, {5, 6}, {1, 2}}; // +x, -x, +z, -z
+        for(int d = 0; d < 4; d++){
+            double[] w = new double[INPUT_SIZE];
+            for(int s : moveSectors[d]){
+                w[aBase + s] = ActionWeights.n_moveGain;
+                w[wBase + s] = ActionWeights.n_moveGain;
+            }
+            w[inFood] = ActionWeights.n_moveFood;
+            w[inThirst] = ActionWeights.n_moveThirst;
+            w[hereBase + Vision.CAT_WATER] = ActionWeights.n_moveHereWater;
+            setNeuron(0, d, w, ActionWeights.n_moveBias);
+        }
+        double[] eat = new double[INPUT_SIZE];
+        eat[hereApple] = ActionWeights.n_eatGain;
+        eat[hereCorpse] = ActionWeights.n_eatGain;
+        eat[inFood] = ActionWeights.n_eatFood;
+        setNeuron(0, 4, eat, ActionWeights.n_eatBias);
+        double[] drinkN = new double[INPUT_SIZE];
+        for(int s = 0; s < Vision.SECTORS; s++){ drinkN[wBase + s] = ActionWeights.n_drinkGain; }
+        drinkN[hereBase + Vision.CAT_WATER] = ActionWeights.n_drinkHere;
+        drinkN[inThirst] = ActionWeights.n_drinkThirst;
+        setNeuron(0, 5, drinkN, ActionWeights.n_drinkBias);
+        double[] rest = new double[INPUT_SIZE];
+        rest[inStamina] = ActionWeights.n_restGain;
+        setNeuron(0, 6, rest, ActionWeights.n_restBias);
+        double[] mate = new double[INPUT_SIZE];
+        mate[inFood] = ActionWeights.n_mateFood;
+        mate[inMature] = ActionWeights.n_mateMature;
+        for(int s = 0; s < Vision.SECTORS; s++){ mate[eBase + s] = ActionWeights.n_mateEntity; }
+        setNeuron(0, 7, mate, ActionWeights.n_mateBias);
+
+        // Strato 2: h2 = sigmoid(4*h1 - 2)  (spinta graduata tra ~0.12 e ~0.88)
+        for(int j = 0; j < 8; j++){
+            double[] w = new double[BRAIN_TOPOLOGY[1]];
+            w[j] = 4;
+            setNeuron(1, j, w, -2);
+        }
+        // Uscite: out = sigmoid(8*h2 - 4); mosse 1-4, mangia 5, bevi 9, dormi 7, riproduci 8. IDLE e ATTACK quasi spente.
+        int[] outputs = {1, 2, 3, 4, 5, 9, 7, 8};
+        for(int j = 0; j < outputs.length; j++){
+            double[] w = new double[BRAIN_TOPOLOGY[2]];
+            w[j] = 8;
+            setNeuron(2, outputs[j], w, -4);
+        }
+        setNeuron(2, 0, new double[BRAIN_TOPOLOGY[2]], ActionWeights.n_idleBias);
+        setNeuron(2, 6, new double[BRAIN_TOPOLOGY[2]], ActionWeights.n_idleBias);
         bestBrain = Brain.copy();
     }
 
@@ -429,16 +506,64 @@ public class entity {
     }
 
     private int chooseAction(double[] output){
+        boolean mask = ActionWeights.maskActions > 0;
+        boolean[] ok = mask ? feasibleActions() : null;
         if(rng().nextDouble() < EXPLORATION){
-            return rng().nextInt(OUTPUT_SIZE);
+            if(!mask){ return rng().nextInt(OUTPUT_SIZE); }
+            int n = 0;
+            for(boolean f : ok){ if(f){ n++; } }
+            int pick = rng().nextInt(n);
+            for(int i = 0; i < ok.length; i++){
+                if(ok[i] && pick-- == 0){ return i; }
+            }
         }
-        int best = 0;
-        for (int i = 1; i < output.length; i++) {
-            if (output[i] > output[best]) {
+        int best = -1;
+        for (int i = 0; i < output.length; i++) {
+            if(mask && !ok[i]){ continue; }
+            if (best < 0 || output[i] > output[best]) {
                 best = i;
             }
         }
-        return best;
+        return best < 0 ? ACT_IDLE : best;
+    }
+
+    /** Quali azioni, in questo momento, possono davvero riuscire (stessi controlli di perform()). */
+    private boolean[] feasibleActions(){
+        boolean[] ok = new boolean[OUTPUT_SIZE];
+        int x = position[0].get(), y = position[1].get(), z = position[2].get();
+        int dim = world.getDim();
+        ok[ACT_IDLE] = true;
+        ok[ACT_SLEEP] = true;
+        int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        int[] moveActs = {ACT_MOVE_XP, ACT_MOVE_XM, ACT_MOVE_ZP, ACT_MOVE_ZM};
+        for(int d = 0; d < 4; d++){
+            int nx = x + dirs[d][0], nz = z + dirs[d][1];
+            ok[moveActs[d]] = stamina >= MOVE_COST && nx >= 0 && nx < dim && nz >= 0 && nz < dim && !world.isWaterColumn(nx, nz);
+        }
+        ok[ACT_EAT] = stamina >= EAT_COST && ("M".equals(world.getSymbol(x, y, z)) || Simulation.corpseAt(x, y, z) != null);
+        boolean water = false;
+        for(int dx = -1; dx <= 1 && !water; dx++){
+            for(int dz = -1; dz <= 1; dz++){
+                int wx = x + dx, wz = z + dz;
+                if(wx >= 0 && wx < dim && wz >= 0 && wz < dim && world.isWaterColumn(wx, wz)){ water = true; break; }
+            }
+        }
+        ok[ACT_DRINK] = stamina >= 1 && water;
+        // Attaccare e' sempre possibile (con stamina sufficiente): anche senza nessuno nei dintorni, il colpo va a vuoto
+        ok[ACT_ATTACK] = ActionWeights.allowAttack > 0 && stamina >= ATTACK_COST;
+        ok[ACT_REPRODUCE] = stamina >= REPRODUCE_COST && age >= MATURITY_AGE && reproCooldown <= 0 && food >= REPRO_FOOD_MIN
+                && Entity_manager.Entity_count() < Simulation.maxPopulation() && findPartnerNoRandom();
+        return ok;
+    }
+
+    private boolean findPartnerNoRandom(){
+        int x = position[0].get(), y = position[1].get(), z = position[2].get();
+        for(entity o : Entity_manager.snapshotAlive()){
+            if(o == this || o.sex == this.sex || !o.canMate()){ continue; }
+            int[] p = o.getPos();
+            if(p[1] == y && Math.abs(p[0] - x) <= PARTNER_RANGE && Math.abs(p[2] - z) <= PARTNER_RANGE){ return true; }
+        }
+        return false;
     }
 
     private void perform(int action){
@@ -538,7 +663,10 @@ public class entity {
         if(!spend(1)){ return; }
         int old = thirst;
         thirst = Math.min(MAX_THIRST, thirst + 60);
-        if(thirst != old){ Netreward += 3.0; }
+        if(thirst != old){
+            Netreward += ActionWeights.drinkNeedScaled > 0
+                    ? ActionWeights.drinkReward * (1.0 - old / (double) MAX_THIRST) : ActionWeights.drinkReward;
+        }
     }
 
     // ------------------------------------------------------------------ mangiare
@@ -583,7 +711,7 @@ public class entity {
         if(food > maxFood){ food = maxFood; }
         consumedFood++;
         if(oldFood != food){
-            Netreward += 3.0;
+            Netreward += ActionWeights.eatApple;
             applesEaten++; // conta solo le mele che hanno davvero dato cibo
         }
     }
@@ -595,7 +723,7 @@ public class entity {
         if(food > maxFood){ food = maxFood; }
         consumedFood++;
         // Il cibo ottenuto dal corpo e' cio' che si premia (non l'attacco in se')
-        if(oldFood != food){ Netreward += 4.0 * (bite / BITE_MEAT); }
+        if(oldFood != food){ Netreward += ActionWeights.eatCorpse * (bite / BITE_MEAT); }
     }
 
     // ------------------------------------------------------------------ combattimento
@@ -640,9 +768,9 @@ public class entity {
         double need = 1.0 - stamina / stats.maxStamina;
         stamina = Math.min(stats.maxStamina, stamina + stats.maxStamina * SLEEP_REGEN_FRACTION);
         if(need < 0.1){
-            Netreward -= 0.5; // dormire da riposato non serve
+            Netreward += ActionWeights.sleepRestedPenalty; // dormire da riposato non serve
         }else{
-            Netreward += need;
+            Netreward += need * ActionWeights.sleepNeedFactor;
         }
     }
 
@@ -698,8 +826,8 @@ public class entity {
         partner.food -= REPRO_FOOD_COST;
         this.reproCooldown = REPRO_COOLDOWN;
         partner.reproCooldown = REPRO_COOLDOWN;
-        this.Netreward += 20;
-        partner.Netreward += 10;
+        this.Netreward += ActionWeights.reproduceSelf;
+        partner.Netreward += ActionWeights.reproducePartner;
 
         Simulation.queueBirth(child);
         Genealogy.recordBirth(child, this, partner);

@@ -22,11 +22,40 @@ public final class Genome {
     private final Map<String, Allele> genes;
     private final LineageInfo lineage;
     private final int schemaVersion;
+    /** Piano del corpo (morfologia): fuori dal sistema di alleli, quindi senza limiti [0,1]. Puo' essere null nei salvataggi vecchi. */
+    private final BodyPlan body;
 
-    private Genome(Map<String, Allele> genes, LineageInfo lineage, int schemaVersion) {
+    private Genome(Map<String, Allele> genes, LineageInfo lineage, int schemaVersion, BodyPlan body) {
         this.genes = Collections.unmodifiableMap(new LinkedHashMap<>(genes));
         this.lineage = lineage;
         this.schemaVersion = schemaVersion;
+        this.body = body;
+    }
+
+    /**
+     * Piano del corpo di questa entita'. Se il genoma viene da un salvataggio precedente al piano del
+     * corpo, ne ricava uno umanoide dalle proporzioni body.* (nessuna mutazione strutturale ancora subita).
+     */
+    public BodyPlan bodyPlan(GenomeSchema schema) {
+        return body != null ? body : humanoidPlanFromAlleles(this, schema);
+    }
+
+    /** Umanoide con le 8 proporzioni risolte dagli alleli body.*: serve a seminare i fondatori. */
+    private static BodyPlan humanoidPlanFromAlleles(Genome g, GenomeSchema schema) {
+        return BodyPlan.humanoid(
+                PhenotypeResolver.resolve("body.torso_scale", g, schema),
+                PhenotypeResolver.resolve("body.neck_length", g, schema),
+                PhenotypeResolver.resolve("body.head_scale", g, schema),
+                PhenotypeResolver.resolve("body.limb_length", g, schema),
+                PhenotypeResolver.resolve("body.limb_thickness", g, schema),
+                PhenotypeResolver.resolve("body.hand_length", g, schema),
+                PhenotypeResolver.resolve("body.finger_length", g, schema),
+                PhenotypeResolver.resolve("body.foot_length", g, schema));
+    }
+
+    /** Copia di questo genoma con un altro piano del corpo (stessi alleli e lineage). */
+    public Genome withBodyPlan(BodyPlan plan) {
+        return new Genome(genes, lineage, schemaVersion, plan);
     }
 
     public Allele get(String geneId) {
@@ -56,7 +85,8 @@ public final class Genome {
             map.put(def.id, new Allele(rng.nextDouble(), rng.nextDouble()));
         }
         LineageInfo lineage = new LineageInfo(entityId, null, null, 0, birthTick);
-        return new Genome(map, lineage, schema.schemaVersion());
+        Genome bare = new Genome(map, lineage, schema.schemaVersion(), null);
+        return new Genome(map, lineage, schema.schemaVersion(), humanoidPlanFromAlleles(bare, schema));
     }
 
     /**
@@ -85,8 +115,14 @@ public final class Genome {
         LineageInfo lineage = new LineageInfo(childId, parentA.lineage.entityId(),
                 parentB.lineage.entityId(), generation, birthTick);
 
-        return new Genome(childGenes, lineage, schema.schemaVersion());
+        // il corpo non passa dagli alleli: crossover di alberi di segmenti + mutazione strutturale libera
+        BodyPlan childBody = BodyPlan.cross(parentA.bodyPlan(schema), parentB.bodyPlan(schema), rng)
+                .mutate(rng, BODY_MUTATION);
+        return new Genome(childGenes, lineage, schema.schemaVersion(), childBody);
     }
+
+    /** Frequenze di mutazione del corpo (cambiabili a runtime, es. BodyPlan.MutationRates.NONE per spegnerle). */
+    public static volatile BodyPlan.MutationRates BODY_MUTATION = BodyPlan.MutationRates.DEFAULT;
 
     /**
      * Punto 6: migra questo genoma allo schema corrente. Geni nuovi nello schema ma assenti
@@ -111,7 +147,7 @@ public final class Genome {
             }
         }
 
-        return new Genome(migrated, lineage, currentSchema.schemaVersion());
+        return new Genome(migrated, lineage, currentSchema.schemaVersion(), body);
     }
 
     /**
@@ -133,7 +169,7 @@ public final class Genome {
                     driftValue(current.alleleA, def, rng, k),
                     driftValue(current.alleleB, def, rng, k)));
         }
-        return new Genome(drifted, lineage, schemaVersion);
+        return new Genome(drifted, lineage, schemaVersion, body);
     }
 
     private static double driftValue(double value, GeneDefinition def, Random rng, double k) {
@@ -163,6 +199,9 @@ public final class Genome {
             genesObj.put(entry.getKey(), a);
         }
         root.put("genes", genesObj);
+        if (body != null) {
+            root.put("body", body.toJson());
+        }
 
         return root;
     }
@@ -184,7 +223,8 @@ public final class Genome {
             genes.put(id, new Allele(a.getDouble("alleleA"), a.getDouble("alleleB")));
         }
 
-        return new Genome(genes, lineage, version);
+        BodyPlan plan = obj.has("body") && !obj.isNull("body") ? BodyPlan.fromJson(obj.getJSONObject("body")) : null;
+        return new Genome(genes, lineage, version, plan);
     }
 
     public void saveToFile(Path path) throws IOException {
