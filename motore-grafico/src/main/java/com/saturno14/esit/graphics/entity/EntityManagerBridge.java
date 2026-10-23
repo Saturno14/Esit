@@ -48,7 +48,7 @@ public class EntityManagerBridge {
 
             EntityInstance instance = instances.get(id);
             if (instance == null) {
-                instance = new EntityInstance(id, e.getGenome(), schema, e.getSex(), e.getAge(), e.getPos());
+                instance = new EntityInstance(id, e, e.getGenome(), schema, e.getSex(), e.getAge(), e.getPos());
                 instances.put(id, instance);
             } else {
                 instance.update(e.getAge(), e.getPos(), e.getGenome(), schema);
@@ -62,7 +62,7 @@ public class EntityManagerBridge {
             aliveIds.add(id);
             EntityInstance instance = instances.get(id);
             if (instance == null) {
-                instance = new EntityInstance(id, body.getGenome(), schema, body.getSex(),
+                instance = new EntityInstance(id, body, body.getGenome(), schema, body.getSex(),
                         body.getAge(), body.getPos());
                 instances.put(id, instance);
             }

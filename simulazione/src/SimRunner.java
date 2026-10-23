@@ -8,10 +8,9 @@ import java.util.List;
  * parametri. Uso (dalla cartella motore-grafico, dopo mvn compile):
  *   java -cp "target\classes;<json.jar>" src.SimRunner [seed] [tick] [velocita'] [saveload]
  * Argomenti (tutti opzionali): seed, numero di tick da simulare, fattore di velocita'; poi, in
- * qualsiasi ordine: "saveload" (a fine corsa prova Save + Load), "train=<maxFood>" (simulazione
- * di addestramento: riserva di cibo alta, si ferma appena i pesi sono stati catturati in
- * trained/brains.json), "instincts" (ignora i pesi salvati: fondatrici dagli istinti).
- * Senza "train" e senza "instincts", se trained/brains.json esiste le fondatrici partono da li'.
+ * qualsiasi ordine: "saveload" (a fine corsa prova Save + Load), "riserva=<n>" (riserva massima
+ * di cibo delle entita', standard 200), "dieta=0" (la dieta non vale per mangiare, come prima).
+ * Le fondatrici partono sempre dagli istinti di base (vedi entity.seedInstincts).
  * Scrive logs/stats-session-N.csv e genealogy/session-N.json come la simulazione normale.
  */
 public class SimRunner {
@@ -21,34 +20,27 @@ public class SimRunner {
         long ticks = args.length > 1 ? Long.parseLong(args[1]) : 3000;
         double scale = args.length > 2 ? Double.parseDouble(args[2]) : Simulation.MAX_TIME_SCALE;
         boolean saveLoad = false;
-        int trainMaxFood = 0;
         for (int i = 3; i < args.length; i++) {
             if (args[i].equals("saveload")) {
                 saveLoad = true;
-            } else if (args[i].startsWith("train=")) {
-                trainMaxFood = Integer.parseInt(args[i].substring(6));
-            } else if (args[i].equals("instincts")) {
-                TrainedBrains.setEnabled(false);
+            } else if (args[i].startsWith("riserva=")) {
+                entity.setMaxFood(Integer.parseInt(args[i].substring(8)));
+            } else if (args[i].startsWith("dieta=")) {
+                // dieta=0 e' il braccio di controllo: l'abitudine alimentare non si sposta mai
+                // dal gene, cioe' la dieta resta l'etichetta fissa di prima. Qualunque altro
+                // valore e' quanto un singolo pasto sposta l'abitudine (normale: 0.02).
+                ActionWeights.dietAdapt = Double.parseDouble(args[i].substring(6));
             }
         }
-        boolean training = trainMaxFood > 0;
-        if (training) {
-            entity.setMaxFood(trainMaxFood);
-            TrainedBrains.arm();
-        }
+        System.out.println("---- Opzioni: dieta=" + ActionWeights.dietAdapt
+                + " riserva=" + entity.getMaxFood());
 
         Simulation.setSeed(seed);
         Simulation.setTimeScale(scale);
         console.startSimulation(true);
 
-        while (Simulation.isRunning() && Simulation.getTick() < ticks
-                && !(training && TrainedBrains.wasCaptured())) {
+        while (Simulation.isRunning() && Simulation.getTick() < ticks) {
             Thread.sleep(100);
-        }
-        if (training) {
-            System.out.println(TrainedBrains.wasCaptured()
-                    ? "Pesi catturati al tick " + Simulation.getTick()
-                    : "Nessuna cattura entro " + ticks + " tick");
         }
 
         System.out.println("---- Fine: tick " + Simulation.getTick());

@@ -7,7 +7,7 @@ import java.lang.reflect.Method;
  * (con il tetto di velocita' a 50, SimRunner fa al massimo ~100 tick al secondo), chiamando tick() in
  * un ciclo. Una simulazione per processo (lo stato e' statico).
  *
- *   java -cp "target\classes;<json.jar>" src.Experiment [structured|balanced|legacy] [seed=1] [tick=6000] [campo=valore,...]
+ *   java -cp "target\classes;<json.jar>" src.Experiment [embodied|structured|balanced|legacy] [seed=1] [tick=6000] [campo=valore,...]
  *
  * "campo=valore" sovrascrive un campo di ActionWeights (es. mateBias=-6,eatApple=8). Scrive le stesse
  * righe "[tick N] ..." della simulazione e alla fine una riga "RISULTATO ..." facile da leggere con uno script.
@@ -22,12 +22,31 @@ public final class Experiment {
         switch (preset) {
             case "legacy" -> ActionWeights.legacy();
             case "balanced" -> ActionWeights.balanced();
-            default -> ActionWeights.structured();
+            case "structured" -> ActionWeights.structured();
+            default -> ActionWeights.embodied();
         }
         if (args.length > 3 && !args[3].isEmpty()) {
             for (String kv : args[3].split(",")) {
                 String[] p = kv.split("=");
                 ActionWeights.class.getField(p[0].trim()).setDouble(null, Double.parseDouble(p[1].trim()));
+            }
+        }
+        // quinto argomento: "niente-allenamento" spegne l'allenamento durante la vita, per il
+        // confronto A/B (vedi src.body.Locomotion.practice)
+        for (String opt : args.length > 4 ? args[4].split(",") : new String[0]) {
+            if (opt.equals("niente-allenamento")) {
+                src.body.Locomotion.lifetimeLearning = false;
+            } else if (opt.startsWith("prove-figli=")) {
+                src.body.Locomotion.trialsPerChild = Integer.parseInt(opt.substring(12));
+            } else if (opt.startsWith("prove-corpo=")) {
+                src.body.Locomotion.trialsPerBody = Integer.parseInt(opt.substring(12));
+            } else if (opt.startsWith("thread=")) {
+                src.body.Locomotion.workers = Integer.parseInt(opt.substring(7));
+            } else if (opt.startsWith("riserva=")) {
+                // riserva di cibo delle entita' (standard 200): leva indipendente, resta
+                entity.setMaxFood(Integer.parseInt(opt.substring(8)));
+            } else if (!opt.isEmpty()) {
+                throw new IllegalArgumentException("opzione sconosciuta: " + opt);
             }
         }
         Simulation.setSeed(seed);
@@ -48,6 +67,45 @@ public final class Experiment {
         }
         System.out.println("RISULTATO preset=" + preset + " seed=" + seed + " tick=" + Simulation.getTick()
                 + " vivi=" + Entity_manager.Entity_count() + " estinta=" + extinct);
+        System.out.println(src.body.Locomotion.stats());
+        System.out.println(src.body.Locomotion.practiceStats());
+        Runtime rt = Runtime.getRuntime();
+        System.gc();
+        System.out.println("memoria: usata " + (rt.totalMemory() - rt.freeMemory()) / (1 << 20)
+                + " MiB, riservata " + rt.totalMemory() / (1 << 20)
+                + " MiB, tetto " + rt.maxMemory() / (1 << 20) + " MiB, core " + rt.availableProcessors());
+        System.out.println(bodySummary());
         System.exit(0);
+    }
+
+    /**
+     * Media delle misure del corpo sui vivi: se la selezione sta lavorando sulla morfologia,
+     * questi numeri si spostano rispetto alla popolazione iniziale (vedi la riga CORPO del tick 0
+     * nei log). Serve a dire se l'incarnazione CONTA, non solo se la popolazione sopravvive.
+     */
+    private static String bodySummary() {
+        double mass = 0, leg = 0, reach = 0, speed = 0;
+        int n = 0, maxGen = 0, measured = 0;
+        for (entity e : Entity_manager.snapshotAlive()) {
+            if (!e.isAlive()) {
+                continue;
+            }
+            src.body.BodyTraits t = e.getTraits();
+            mass += t.mass();
+            leg += t.legLength();
+            reach += t.reach();
+            speed += e.getWalkSpeed();
+            if (e.getLocomotion().measured()) {
+                measured++;
+            }
+            maxGen = Math.max(maxGen, e.getGenome().lineage().generation());
+            n++;
+        }
+        if (n == 0) {
+            return "CORPO nessun vivo";
+        }
+        return String.format(java.util.Locale.ROOT,
+                "CORPO vivi=%d gen_max=%d massa=%.1f kg gamba=%.3f m portata=%.3f m velocita'=%.3f m/s misurati=%d/%d",
+                n, maxGen, mass / n, leg / n, reach / n, speed / n, measured, n);
     }
 }

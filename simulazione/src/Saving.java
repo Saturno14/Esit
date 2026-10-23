@@ -11,14 +11,23 @@ import org.json.JSONObject;
 /**
  * Salvataggi in JSON versionato. Ogni salvataggio e' una cartella saving/s-N con:
  *  - meta.json      : versione formato, seed, tick di simulazione
- *  - world.json     : dimensione, ciclo, livello del terreno e mele (formato del mondo)
+ *  - world.json     : dimensione, ciclo, livello del terreno (formato del mondo)
+ *  - flora.json     : alberi, mele e semi con il loro stato di crescita (vedi Flora)
  *  - entities.json  : per ogni entita' viva stato, GENOMA completo e cervelli
  *  - genealogy.json : albero genealogico della sessione
  * I cadaveri non vengono salvati (scadono comunque dopo pochi tick).
  */
 public class Saving {
 
-    public static final int FORMAT_VERSION = 2;
+    /**
+     * 5 = alberi e mele con maturazione (una categoria in piu' nella vista: Vision.CAT_TREE).
+     * 4 = ciclo del giorno (un ingresso in piu' nella rete).
+     * 3 = vista a cono e azioni egocentriche (23/10/2026). I salvataggi fino alla 2 NON si
+     * caricano piu': i cervelli di allora hanno 44 ingressi e 10 uscite contro i 49 e 12 di
+     * adesso, e i quattro movimenti cardinali non esistono piu'. Caricarli vorrebbe dire far
+     * agire una rete su sensi che non capisce - meglio dirlo che farlo in silenzio.
+     */
+    public static final int FORMAT_VERSION = 5;
 
     private static boolean SaveMeta(Path dir){
         try {
@@ -56,12 +65,17 @@ public class Saving {
         Str.append("-ground : ").append(world.getGround()+"\n");
         Str.append("-food : \n");
 
-        int dim = world.getDim();
-        for(int x=0; x<dim; x++){
-            for(int y=0; y<dim; y++){
-                for(int z=0; z<dim; z++){
-                    if("M".equals(world.getSymbol(x, y, z))){
-                        Str.append(x+","+y+","+z+";\n");
+        // Con gli alberi le mele hanno uno stato (maturazione, albero di provenienza, se sono
+        // ancora appese) che tre coordinate non possono portare: stanno in flora.json. Qui resta
+        // solo il formato vecchio, per quando Flora e' disattivata.
+        if(!Flora.enabled){
+            int dim = world.getDim();
+            for(int x=0; x<dim; x++){
+                for(int y=0; y<dim; y++){
+                    for(int z=0; z<dim; z++){
+                        if("M".equals(world.getSymbol(x, y, z))){
+                            Str.append(x+","+y+","+z+";\n");
+                        }
                     }
                 }
             }
@@ -71,6 +85,14 @@ public class Saving {
             Files.writeString(dir.resolve("world.json"), Str.toString());
             return true;
         } catch (Exception e) {System.out.println("Errore Saving world "+e.getMessage());}
+        return false;
+    }
+
+    private static boolean SaveFlora(Path dir){
+        try {
+            Files.writeString(dir.resolve("flora.json"), Flora.toJson().toString(1));
+            return true;
+        } catch (Exception e) {System.out.println("Errore Saving flora "+e.getMessage());}
         return false;
     }
 
@@ -107,8 +129,10 @@ public class Saving {
             boolean f2 = SaveWorld(dir);
             boolean f3 = SaveEntities(dir);
             boolean f4 = SaveGenealogy(dir);
-            flag = f1 && f2 && f3 && f4;
-            System.out.println("Save meta/world/entities/genealogy: "+f1+" "+f2+" "+f3+" "+f4);
+            boolean f5 = SaveFlora(dir);
+            flag = f1 && f2 && f3 && f4 && f5;
+            System.out.println("Save meta/world/entities/genealogy/flora: "
+                    +f1+" "+f2+" "+f3+" "+f4+" "+f5);
         }
         return flag;
     }
@@ -129,10 +153,24 @@ public class Saving {
                 Simulation.reset();
 
                 JSONObject meta = new JSONObject(Files.readString(path.resolve("meta.json")));
+                int version = meta.optInt("formatVersion", 0);
+                if(version != FORMAT_VERSION){
+                    System.err.println("Salvataggio in formato " + version + ", serve il "
+                            + FORMAT_VERSION + ": non si carica. I cervelli di quel formato hanno"
+                            + " sensi e azioni diversi (vedi Saving.FORMAT_VERSION).");
+                    Simulation.reset();
+                    return false;
+                }
                 Simulation.setSeed(meta.optLong("seed", Simulation.getSeed()));
                 Simulation.setTick(meta.optLong("tick", 0));
 
                 world.Load(path);
+                // DOPO world.Load: ricostruendo il terreno si rigenerano anche i boschi di
+                // partenza (vedi world.terrein_set), e il bosco salvato deve sostituirli - non
+                // sommarsi a loro.
+                if(Files.exists(path.resolve("flora.json"))){
+                    Flora.fromJson(new JSONObject(Files.readString(path.resolve("flora.json"))));
+                }
 
                 JSONObject root = new JSONObject(Files.readString(path.resolve("entities.json")));
                 JSONArray arr = root.getJSONArray("entities");

@@ -19,6 +19,39 @@ public final class Rot {
                 t * k.x() * k.z() - s * k.y(), t * k.y() * k.z() + s * k.x(), t * k.z() * k.z() + c});
     }
 
+    /**
+     * Rotazione inversa. Per una matrice di rotazione l'inversa e' la trasposta. Serve ogni volta
+     * che si vuole un orientamento RELATIVO: quello di un figlio rispetto al genitore, per
+     * esempio, e' inverse(genitore) * figlio.
+     */
+    public Rot inverse() {
+        return new Rot(new double[]{m[0], m[3], m[6], m[1], m[4], m[7], m[2], m[5], m[8]});
+    }
+
+    /** Rotazione attorno all'asse Y (imbardata): l'orientamento con cui un'entita' sta in piedi. */
+    public static Rot yaw(double angle) {
+        return axisAngle(new V3(0, 1, 0), angle);
+    }
+
+    /**
+     * Matrice equivalente a un quaternione (x,y,z,w). Serve per leggere l'orientamento che arriva
+     * dal motore fisico, che lavora con quaternioni, e riportarlo nelle pose dei link.
+     */
+    public static Rot quaternion(double x, double y, double z, double w) {
+        double n = Math.sqrt(x * x + y * y + z * z + w * w);
+        if (n < 1e-12) {
+            return IDENTITY;
+        }
+        x /= n; y /= n; z /= n; w /= n;
+        double xx = x * x, yy = y * y, zz = z * z;
+        double xy = x * y, xz = x * z, yz = y * z;
+        double wx = w * x, wy = w * y, wz = w * z;
+        return new Rot(new double[]{
+                1 - 2 * (yy + zz), 2 * (xy - wz), 2 * (xz + wy),
+                2 * (xy + wz), 1 - 2 * (xx + zz), 2 * (yz - wx),
+                2 * (xz - wy), 2 * (yz + wx), 1 - 2 * (xx + yy)});
+    }
+
     public Rot mul(Rot o) {
         double[] r = new double[9];
         for (int i = 0; i < 3; i++) {

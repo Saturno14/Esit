@@ -3,26 +3,33 @@ package com.saturno14.esit.graphics.world;
 import src.world;
 
 /**
- * Ponte tra la simulazione reale (src.world, package "src" dentro 1b/) e il WorldGrid
- * usato dal motore grafico.
+ * Ponte tra la simulazione (src.world) e il campo di densita' del motore grafico.
  *
- * Questa classe LEGGE soltanto dalla simulazione. Nessun file della simulazione viene
- * modificato: l'integrazione avviene tramite la sua API pubblica statica
- * (world.world_setup(), world.getDim(), world.check_cord_type()).
+ * Questa classe LEGGE soltanto: la simulazione non sa di essere disegnata.
  *
- * Mapping usato:
- *   cella "Terra" -> density 1.0 (pieno, genera superficie)
- *   qualsiasi altro valore ("Air", ecc.) -> density 0.0 (vuoto)
+ * LA SUPERFICIE DISEGNATA E' UNA LISCIATURA DI QUELLA GIOCATA, e va detto chiaramente. La
+ * simulazione ha un'altezza INTERA per colonna: cosi' com'e', il terreno sono gradini da un
+ * metro. Qui l'altezza di ogni colonna viene mediata con quella delle colonne vicine e la
+ * densita' delle celle attorno alla superficie diventa frazionaria, quindi la superficie estratta
+ * e' continua e passa entro mezza cella dall'altezza vera. Le entita' continuano a camminare
+ * sulle altezze intere: e' solo il disegno che e' morbido, come in tutti i voxel a superficie
+ * liscia.
+ *
+ * SI RILEGGE SOLO QUANDO SERVE. Prima il mondo intero veniva riletto a ogni frame - a lato 50
+ * sono 125000 letture per frame - e ci si affidava al confronto del valore per non rifare la
+ * mesh. Adesso si guarda world.getTerrainVersion(): se il terreno non e' cambiato non si legge
+ * niente.
  */
 public class SimulationWorldBridge {
 
     private final WorldGrid grid;
     private boolean simulationReady = false;
+    private int lastTerrainVersion = Integer.MIN_VALUE;
 
     public SimulationWorldBridge() {
         simulationReady = world.world_setup();
 
-        int dim = simulationReady ? world.getDim() : 20;
+        int dim = simulationReady ? world.getDim() : 24;
         this.grid = new WorldGrid(dim);
 
         if (simulationReady) {
@@ -42,28 +49,98 @@ public class SimulationWorldBridge {
         return simulationReady;
     }
 
+    /** Livello dell'acqua in celle (serve al disegno dell'acqua). */
+    public float getWaterLevel() {
+        return simulationReady ? world.getWaterLevel() : 0f;
+    }
+
     /**
-     * Rilegge l'intero stato della simulazione e aggiorna il WorldGrid.
-     * Il WorldGrid marca se stesso come "dirty" solo quando un valore cambia davvero,
-     * quindi chiamare questo metodo ad ogni frame non causa rigenerazioni inutili della mesh.
+     * Aggiorna il campo di densita' se il terreno della simulazione e' cambiato. Chiamarla a
+     * ogni frame costa un confronto di interi quando non c'e' niente da fare.
      */
     public void syncFromSimulation() {
-        if (!simulationReady) return;
+        if (!simulationReady) {
+            return;
+        }
+        int version = world.getTerrainVersion();
+        if (version == lastTerrainVersion) {
+            return;
+        }
+        lastTerrainVersion = version;
 
         int dim = grid.getDimension();
+        float waterLevel = world.getWaterLevel();
+
+        // altezza della superficie per colonna, come la vede la simulazione
+        float[][] height = new float[dim][dim];
         for (int x = 0; x < dim; x++) {
-            for (int y = 0; y < dim; y++) {
-                for (int z = 0; z < dim; z++) {
-                    float density;
-                    try {
-                        String cellType = world.check_cord_type(x, y, z);
-                        density = "Terra".equals(cellType) ? 1.0f : 0.0f;
-                    } catch (Exception e) {
-                        density = 0.0f;
+            for (int z = 0; z < dim; z++) {
+                height[x][z] = world.surfaceY(x, z);
+            }
+        }
+
+        // lisciatura: media pesata con le quattro colonne vicine. Il peso del centro tiene la
+        // superficie aderente all'altezza vera (entro mezza cella), i vicini smussano il gradino
+        float[][] smooth = new float[dim][dim];
+        for (int x = 0; x < dim; x++) {
+            for (int z = 0; z < dim; z++) {
+                float sum = 2f * height[x][z];
+                float weight = 2f;
+                for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+                    int nx = x + d[0], nz = z + d[1];
+                    if (nx >= 0 && nx < dim && nz >= 0 && nz < dim) {
+                        sum += height[nx][nz];
+                        weight += 1f;
                     }
-                    grid.setDensityIfChanged(x, y, z, density);
+                }
+                smooth[x][z] = sum / weight;
+            }
+        }
+
+        for (int x = 0; x < dim; x++) {
+            for (int z = 0; z < dim; z++) {
+                float h = smooth[x][z];
+                float slope = slopeAt(smooth, x, z, dim);
+                for (int y = 0; y < dim; y++) {
+                    // densita': piena sotto la superficie, vuota sopra, frazionaria a cavallo
+                    float d = Math.max(0f, Math.min(1f, h - y + 0.5f));
+                    grid.set(x, y, z, d, materialAt(y, h, slope, waterLevel));
                 }
             }
         }
+    }
+
+    /**
+     * Quanto e' ripida la superficie qui (differenza di quota con i vicini). Serve al materiale:
+     * su una parete ripida l'erba non attacca e si vede la roccia, che e' la cosa che piu' di
+     * tutte fa sembrare un terreno un terreno e non una gelatina verde.
+     */
+    private static float slopeAt(float[][] h, int x, int z, int dim) {
+        float worst = 0;
+        for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+            int nx = x + d[0], nz = z + d[1];
+            if (nx >= 0 && nx < dim && nz >= 0 && nz < dim) {
+                worst = Math.max(worst, Math.abs(h[nx][nz] - h[x][z]));
+            }
+        }
+        return worst;
+    }
+
+    /**
+     * Che materiale e' una cella: sabbia sulla riva, roccia in profondita' e sui pendii ripidi,
+     * erba in superficie, terra appena sotto.
+     */
+    private static int materialAt(int y, float height, float slope, float waterLevel) {
+        float depth = height - y;
+        if (depth > 3.5f) {
+            return VoxelMaterial.ROCK;
+        }
+        if (height <= waterLevel + 1.2f) {
+            return VoxelMaterial.SAND;      // riva e fondale
+        }
+        if (slope > 1.4f) {
+            return VoxelMaterial.ROCK;      // parete: l'erba non ci sta
+        }
+        return depth > 1.2f ? VoxelMaterial.DIRT : VoxelMaterial.GRASS;
     }
 }

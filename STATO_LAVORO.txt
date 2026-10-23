@@ -464,3 +464,963 @@ VOCE DEL 03/10/2026 (6) - AGGIORNAMENTO APPLICATO ALLA CARTELLA DEL PROGETTO
   src.body.BodySelfTest e src.body.BodyPlanTest, poi avvia.bat per vedere la nuova mesh.
 - Stato predefinito della simulazione: profilo ActionWeights.structured() con ATTACCHI LIBERI, che a lungo
   termine (15000 tick) porta all'estinzione in 4 seed su 4 tra quelli bassi (voce 5).
+
+
+----------------------------------------------------------------------
+VOCE DEL 22/10/2026 (7) - IL CORPO CONTA: MASSA, ANDATURA MISURATA, PORTATA
+----------------------------------------------------------------------
+Richiesta: "far contare il corpo per l'evoluzione: il corpo deve avere un peso, l'entita' deve
+muoversi dinamicamente quindi la diversa lunghezza delle gambe deve influire sul suo modo di
+camminare, la diversa lunghezza delle braccia deve influire nelle sue interazioni".
+Scelte dell'utente: mondo continuo (posizione float, m/s), andatura da FISICA VERA, animazione 3D
+subito.
+
+COSA C'E' ADESSO
+- Fisica: jolt-jni 6.2.0 (Jolt) in motore-grafico/pom.xml, nativi Windows64/ReleaseSp, estratti a
+  runtime da PhysicsNatives (se mancano, la simulazione gira comunque con la sola stima
+  geometrica). Serve --enable-native-access=ALL-UNNAMED.
+- src/body/: PhysicsWorld, JoltRagdoll (Automaton -> corpi rigidi + vincoli), Gait (oscillatori
+  per NOME di giunto, quindi ereditabili), GaitEvaluator (oracolo: fa camminare un corpo e
+  misura), Locomotion (cache + thread di misura), BodyTraits (massa, altezza, portata, gambe,
+  appoggi), PhysicsBench, PhysicsSmokeTest.
+- entity.java: posizione CONTINUA (exactX/exactZ/facing, la cella e' floor), passo in metri dalla
+  velocita' misurata, massa su salute massima e costo del passo, portata su mangiare/attaccare/
+  trovare partner, danno da massa e leva, andatura EREDITATA e incrociata come il cervello.
+- ActionWeights.embodied(): structured() + bodyGaitSpeed/bodyMassStats/bodyReach/bodyAttackPower.
+  E' il profilo predefinito. structured() li azzera, quindi il confronto A/B e' pulito.
+- Grafica: le entita' NON hanno piu' una mesh propria rigenerata (GenomeMeshApplier/Surface Nets
+  resta, con EntityInstance.SKELETON=false). Si disegnano segmento per segmento (Primitives:
+  sfera e cilindro condivisi; PoseRenderer) nella posa che da' entity.poseLocal(), con gli angoli
+  dell'oscillatore: l'andatura si VEDE. Posizione interpolata e fase del ciclo interpolata tra
+  due tick (il periodo del tick si misura da solo, quindi vale a qualunque velocita').
+
+PERCHE' LA FISICA E' UN ORACOLO E NON GIRA SEMPRE
+Misurato con PhysicsBench: 380 ragdoll con TUTTI i giunti comandati costano 1.926 ms per passo da
+1/120 s (1.279 fisica + 0.647 controllo dei motori), 4940 corpi rigidi attivi, x4.3 il tempo reale
+su 22 core. Un tick di mondo (0.5 s) sono 60 passi, cioe' ~116 ms, contro i 10 ms disponibili a
+x50: fisica sempre viva significa un tetto di circa x4. Quindi ogni corpo nuovo viene fatto
+camminare UNA volta in Jolt, in thread a parte (4), e il risultato resta in cache; finche' non
+c'e', vale una stima geometrica. Il tick non aspetta mai.
+ATTENZIONE: il primo benchmark dava 0.004 ms per corpo e era falso, perche' i corpi caduti si
+addormentano. La modalita' "mosso" di PhysicsBench muove tutti i giunti e da' il numero vero.
+
+TRE ERRORI TROVATI MISURANDO (e come sono stati corretti)
+1. PASSO IN METRI CRUDI. La fisica dice che un umanoide cammina a ~0.4 m/s, cioe' 0.2 m per tick
+   da mezzo secondo; la griglia dava a tutti 1 m per azione (2 m/s). Usando i m/s come lunghezza
+   del passo le entita' andavano 4-5 volte piu' piano, non arrivavano al cibo e la popolazione
+   crollava: 12 semi, da mediana 16 vivi a mediana 2, con un'estinzione. La griglia non era mai
+   stata metrica. Correzione: il passo e' il RAPPORTO con il corpo di riferimento
+   (Locomotion.REFERENCE_SPEED), con minimo 0.35 e massimo 2 celle. Il corpo medio fa un passo
+   come prima, e conta quanto una morfologia e' meglio o peggio della media.
+2. CORPI CHE ESPLODONO. Una misura su ~330 dava 20.9 m/s: un giunto instabile accumula energia e
+   spara via la ragdoll. Il guaio non e' il numero, e' che la salita della collina le CERCA
+   (un'esplosione sembra l'andatura piu' veloce di tutte). Correzione: Result.exploded() e
+   punteggio -1e9 sopra MAX_PLAUSIBLE_SPEED = 5 m/s; se succede si tiene la stima geometrica.
+3. FIGLI CHE NON IMPARANO A CAMMINARE. Con una sola corsa di misura per figlio la mediana della
+   popolazione era 0.03 m/s: praticamente nessuno camminava, e tutte le differenze tra corpi
+   finivano schiacciate sul minimo di passo. Correzione: trialsPerChild = 4 (le fondatrici 8),
+   cioe' ogni generazione affina l'andatura ricevuta - lo stesso meccanismo che il progetto usa
+   gia' per il cervello. Mediana da 0.03 a 0.267 m/s. REFERENCE_SPEED e' tarato su quella mediana
+   vera (0.27), non sui 0.54 di un corpo ottimizzato 150 volte, altrimenti meta' popolazione sta
+   sotto il minimo.
+   Collegato: l'entita' ora ADOTTA l'andatura con cui la fisica l'ha fatta camminare, altrimenti
+   si misurava un'andatura che nessuno usava e i figli ne ereditavano una mai provata.
+
+RISULTATO A/B (src.Experiment, 12 semi, 6000 tick, stesso seme = stesso mondo e stesse fondatrici)
+- structured: vivi finali [195, 5, 137, 7, 15, 17, 81, 12, 6, 20, 13, 118]
+              mediana 16, media 52.2, estinzioni 0
+- embodied:   vivi finali [246, 6, 223, 7, 7, 25, 261, 3, 37, 29, 29, 88]
+              mediana 29, media 80.1, estinzioni 0
+- Per seme: 8 migliori, 3 peggiori, 1 pari. Test dei segni p ~ 0.11: INDICATIVO, NON significativo.
+  Si puo' dire che il corpo ora conta e non fa male alla sopravvivenza; non che la migliori in
+  modo dimostrato. Per dirlo servono piu' semi o corse piu' lunghe.
+- Andature misurate in una corsa: mediana 0.267, media 0.316, massimo 1.667 m/s (300-800 corpi
+  misurati per corsa, coda sempre svuotata entro la fine).
+- Generazioni raggiunte: fino a 13, come structured.
+- Test del corpo: 335/335 e 2421/2421, nessuna regressione.
+
+VELOCITA' PER FORMA (GaitEvaluator, 150 prove, 2 s - misure di laboratorio, non di simulazione)
+  umanoide medio 0.537 m/s (in avanti +0.489, resta in piedi)
+  gambe corte    0.710 (+0.652)
+  gambe lunghe   1.014 (+0.974, ma cade)
+  tozzo 301 kg   0.422 (+0.421)
+  serpente       0.313 (in avanti -0.039)
+  >>> IL CASO "SERPENTE" E' STATO RITIRATO: vedi la voce del 23/10/2026. Era un corpo scritto a
+      mano e non rappresenta nulla di quello che l'evoluzione produce; la conclusione che "chi
+      striscia non avanza" era sbagliata.
+
+COME SI LANCIA
+  cd motore-grafico && mvn -q compile
+  java --enable-native-access=ALL-UNNAMED -cp "target/classes;$(cat target/classpath.txt)" src.Experiment embodied 1 6000
+(il classpath e' scritto da maven in target/classpath.txt). ATTENZIONE: non ricompilare mentre
+girano esperimenti - target/classes viene riscritto sotto i piedi e i processi muoiono con
+ClassNotFoundException (succedeva a 6 semi su 12 in questa sessione).
+
+DA DECIDERE / NON FATTO
+Vedi TODO.md (ricreato in questa sessione): serpente che non avanza, approssimazione dei giunti a
+2-3 gradi di liberta' in Jolt, chiamate di disegno per frame, disegno per segmenti non ancora
+visto girare in OpenGL su questa macchina.
+
+
+----------------------------------------------------------------------
+VOCE DEL 23/10/2026 (8) - IL BANCO DI PROVA ERA SBAGLIATO: CORPI EVOLUTI, NON INVENTATI
+----------------------------------------------------------------------
+Osservazione dell'utente: le entita' crescono in modo dinamico e non hanno un numero fisso di
+segmenti o di vertici, quindi un serpente dovrebbe essere l'esito di una serie di evoluzioni;
+quello che avevo misurato era costruito artificialmente.
+
+E' giusto, e cambia la conclusione della voce (7). Un corpo scritto a mano dice quanto e' bravo il
+controllore su quella forma, non quanto e' bravo sui corpi veri, che nascono da incroci e
+mutazioni del piano (BodyPlan.cross + mutate, tassi Genome.BODY_MUTATION = DEFAULT).
+
+NUOVO STRUMENTO: src.body.EvolvedBodies
+Costruisce stirpi con la STESSA macchina della simulazione (Genome.random per i fondatori,
+Genome.reproduce per i figli), misura ogni corpo con il budget di prove che la simulazione usa
+davvero, e raggruppa per forma. Nessuna selezione: dice cosa la mutazione PRODUCE, non cosa vince.
+  java --enable-native-access=ALL-UNNAMED -cp "..." src.body.EvolvedBodies [gen] [stirpi] [prove] [secondi] [seme]
+
+A 12 GENERAZIONI (6 stirpi, 78 corpi: l'orizzonte che le corse da 6000 tick raggiungono)
+  bipede              70 corpi (89.7%)  avanti mediana +0.117 m/s, max +1.297, CADONO 54/70
+  quadrupede           2 corpi ( 2.6%)  +1.133 m/s, max +1.133, cadono 0
+  1 arto di appoggio   4 corpi ( 5.1%)  +0.272, cadono 3
+  3 e 5 appoggi        1 + 1 corpo
+  striscia (tronco)    ZERO
+  Segmenti da 14 a 22, gradi di liberta' da 21 a 32; 39.7% con un numero di segmenti diverso dal
+  fondatore (18).
+
+A 60 GENERAZIONI (8 stirpi, 488 corpi: deriva lunga, SENZA selezione)
+  1 arto di appoggio  219 corpi (44.9%)  +0.099 m/s, max +1.737, cadono 188
+  bipede              195 corpi (40.0%)  +0.158, max +1.855, cadono 155
+  striscia (tronco)    26 corpi ( 5.3%)  +0.110, max +0.585, cadono 18
+  quadrupede           18 corpi ( 3.7%)  +0.102, max +1.024, cadono 14
+  Segmenti da 2 a 25, gradi di liberta' da 0 a 37; 84.2% diverso dal fondatore. I corpi si
+  RIMPICCIOLISCONO lungo la deriva (mediana da 18 a 8 segmenti): e' deriva senza selezione, non
+  una previsione su cosa fara' la simulazione.
+
+COSA SE NE RICAVA
+1. Il serpente era doppiamente non rappresentativo: a 12 generazioni corpi che strisciano NON
+   NASCONO AFFATTO, e quando nascono (5.3% a 60 generazioni) AVANZANO, mediana +0.110 m/s, non
+   -0.039 come quello scritto a mano. La voce del TODO "serpente che non avanza" era una falsa
+   pista e e' stata chiusa.
+2. IL DIFETTO VERO E' CHE I CORPI CADONO: 54 su 70 bipedi a 12 generazioni, 188 su 219 a 60. Il
+   controllore e' scarso proprio sulla forma che l'evoluzione produce quasi sempre. E' la prima
+   voce del TODO adesso.
+3. I quadrupedi, quando capitano, non cadono mai e vanno tre volte piu' veloci della mediana dei
+   bipedi. Se la selezione nella simulazione li favorisce, e' un effetto da guardare.
+
+MODIFICHE
+- BodyTraits: nuovo crawls() e trunkLimb(). Prima "un appoggio" mescolava due cose diverse, il
+  corpo che si regge su un arto e quello che striscia sul tronco, che hanno bisogno di andature
+  diverse (falcata contro onda lungo il corpo). Il tronco si toglie dagli appoggi solo se c'e'
+  altro che regge.
+- GaitEvaluator.main: togliere il serpente. Restano solo esperimenti CONTROLLATI (stesso umanoide,
+  una misura cambiata alla volta), che e' l'unico motivo per cui un corpo a mano ha senso.
+
+
+----------------------------------------------------------------------
+VOCE DEL 23/10/2026 (9) - IL CONTROLLORE: QUATTRO DIFETTI, E UNO NON ERA NEL CONTROLLORE
+----------------------------------------------------------------------
+Richiesta: "migliora prima il controllore poi passa al disegno".
+
+Punto di partenza (voce 8): su 78 corpi evoluti cadevano 75-76, con avanzamento mediano dei
+bipedi +0.119 m/s. Cercando la causa sono venuti fuori quattro difetti, in tre posti diversi. Il
+piu' grave NON era nel controllore, e finche' c'era nessuna modifica al controllore poteva
+funzionare: e' per questo che i primi due interventi non spostarono le cadute di un corpo.
+
+1) IL SEME DELL'ANDATURA PARTIVA ACCUCCIATO  (src/body/Gait.java)
+   Il centro dell'oscillazione di ogni giunto era il punto medio dei suoi LIMITI, non la posa di
+   riposo. Un ginocchio con limiti [0, 2.5] ha come punto medio +1.25 rad: 72 gradi di flessione.
+   Misurato sul seme: angolo medio 29 gradi, massimo 83. Ora il centro e' l'angolo zero (la posa
+   eretta), le ampiezze sono in radianti e larghe solo sull'asse che fa avanzare, c'e' un ritardo
+   di fase che scorre lungo l'arto (il ginocchio segue l'anca) e la cadenza viene dal pendolo
+   della gamba invece che da un numero a caso.
+   Da solo questo TRIPLICO' la velocita' in avanti dei bipedi, +0.119 -> +0.445 m/s, e non salvo'
+   NESSUN corpo dalla caduta (75 -> 76 su 78). Il che era il primo indizio che il problema stava
+   altrove.
+
+2) L'OTTIMIZZATORE MUOVEVA 75 PARAMETRI ALLA VOLTA  (Gait.perturb con frazione)
+   Un corpo ha 25 gradi di liberta' e tre parametri per ognuno; la simulazione si puo' permettere
+   4-24 prove. Spostarli tutti a ogni prova e' rumore. Ora se ne sposta il 30%: ricerca per
+   coordinate.
+
+3) LE COPPIE DEI MOTORI ERANO CALCOLATE SUL LATO SBAGLIATO  (src/body/Automaton.java)
+   La coppia massima di un giunto era "massa del sottoalbero A VALLE * g * braccio". Ma una
+   caviglia, da ferma, regge tutto il corpo SOPRA di se', non il piede: si ritrovava 2 N*m contro
+   un corpo che pesa 1136 N. Ora e' il piu' pesante dei due lati. Coppie da 2..641 a 593..3117 N*m.
+
+4) IL MOTORE ERA UNA MOLLA TROPPO CEDEVOLE  (src/body/JoltRagdoll.java)
+   Era il difetto decisivo, e si e' visto solo con la prova giusta: un umanoide di riferimento,
+   FERMO nella posa eretta con tutti i giunti a zero, si accasciava in 1.4 secondi. Nessun
+   controllore puo' far camminare un corpo che non sta nemmeno in piedi da fermo.
+   La caccia, nell'ordine in cui e' andata:
+   - il baricentro E' dentro l'impronta dei piedi (margine 5 cm indietro, 15 avanti, 13 di lato),
+     quindi non e' un problema di geometria;
+   - i motori sembravano tenere perfettamente... ma currentAngles() legge SOLO le cerniere a un
+     grado di liberta' e lascia zero i SixDof, cioe' anche, spalle, caviglie. Lo strumento di
+     misura era cieco proprio dove stava il guasto. Confrontando invece la posa vera con quella
+     comandata: le anche cedevano di 6 gradi a mezzo secondo, 36 a tre quarti, 56 a un secondo;
+     ginocchia e caviglie tenevano entro 2-4.
+   - tutto il corpo come UN SOLO BLOCCO RIGIDO sta immobile al 99% con beccheggio 0.000: quindi
+     contatti e geometria sono a posto, e il colpevole e' la cedevolezza dei giunti;
+   - NON era la rigidezza della molla (a 200 Hz peggiorava: oltre il limite di campionamento del
+     passo da 1/120 s), NON erano le iterazioni del solutore (10/2, 30/8, 60/16: identico), NON
+     era il passo di integrazione (1/120, 1/240, 1/480: identico), NON erano i limiti dei giunti
+     (a zero gradi non sono attivi), NON era il tipo di vincolo (forzando tutto a cerniere cade
+     uguale: cedono le anche, 41 gradi).
+   - era il MODO della molla: con rigidezza esplicita invece della frequenza il beccheggio dopo
+     un secondo passa da +0.61 a -0.01 rad. La rigidezza e' legata alla coppia del giunto
+     (STIFFNESS_PER_TORQUE = 100 per N*m), non assoluta, perche' i corpi vanno da pochi chili a
+     qualche quintale.
+
+5) L'ONDA SCORREVA NEL VERSO SBAGLIATO  (Gait.reversed, provata da GaitEvaluator.optimize)
+   Con i motori che finalmente SEGUONO l'andatura, il seme faceva camminare i corpi ALL'INDIETRO
+   (mediana -0.117 m/s): il +0.445 del punto 1 era in parte un artefatto dei motori molli, che
+   lasciavano flettere il corpo in avanti. Il verso dipende da dove le mutazioni hanno attaccato
+   gli arti e non si puo' decidere a tavolino, e un segno globale non si trova con quattro
+   perturbazioni casuali. Ora la prima mossa dell'ottimizzazione non e' casuale: prova l'onda al
+   contrario e tiene la migliore. Costa una corsa di fisica.
+
+AGGIUNTO: RIFLESSO DI EQUILIBRIO  (src/body/Balance.java)
+L'oscillatore e' a ciclo aperto: ripete il ciclo senza sapere come sta il corpo. Balance misura di
+quanto il tronco e' fuori piombo e sposta i giunti degli arti che portano il peso nel verso che
+riporta il piede sotto il corpo (un PD su beccheggio e rollio). Il verso NON e' scritto a mano -
+non potrebbe, con corpi di forma qualsiasi: ruotando di poco attorno all'asse a, la punta
+dell'arto a distanza r si sposta di (a x r), e il segno di quel prodotto da' il verso. Funziona su
+un'anca umanoide come su un arto nato da una mutazione.
+ONESTA': da solo, a motori rotti, non cambiava NIENTE (76 su 78 cadevano prima e dopo). Serve
+adesso che i motori tengono, ma non basta: con i motori rigidi il corpo tiene la posa per circa un
+secondo e poi cede DI LATO. L'equilibrio laterale di un bipede ha bisogno di un controllore di
+passo (capture point: si cade e si mette un piede avanti), che e' un progetto a se'. Non e' fatto.
+
+IL RISULTATO: ERA IL BUDGET DI RICERCA, UNA VOLTA SISTEMATA LA FISICA
+Con le coppie e i motori corretti, il controllore IMPARA, se gli si da' il tempo. Su 78 corpi
+evoluti (12 generazioni, 6 stirpi, gli stessi corpi in tutte le righe):
+   prove per corpo    avanti (mediana)    cadono
+         4               +0.045 m/s        70/78
+        12               +0.308            67/78
+        40               +0.758            42/78
+Prima delle correzioni nessun budget aiutava. Da confrontare con il punto di partenza: bipedi
++0.119 m/s e 75-76 corpi su 78 che cadevano.
+Scelta: 24 prove per una fondatrice, 8 per un figlio (che eredita un'andatura gia' ottimizzata).
+
+COSTO
+Una corsa di Experiment da 6000 tick passa da circa 30 a 74 secondi: 788 corpi misurati, coda
+sempre svuotata, 4 thread. La mediana delle velocita' in simulazione resta 0.283 m/s, quindi la
+taratura REFERENCE_SPEED = 0.27 regge e non va rifatta.
+Test: 335/335, 2421/2421, PhysicsSmokeTest OK.
+
+METODO: DUE ERRORI DI MISURA CHE HO FATTO E CORRETTO
+- EvolvedBodies usava UN SOLO generatore casuale per i corpi e per l'andatura: cambiando il codice
+  del seme cambiavano anche i corpi, e il confronto prima/dopo non valeva niente (il campione
+  passava dal 40% al 63% di corpi diversi dal fondatore). Ora i generatori sono due.
+- Ho reso piu' severo il criterio di caduta (il MINIMO lungo la prova invece del valore finale:
+  un corpo che si tuffa e rotola fino a rialzarsi non deve contare come uno che ha camminato), e
+  per un attimo ho confrontato numeri con criteri diversi. Ora Result riporta entrambi.
+- Interruttori per rifare i confronti: Gait.useLegacySeed (il seme di prima) e
+  GaitEvaluator.useBalance, come ActionWeights tiene il profilo legacy. Gli altri usati durante la
+  caccia (corpo rigido, tutto a cerniere, limiti simmetrici) sono stati rimossi: restano qui.
+
+EFFETTO SULLA SIMULAZIONE (src.Experiment, 12 semi, 6000 tick, stesso seme = stesso mondo)
+   structured                      mediana 16 vivi, media 52.2, estinzioni 0
+   embodied, prima di queste correzioni   mediana 29, media 80.1, estinzioni 0
+   embodied, con la fisica sistemata      mediana 41, media 88.3, estinzioni 0
+     vivi finali [277, 70, 376, 9, 22, 43, 77, 15, 39, 81, 27, 24]
+Per seme, embodied contro structured: 10 migliori, 2 peggiori, 0 pari. Test dei segni p = 0.039,
+quindi SIGNIFICATIVO al 5% - prima delle correzioni era 8-3-1 con p = 0.11, cioe' solo indicativo.
+Ora si puo' dire che far contare il corpo AIUTA la sopravvivenza, non solo che non la danneggia.
+
+
+----------------------------------------------------------------------
+VOCE DEL 23/10/2026 (10) - IMPARARE A CAMMINARE VIVENDO
+----------------------------------------------------------------------
+Domanda: "ma non posso far addestrare l'entita' a camminare durante la sua vita, e parte
+dell'addestramento passa ai figli?"
+
+Si', ed era meglio di come l'avevo fatto. Prima tutto l'addestramento era un BLOCCO di prove
+pagate alla nascita (24 per una fondatrice, 8 per un figlio): il numero di prove era un parametro
+fisso, slegato dalla vita dell'entita'. Spalmandolo nel tempo cambiano tre cose:
+ - il costo si distribuisce invece di arrivare in un colpo;
+ - chi vive piu' a lungo si allena di piu', quindi camminare bene diventa anche una CONSEGUENZA
+   dell'essere sopravvissuto, non solo un dono alla nascita;
+ - i figli partono dall'andatura dei genitori, quindi quello che un genitore affina in vita e' il
+   punto di partenza della generazione dopo, e si accumula (effetto Baldwin).
+
+COME E' FATTO  (Locomotion.practice / collectPractice, entity.practiceWalking)
+Una prova ogni 40 azioni: si perturba di poco l'andatura in uso (practiceSigma 0.15, contro lo
+0.35 che scende a 0.1 dell'ottimizzazione iniziale: qui si rifinisce, non si esplora), una corsa
+di fisica su un thread a parte, e si tiene solo se il punteggio migliora. Il tick non aspetta mai:
+il risultato si ritira dopo, con collectPractice. Profile ora porta con se' il PUNTEGGIO della
+misura, altrimenti non c'e' modo di dire se una prova e' andata meglio.
+Sta dentro step(), accanto alla finestra di valutazione del cervello, perche' e' lo stesso
+meccanismo che il progetto usa gia' (provi una variazione, la tieni se migliora). Differenza: il
+punteggio non lo da' la vita ma la fisica. Provare un'andatura DAVVERO vivendo vorrebbe dire
+camminare peggio per un po', e in un mondo dove si muore di fame non si puo'.
+Le prove si BUTTANO se in coda ce ne sono piu' di 64, invece di accodarsi: con qualche centinaio
+di entita' vive la coda crescerebbe senza fine e le misure dei corpi NUOVI - che servono subito,
+perche' senza di loro un'entita' non sa nemmeno quanto e' lunga la sua falcata - resterebbero
+dietro all'allenamento di chi cammina gia'.
+
+MISURATO  (12 semi, preset embodied, 6000 tick, le due versioni lanciate in coppia)
+   seme        1    2    3    4    5    6    7    8    9   10   11   12
+   con       188    8  375   23   51   60  125  119   17   50   29   71
+   senza     120   21  110    7    4   84  103   44    4   14   10   20
+Vivi a fine corsa: mediana 20.5 -> 55.5, media 45.1 -> 93.0. Dieci semi su dodici migliori, test
+dei segni p = 0.039. Zero estinzioni in tutte e 24 le corse.
+Tasso di accettazione dell'allenamento stabile al 16-17% in tutte le corse (sul seme 1: 3322
+prove, 564 miglioramenti). Un hill climbing che accetta una mossa su sei e' in salute: non sta
+rimbalzando a vuoto ne' bloccato in un ottimo.
+Velocita': mediana delle mediane 0.311 -> 0.376 m/s (+21%), ma solo 8 semi su 12 a favore. Da non
+sopravvalutare: quella mediana e' calcolata sulla CACHE, cioe' su tutti i corpi mai misurati,
+comprese le stirpi estinte, e popolazioni di taglia diversa pesano diverso. Il numero buono resta
+quello dei vivi.
+
+AVVERTENZA DI METODO: I VALORI ASSOLUTI NON SI CONFRONTANO TRA LOTTI DIVERSI
+Il braccio "senza" di questo lotto e' la stessa configurazione che nella voce 9 dava mediana 41 e
+media 88 vivi; qui da' 20.5 e 45.1. La simulazione NON e' riproducibile a parita' di seme, perche'
+il momento in cui una misura di fisica arriva dipende dai thread e dal carico della macchina, e
+un'entita' che riceve la misura dieci tick piu' tardi cammina dieci tick con la stima geometrica.
+Quattro corse in parallelo invece di una cambiano quel momento. Quindi: valgono solo i confronti
+DENTRO lo stesso lotto, con le due versioni lanciate in coppia sotto lo stesso carico - come e'
+fatto qui. I numeri della voce 9 restano validi come confronto interno al loro lotto.
+
+RESTA DA FARE
+Sul seme 1 la coda era satura a fine corsa (65 in coda, 398 prove buttate, 686 corpi misurati su
+726 richiesti, contro 557 su 558 senza allenamento): l'allenamento mangia la banda dei quattro
+thread di fisica e i corpi nuovi aspettano. Se l'affinamento continua per tutta la vita, alla
+nascita non serve piu' spendere 8 prove per figlio: in prova trialsPerChild = 2.
+
+----------------------------------------------------------------------
+VOCE DEL 23/10/2026 (11) - DUE CODE DELLA VOCE 10
+----------------------------------------------------------------------
+PROVE ALLA NASCITA: RESTANO 8. Con l'allenamento in vita acceso in entrambi i bracci, abbassare
+trialsPerChild da 8 a 2 PEGGIORA: mediana dei vivi 39.5 -> 20.0, dieci semi su dodici a favore
+di 8 (p = 0.039). L'allenamento durante la vita NON sostituisce l'addestramento alla nascita: un
+figlio che parte da un'andatura non misurata cammina male nei primi tick, e quei tick contano.
+Si sommano, non si scambiano.
+La coda piena non era un problema di risorse: in una corsa SINGOLA (non quattro in parallelo come
+nell'A/B) le prove saltate sono ZERO e la memoria usata e' 74 MiB su un tetto di 6000. La macchina
+ha 22 core e Locomotion.workers ne usa 4: se un giorno servira' piu' allenamento la leva sono i
+thread, non lo spazio. Aggiunte le opzioni thread=N, prove-figli=N, prove-corpo=N a src.Experiment,
+e la riga "memoria:" in fondo al risultato.
+
+LA CONSOLE NON PARTIVA PIU'  (ConsoleLauncher)
+Sintomo: all'avvio la finestra della console si apriva e si chiudeva subito, quindi non si poteva
+scrivere NewStart e il motore grafico era inutilizzabile. Causa: il comando passato a cmd aveva il
+classpath NON quotato, e il progetto sta in una cartella con uno spazio nel nome ("ESIT v2"); cmd
+tagliava il comando li' e java usciva con "Could not find or load main class v2.Esit...". Non
+c'entrava il lavoro sul corpo: succede da quando la cartella ha quel nome.
+Era invisibile per costruzione - l'errore veniva stampato nella finestra che si chiudeva. Ora il
+comando sta in un .bat generato (target/esit-console.bat) con il classpath quotato, e il .bat
+finisce con "if errorlevel 1 pause": la prossima volta che non parte, l'errore resta sullo schermo.
+Quotare dentro l'argomento di ProcessBuilder non basta, su Windows le virgolette annidate vengono
+riscritte. Verificato: il motore stampa "collegato al server".
+
+----------------------------------------------------------------------
+VOCE DEL 23/10/2026 (12) - COSA DICONO I LOG DELLA SESSIONE 13
+----------------------------------------------------------------------
+Prima sessione interattiva con il corpo e l'allenamento attivi: 30800 tick, 126 entita' in tutto,
+salvataggio in motore-grafico/saving/s-1 fatto quando era rimasta viva solo la 120.
+
+L'ENTITA' 120 HA VINTO RALLENTANDO, E QUESTO E' UN DIFETTO NOSTRO
+Generazione 4, figlia di 119 e 75, nata al tick 3582, ancora viva al tick 30800: circa 27000 tick,
+contro una vita mediana di 1745. Trentatre' mele in tutto. Al salvataggio stava bene: cibo 138/200,
+sete 142/200, salute 122.
+Come: cibo e sete scendono di 1 PER AZIONE, dentro step(), non per tick di mondo. Le azioni
+arrivano al ritmo speed/7, quindi un'entita' lenta ha un metabolismo lento IN TEMPO DI MONDO. La
+120 ha speed 1.07, cioe' un'azione ogni sette tick: 3672 azioni in 27000 tick. Non ha imparato a
+sopravvivere, ha imparato a non fare niente piano.
+Non e' un caso isolato, e' la direzione della selezione: la velocita' media della popolazione
+scende da 1.80 a 1.05 lungo la corsa. Essere lenti e' GRATIS - il tempo non costa niente, solo le
+azioni costano - e l'evoluzione l'ha trovato prima di noi.
+
+LA FAME NON ERA SCARSITA' DI CIBO
+90 morti di fame su 126 (72%), 27 di sete, 8 uccise. Ma le mele sono rimaste 375 dal primo
+all'ultimo tick, sempre al tetto (maxApples = dim^2 * 0.15 = 375 su mappa 50x50): una ogni 6.7
+celle, con una vista di 8-11 celle. Ne nascono 6 ogni 2 tick e vengono consumate molto piu'
+lentamente. Il cibo non e' stato scarso un solo istante.
+
+LA CAUSA STRUTTURALE: IL MONDO E' QUATTRO MONDI SOVRAPPOSTI
+Vision.sense, entity.appleWithinReach e la ricerca del partner filtrano tutti sulla quota py
+dell'entita'. Le mele del salvataggio stanno su quattro quote: y=25 (150), y=26 (167), y=27 (57),
+y=28 (1). Una mela a una cella di distanza ma su un gradino diverso NON ESISTE: non si vede e non
+si mangia. Lo stesso per i partner - due entita' a cinque metri su due quote diverse sono
+mutuamente invisibili per sempre.
+Da qui la riproduzione: generazioni 63 -> 35 -> 15 -> 7 -> 5 -> 1, dimezzamento a ogni passo, e
+ZERO nascite dopo il tick 8000 con sette entita' ancora vive su 2500 colonne. Non e' sfortuna: e'
+un mondo in cui chi e' su un gradino diverso e' inaccessibile.
+Nota: la vista e la mangiata sono vincolate alla stessa quota, quindi almeno il cervello non viene
+addestrato su cibo che non puo' raggiungere. Il danno e' tutto nell'accessibilita'.
+
+COSA NE SEGUE (in ordine di rapporto tra effetto e costo)
+1. Il metabolismo va legato al TEMPO, non alle azioni: cibo e sete per tick, e il costo del
+   movimento proporzionale a massa per distanza (il lavoro sul corpo da' gia' entrambi). Finche'
+   non si fa, la selezione premia la torpore e tutto il lavoro sulla locomozione non conta niente:
+   la 120 ha dimostrato che la strategia vincente e' non muoversi.
+2. Vista, portata e accoppiamento devono attraversare i gradini: raggiungibile se la differenza di
+   quota e' entro un passo (una cella), non solo se e' zero.
+3. Solo dopo ha senso toccare lo spawn delle mele. Oggi e' uniforme, statico e saturo: nessuna
+   struttura spaziale da imparare, nessuna scarsita', nessun motivo di ricordare un posto. Da
+   provare: macchie che ricrescono dove erano (frutteti) invece di colonne casuali, e un tetto che
+   risponde al consumo invece di essere sempre pieno.
+4. L'acqua non viene mai disegnata (319 colonne allagate, 27 morti di sete): non si puo' giudicare
+   se sia raggiungibile finche' non si vede.
+
+
+================================================================================
+13. CICLO DEL GIORNO, ALBERI, E TRE OSCILLATORI (23/10/2026)
+================================================================================
+
+L'A/B DI SEPARAZIONE: ERA LA PERCEZIONE, NON IL METABOLISMO
+Dodici semi, 10000 tick, i due interventi di ieri misurati uno alla volta.
+  solo i gradini sistemati (percezione): mediana 377 vivi, 0 estinzioni, 10/12 semi vinti
+  solo il metabolismo a tempo:           mediana 103.5 vivi, 1 estinzione, 2/12 semi vinti
+p = 0.039. La versione con ENTRAMBI faceva 378 di mediana: il solo intervento sulla percezione ne
+fa 377, cioe' praticamente tutto il guadagno veniva da li' - dal fatto che Vision,
+appleWithinReach e findPartner filtravano sulla quota esatta e spezzavano un terreno a quattro
+gradini in quattro mondi separati. Il metabolismo a tempo resta perche' serve a non premiare
+l'immobilita' (il baco dell'entita' 120), non perche' faccia popolazione.
+
+CICLO DEL GIORNO (src/DayNight.java)
+Giorno di 600 tick, scelto sulla scala della VITA (mediana ~1700 tick) e non dell'orologio: un
+individuo deve vedere qualche notte, altrimenti il buio e' una sfortuna singola e non un problema
+da risolvere. La luce e' un seno appiattito con la tangente iperbolica, quindi giorno e notte
+pieni durano piu' dei passaggi: se la luce variasse linearmente non ci sarebbe un momento in cui
+la visione notturna conta davvero.
+visibility(nightVision) = luce + (1 - luce) * (0.25 + 0.75 * nightVision). Il pavimento a 0.25
+esiste perche' in un buio totale nessuna strategia batte nessun'altra, e un gene su cui la
+selezione non puo' lavorare e' solo rumore nel genoma.
+entity.sightNow() sostituisce stats.sightDistance in tutto cio' che percepisce.
+
+NESSUN ISTINTO SULLA LUCE (correzione in corsa, su indicazione)
+Il primo cablaggio dava al neurone del riposo un peso negativo sulla luce: col buio, fermati.
+Sembra ragionevole e invece decide in partenza la cosa che volevamo far decidere alla selezione.
+Con quel peso ogni entita' nasce diurna, la notte la passa ferma, il gene della visione notturna
+non viene mai messo alla prova - e un gene che nessuno usa non puo' essere premiato, quindi non
+evolve. Togliere il peso lascia la luce come INFORMAZIONE (resta il 13esimo ingresso, serve
+perche' il gene sia selezionabile) senza una risposta precotta. Diurne e notturne partono pari.
+
+I GENI DELLA VISTA SONO TRE E SEPARATI
+stat.sight_distance (quanto lontano), stat.field_of_view (40-170 gradi, quanto largo il cono),
+stat.night_vision (0-1, nuovo). Nessuno e' derivato dagli altri. Schema alla versione 4, 18 geni.
+
+ALBERI, MELE, SEMI (src/Flora.java) - via lo spawn casuale
+Perche': con le mele che comparivano in una colonna a caso ogni due tick fino a un tetto fisso, il
+mondo non aveva geografia. Ogni punto valeva quanto ogni altro, quindi niente da ricordare, niente
+da cercare, nessun motivo per essere piu' alti o piu' veloci di un altro - e la popolazione si
+appiattiva contro il tetto (375) con la selezione spenta.
+Adesso: zone boscose alla generazione del mondo; ogni albero ha parametri propri (velocita' di
+crescita, altezza massima, raggio della chioma, produzione) e cresce per conto suo; un albero
+maturo fa crescere mele sul GUSCIO della chioma (non dentro: dentro non si vedrebbero); a meta'
+della maturazione la mela CADE, a distanza dal tronco decisa dal raggio della chioma; a terra
+continua a maturare; al massimo della maturazione ha il 4% di lasciare un seme, che dopo 200 tick
+ha il 25% di diventare un albero (coi parametri del padre piu' una variazione del 15%); il resto
+marcisce.
+Il valore nutritivo segue la maturazione: verde 0.25, matura 1.20, passata 0.35. Due rette e non
+una campana liscia, perche' l'ottimo deve essere UN momento riconoscibile - se il valore cambiasse
+poco attorno al massimo, aspettare non sarebbe una strategia distinguibile dal mangiare subito.
+I tronchi sono fisici: non si attraversano (entity.walk). Vision ha una categoria nuova, CAT_TREE,
+separata dalla mela perche' le due cose dicono il contrario: una mela e' cibo ADESSO e sparisce
+quando la mangi, un albero e' un POSTO dove il cibo ricompare. Senza l'ingresso dell'albero chi ha
+appena ripulito una chioma vede quel posto come un deserto e non ha modo di tornarci.
+
+L'ALTEZZA PAGA, PER LA PRIMA VOLTA
+Una mela a terra la raccoglie chiunque le arrivi accanto; una ancora appesa solo chi ci ARRIVA:
+entity.pickHeight() = (altezza del corpo + portata delle braccia) * fattore di crescita. Fin qui
+la taglia era solo un costo (massa = passo piu' caro, metabolismo piu' caro), quindi la selezione
+spingeva sempre verso corpi piccoli. Adesso le chiome alte sono cibo che esiste e che solo alcuni
+corpi possono prendere.
+
+TRE OSCILLATORI, TROVATI UNO DIETRO L'ALTRO
+Il primo mondo con gli alberi: 7900 giri del corpo su 13000 azioni, 450 passi avanti, estinzione.
+Le entita' non oscillavano per scelta.
+(a) LA STAMINA SI RECUPERAVA SOLO DORMENDO. Un passo costa ~2.5, un giro 0.5: appena la stamina
+    scendeva sotto il costo di un passo la maschera delle azioni cancellava il passo e lasciava in
+    piedi le rotazioni. L'entita' restava intrappolata a girarsi non per scelta ma perche' era
+    l'unica cosa che potesse pagare. Rimedio: WAKE_REGEN_FRACTION = 2% della PROPRIA stamina
+    massima per tick da svegli. Essendo sulla propria, il gene stat.max_stamina decide anche la
+    velocita' di recupero - una pressione selettiva vera che quel gene non aveva.
+(b) L'ACQUA GUIDAVA LE ROTAZIONI. I due neuroni di rotazione sommavano l'acqua vista dal proprio
+    lato come motivo per girarsi. Un lago e' un bersaglio ENORME e DIFFUSO: lo vedi un po' piu' a
+    destra, giri di 22 gradi, ora lo vedi un po' piu' a sinistra, rigiri. Ciclo limite a due
+    stati, le uscite alternavano 0.93/0.12 e 0.08/0.94 per tutta la vita. Verso un PUNTO la
+    retroazione negativa converge, verso meta' dell'orizzonte no. Due rimedi insieme: i neuroni di
+    rotazione ora misurano una DIFFERENZA (proprio lato positivo, lato opposto negativo con lo
+    stesso peso, quindi una scena simmetrica si annulla a zero), e l'acqua e' spenta da chi non ha
+    sete (n_turnSated = -2.5) - che e' anche l'unico momento in cui ha senso cercarla.
+(c) LA TESTA OSCILLAVA PER PROPRIOCEZIONE. I neuroni di scansione avevano un termine sul collo
+    residuo (n_scanGain/3 = 2.0) che da solo superava la soglia (-1.5): giri a destra, resta meno
+    collo a destra e piu' a sinistra, giri a sinistra. Soglia portata a -2.5: il collo da solo non
+    basta (2.0 - 2.5 < 0) e serve il "non vedo niente" (6.0) per accendere la scansione, che e'
+    il solo caso in cui serve.
+Aggiunto anche n_moveNothing = 2.5 sul neurone del passo: se non vedo niente, CAMMINO. Girare sul
+posto non cambia il posto, e il posto e' l'unica cosa che decide se davanti ci sara' qualcosa;
+guardare lo fa la testa, che e' gratis.
+
+DENSITA' DEL BOSCO
+Con MIN_SPACING = 2 l'esclusione era un 5x5 per albero, cioe' un albero ogni 25 celle: una zona
+non arrivava a dieci alberi e il mondo intero ne aveva venti, troppo pochi per nutrire le
+fondatrici (estinzione). A 1, con 8 zone, sono 71 alberi e 111 mele sulle chiome.
+
+DOVE SIAMO (seed 1, 6000 tick, preset embodied)
+52 vivi, generazione 10, 106 nascite, 75 alberi (quattro germogliati dai semi durante la corsa),
+193 mele di cui 83 ancora appese. La popolazione scende a 22 al tick 3000 e risale a 52: c'e'
+selezione, e non e' piu' il tetto saturo di prima.
+Restano da guardare: le rotazioni del corpo sono ancora il 32% delle azioni (erano il 75%), e le
+bevute sono 10539 - probabilmente si accampano all'acqua.
+
+SALVATAGGI: formato 5. I salvataggi 4 e precedenti non si caricano (vista a cinque categorie,
+ingresso della luce, mele con stato). trained/brains.json va rigenerato: la topologia e' cambiata.
+
+
+================================================================================
+14. TEXTURE DEGLI ALBERI, L'ACQUA SI VEDE, PESI ADDESTRATI (23/10/2026)
+================================================================================
+
+TEXTURE DEGLI ALBERI (flora/TreeTexture.java, shaders/tree.vert+frag)
+Prima tronco e chioma erano a colore pieno con lo shader solid, senza UV. Ora un array di due
+strati, procedurale come la mela e i materiali del terreno (niente file esterni, e il rumore si
+puo' rendere PERIODICO sul lato - una foto no, e su un tronco la cucitura si vedrebbe come una
+riga verticale netta).
+  corteccia: rumore ANISOTROPO - campionato con la verticale compressa e l'orizzontale dilatata -
+    piu' un gradino morbido che fa creste e spacchi invece di una sfumatura. Un rumore isotropo su
+    un tronco si legge come pietra: e' l'allungamento verticale delle fibre a dire "legno".
+  fogliame: rumore isotropo (una chioma da fuori non ha direzione), due scale sovrapposte, piu'
+    punti scuri che fanno i buchi tra i rami. Senza i buchi la chioma e' una palla di plastica.
+Le UV del tronco sono cilindriche con il vertice di chiusura DOPPIO (u=1 oltre a u=0): senza il
+doppione l'ultima faccia interpolerebbe da 0.875 a 0, cioe' tutta la texture al rovescio in una
+faccia sola. Le mesh sono unitarie e scalate per albero, quindi lo shader riceve uUvScale con le
+dimensioni VERE: altrimenti un albero di sei metri avrebbe la corteccia larga il triplo di uno di
+due. La normale si trasforma con l'inversa trasposta perche' la scala del tronco non e' uniforme.
+Il fogliame prende luce anche DA DIETRO (termine di traslucenza, solo sullo strato delle foglie):
+controluce una chioma vera si accende invece di diventare una sagoma nera, ed e' la cosa che piu'
+fa sembrare finto un albero fatto di una sfera sola.
+
+L'ACQUA SI VEDE (world/WaterSurface.java, render/WaterTexture.java, shaders/water.*)
+Nella simulazione l'acqua esiste da sempre - 376-388 colonne allagate su 2500, ci si beve, non ci
+si cammina - ma a schermo NON VENIVA DISEGNATA AFFATTO: si vedeva una buca di terra. Era il buco
+piu' grosso per capire il mondo guardandolo (le morti per sete non si potevano giudicare senza
+sapere dov'era l'acqua).
+Un quadrato per colonna allagata, tutti in una mesh, rifatta solo quando cambia il terreno
+(getTerrainVersion). NON un unico piano grande su tutta la mappa: coprirebbe anche la terra piu'
+bassa del livello dell'acqua che non e' allagata. Disegnare esattamente le colonne che la
+simulazione considera acqua vuol dire che cio' che si vede e cio' su cui le entita' ragionano sono
+la stessa cosa. Il pelo dell'acqua sta 0.08 celle sotto il livello nominale: due superfici
+complanari danno z-fighting, quella striscia tremolante lungo le rive.
+La TEXTURE non contiene un colore d'acqua: contiene la FORMA delle onde (pendenza lungo x e z nei
+canali R,G) piu' la schiuma (B). Il colore lo fa lo shader, perche' il colore dell'acqua non e'
+una proprieta' della superficie: di scorcio riflette il cielo, a picco si vede il fondo. Un azzurro
+nella texture darebbe una vernice blu piatta - l'aspetto dell'acqua finta.
+La pendenza e' ricavata dall'altezza per differenze finite, non generata direttamente: pendenze
+inventate non corrispondono a nessuna superficie e la luce ci si legge come sporco. L'altezza e'
+rumore frattale PIU' due treni d'onda obliqui, perche' quello che rende l'acqua riconoscibile e'
+che le onde hanno una DIREZIONE; il solo rumore fa una superficie grumosa, cioe' un terreno.
+Lo shader campiona la texture DUE volte, con scale e velocita' diverse e direzioni opposte: una
+sola copia che scorre si riconosce subito come un disegno che si ripete. Le pendenze si sommano
+(sono derivate, quindi additive), la schiuma prende la maggiore. Piu' il Fresnel: quanto riflette
+dipende dall'angolo, ed e' il motivo per cui una superficie d'acqua ha un colore diverso vicino e
+lontano. Senza, resta una lastra monocroma - l'errore che la fa sembrare vetro colorato.
+Si disegna PER ULTIMA, in trasparenza, con glDepthMask(false): la profondita' si legge (una riva
+piu' alta copre l'acqua dietro) ma non si scrive, altrimenti due celle d'acqua adiacenti si
+nasconderebbero a vicenda e la superficie si bucherebbe secondo l'ordine nella mesh.
+
+PESI ADDESTRATI RIGENERATI (trained/brains.json)
+La cartella trained/ NON ESISTEVA: non c'era niente da rigenerare, le fondatrici partivano sempre
+dagli istinti. Aggiunta a Experiment l'opzione "addestra[=riserva]" (prima l'addestramento esisteva
+solo come comando di console "train", cioe' non ripetibile ne' verificabile da riga di comando) e
+l'opzione "niente-addestrati" per misurare i pesi nello stesso lotto.
+Corsa di addestramento: seed 1, 8000 tick, riserva di cibo 2500. Le mele mangiate per entita'
+salgono da 0.90 a 3.3 di media e il massimo da 9 a 39. La cattura AUTOMATICA non e' scattata: la
+soglia vuole il 25% delle vive con almeno 8 mele e si e' fermata al 14% (33 su 240) - con gli
+alberi il cibo e' localizzato, quindi una frazione fissa della popolazione non lo trova mai, e
+quella soglia era tarata sul mondo a mele uniformi. Ha salvato i dieci migliori a fine corsa
+(39, 34, 29, 28, 27, 24, 20, 20, 19, 19 mele). Da rivedere: la soglia di cattura automatica.
+
+MISURA DEI PESI ADDESTRATI (A/B appaiato, 6 semi, 6000 tick, stesso lotto)
+  addestrati: 37, 25, 24, 65, 27, 23   -> mediana 26
+  istinti:    12, 39, 23,  4, 74, 11   -> mediana 17.5
+4 semi su 6 a favore degli addestrati: con sei semi NON E' SIGNIFICATIVO (il test dei segni da'
+p = 0.34). La mediana e' migliore ma la varianza e' enorme - il seme 5 va 74 contro 27 nella
+direzione opposta. Conclusione onesta: il file e' rigenerato e le fondatrici lo caricano
+(verificato dalla riga "Fondatrici dai pesi addestrati"), ma NON e' dimostrato che serva. Per
+deciderlo servono dodici semi.
+Nota metodologica confermata di nuovo: lo stesso seme 1 con gli istinti aveva fatto 52 vivi nel
+lotto precedente e 12 in questo. I risultati assoluti non sono confrontabili tra lotti - contano
+solo i confronti appaiati dentro lo stesso lotto.
+
+RIMISURA A DODICI SEMI: IL SEGNO SI RIBALTA
+I sei semi dicevano 4 a 2 per gli addestrati. Con dodici (24 run, due ondate da dodici processi,
+i due bracci di ogni seme sempre nella stessa ondata):
+  addestrati:  8, 15,  9, 22, 19, 25, 23,  9, 42,  8, 26, 10  -> mediana 17.0
+  istinti:   102, 63, 75, 15, 68, 24, 33,  4, 90, 38, 28, 27  -> mediana 35.5
+9 semi su 12 agli ISTINTI, mediana piu' che doppia, p = 0.146 (test dei segni bilaterale).
+Non e' significativo nemmeno adesso, quindi non si puo' dire che i pesi addestrati facciano danno.
+Quello che si puo' dire e' che NON c'e' nessuna prova che aiutino e che il poco segnale presente
+punta nella direzione sbagliata. Il 4 a 2 di prima era rumore: e' esattamente cosi' che si
+comportano sei semi su una grandezza con questa varianza, ed e' la ragione per cui la regola di
+questo progetto e' dodici semi appaiati.
+
+DUE IPOTESI SUL PERCHE' (non verificate)
+1. I pesi sono stati addestrati con riserva di cibo 2500 contro i 200 normali. In un mondo dove
+   morire di fame e' quasi impossibile, un cervello non ha motivo di imparare a dare priorita' al
+   mangiare: ottimizza per un problema che nella simulazione vera non esiste.
+2. Sono stati addestrati su UN solo seme, cioe' su una sola disposizione del bosco. Con il cibo
+   localizzato sugli alberi la disposizione conta molto piu' di prima, quindi e' molto piu' facile
+   specializzarsi su quella mappa invece che sul mestiere di mangiare.
+Da provare, se si vuole recuperare l'addestramento: riserva vicina alla normale e cattura su piu'
+semi diversi.
+
+ATTENZIONE PRATICA: TrainedBrains.useForFounders() e' vero per il solo fatto che il file ESISTE.
+Avendo creato trained/brains.json, da ora ogni NewStart parte da quei pesi - cioe' dal braccio che
+nei dodici semi va peggio. Per tornare agli istinti: comando di console "trained off", oppure
+spostare/cancellare trained/brains.json.
+
+LA PAGINA DELLE CURVE: artifact "Pesi Addestrati" (A/B appaiato, popolazione nel tempo con la
+fascia min-max dei dodici semi, confronto appaiato seme per seme, tabella).
+
+RIMOSSO (24/10/2026 - su decisione, dopo la misura)
+src/TrainedBrains.java cancellato, con tutto il meccanismo dei pesi addestrati: i comandi di
+console "train", "savebrains", "trained on|off", il ramo delle fondatrici in console.java, la
+chiamata checkCapture nel ciclo centrale, le opzioni di Experiment e di SimRunner, e la cartella
+trained/. Motivo: i dodici semi appaiati davano 9 a 3 CONTRO i pesi addestrati, mediana 35.5
+contro 17. Non c'era prova che aiutasse e il segnale puntava al contrario, quindi e' sparito
+invece di restare come un interruttore che nessuno sa se accendere - e che partiva ACCESO per il
+solo fatto che il file esistesse.
+Resta entity.setMaxFood con il comando di console "maxfood": la riserva di cibo e' una leva
+indipendente dall'addestramento. In Experiment e in SimRunner le vecchie opzioni di addestramento
+sono state sostituite da "riserva=<n>", che fa solo quello.
+Le fondatrici partono sempre da entity.seedInstincts(). Verificato: compila, seed 1 a 2500 tick
+fa 41 vivi, il motore grafico parte senza errori.
+
+==========================================================================================
+15. LA CONSOLE DIVENTA UNA GUI (23/10/2026)
+==========================================================================================
+
+COSA C'ERA PRIMA
+I comandi si scrivevano in una finestra cmd separata (ConsoleInput), avviata da ConsoleLauncher
+con un file .bat, che parlava col motore grafico via socket sulla porta 5443. Due processi, un
+protocollo a righe di testo, e un elenco di comandi tenuto a mano in una mappa dentro
+console.java, separato dallo switch che li eseguiva davvero.
+
+COSA C'E' ADESSO
+Un package nuovo, src/gui/, con la finestra di controllo. Gira NELLO STESSO PROCESSO della
+simulazione: legge Entity_manager, Genealogy, Flora e History direttamente, senza protocollo.
+ - Gui              facciata statica: start/stop/selezionaEntita/messaggio. E' l'unico punto in
+                    cui si passa dal thread del motore (o della simulazione) a quello di Swing.
+ - ControlFrame     le schede: Tutte le entita', Vive, Popolazione, Morti, Comandi, piu' la riga
+                    di stato in basso. Un timer solo, ogni 500 ms, aggiorna la riga di stato e
+                    SOLO la scheda in primo piano.
+ - PannelloEntita   la lista, usata due volte (tutte / solo vive): stessa tabella, elenco di
+                    partenza diverso. Filtro, ordinamento per colonna, "congela elenco", e la
+                    selezione che sopravvive al rinfresco perche' si ricorda l'ID, non la riga.
+ - GraficoStorico   grafico a linee o ad aree impilate sui campioni di History, con mirino e
+                    riquadro dei valori al passaggio del mouse. Una sola scala verticale.
+ - PannelloPopolazione  vive adesso + nascite e morti cumulative, con le targhette dei totali.
+ - PannelloMorti        le tre cause impilate (il bordo in alto e' il totale) + le percentuali.
+ - SchedaEntita     la scheda di una entita': Statistiche (barre + tutti i numeri), Geni (valore
+                    espresso, i due alleli, l'intervallo, su cosa pesa), Corpo (misure, andatura,
+                    segmenti dell'automa), Albero genealogico (antenati e discendenti, doppio
+                    clic su un parente per aprire la sua scheda). Tiene l'ID, non l'oggetto.
+ - PannelloComandi  la riga di comando: elenco dei comandi a sinistra (preso da Commands), Tab
+                    che completa, freccia su per lo storico, esecuzione su un thread a parte.
+
+CLIC NELLA SIMULAZIONE
+Tasto destro su un'entita' nella finestra 3D -> si apre la sua scheda (Renderer.provaSelezione).
+Il pixel si riporta a una retta invertendo proiezione*vista, e ogni entita' si approssima con una
+sfera alta quanto il corpo: per selezionare non serve l'esattezza dello scheletro, serve prendere
+quella che si stava guardando. Il tasto sinistro resta per girare la visuale.
+
+TOLTO
+ConsoleLauncher.java, ConsoleInput.java e src/utils.java (client/server su socket) sono
+cancellati. console.java e' rimasta solo con startSimulation e con input(), che adesso inoltra a
+Commands.run. simulazione/main.java apre la GUI invece di aprire la console esterna.
+
+COMANDI: IL REGISTRO E I NUOVI
+Commands.java (scritto poco prima di questa voce) sostituisce lo switch: ogni comando e' un
+oggetto con nome, sinonimi, uso, descrizione e categoria, e la stessa struttura serve a eseguire,
+a stampare l'aiuto e a completare col Tab nella GUI. Un uso sbagliato stampa l'uso invece di
+lanciare un'eccezione, e "Get 5" non confonde piu' l'id con l'indice nella lista.
+Comandi nuovi aggiunti per le funzioni nuove:
+ - passo [n]      esegue n tick a mano, anche in pausa (Simulation.passo)
+ - storia [n]     gli ultimi campioni: vive, nascite, morti per intervallo, mele, alberi, luce
+ - alberi [n]     gli alberi: altezza, massimo, chioma, maturita', mele appese
+ - mele [n]       le mele: albero, posizione, quota, stato, valore nutritivo, se e' appesa
+ - azioni         quante volte e' stata scelta ciascuna azione (serve a riconoscere un cervello
+                  che oscilla invece di cercare: e' cosi' che si sono trovati i tre oscillatori)
+ - ora <frazione|alba|giorno|tramonto|notte>   sposta l'ora del giorno SENZA spostare i tick
+                  (DayNight.OFFSET): si prova il comportamento notturno senza invecchiare il
+                  mondo di mezza giornata
+ - scheda <id>    apre la scheda dell'entita' nella GUI
+ - gui [on|off]   apre o chiude la finestra di controllo
+
+CORRETTO STRADA FACENDO
+Il sesso era mostrato sbagliato: il campo vale 1 maschio / 2 femmina (vedi entity.java), mentre
+scheda() confrontava con 0, quindi TUTTE le entita' risultavano maschi. Sistemato in Commands e
+nella GUI.
+
+VERIFICATO
+Compila con javac e con "mvn -o compile". Prova automatica (seed 7, 2500 tick): 35 vive, 100
+morti (73 fame, 8 sete, 19 combattimento), generazione massima 5; tutte le schede e la scheda di
+una entita' nata disegnate fuori schermo e salvate in PNG senza eccezioni; comandi provati uno a
+uno compresi quelli sbagliati ("pass" -> suggerisce "passo", "scheda 99999" -> stampa l'uso).
+Il motore grafico parte, apre la finestra 3D e la finestra di controllo insieme.
+
+------------------------------------------------------------------------------------------
+15b. CORREZIONI DOPO LA PRIMA PROVA DELLA GUI (23/10/2026)
+------------------------------------------------------------------------------------------
+
+UNA PAGINA SOLA PER LE ENTITA'. Le schede "Tutte" e "Vive" erano la stessa tabella con un
+elenco diverso: due schede identiche costringono a ricordare in quale si era. Adesso c'e' una
+scheda "Entita'" con il menu "Stato: tutte / solo vive / solo morte" accanto al filtro di testo.
+
+CLIC SINISTRO = SELEZIONA. Il clic nella scena non faceva niente perche' la selezione era legata
+al solo tasto destro, mentre il sinistro serviva a girare la visuale. Adesso i due si
+distinguono al RILASCIO, guardando quanti pixel ha percorso il puntatore mentre era premuto:
+sotto i 4 pixel era un clic (si apre la scheda dell'entita' sotto al puntatore), sopra era un
+trascinamento (la visuale e' gia' girata). Il tasto destro continua a selezionare, come
+alternativa quando si sta girando la visuale di continuo. Se la finestra di controllo era
+chiusa, un clic su un'entita' la riapre.
+La matematica del raggio e' stata verificata a parte: si proietta un punto del mondo sullo
+schermo e si ricostruisce il raggio da quel pixel con la stessa chiamata del Renderer; il raggio
+ripassa per il punto con uno scarto di 7 millesimi di cella.
+
+CHIUDERE UNA FINESTRA CHIUDE TUTTO. Chiudendo la finestra di controllo la simulazione restava
+viva: i suoi thread non sono daemon, quindi il mondo continuava ad andare avanti invisibile e
+ingovernabile. Adesso chiudere la finestra di controllo ferma il ciclo, salva la genealogia ed
+esce; chiudere la finestra 3D chiude anche quella di controllo, come gia' faceva. Tolto di
+conseguenza il "gui off": sarebbe stato un comando per uscire travestito da comando di
+interfaccia. Resta "gui", che apre o porta davanti la finestra.
+
+IL MONDO ADESSO E' CHIUSO ANCHE SOTTO E DI LATO (VoxelMesher). Il sottosuolo nei dati e' sempre
+stato pieno di terra, ma la mesh saltava gli spigoli di bordo: il ciclo dei quadrilateri partiva
+da 0 e si fermava a dim-2, quindi lo spigolo tra "fuori dal mondo" (vuoto) e la prima cella di
+terra non produceva nessuna faccia. Il terreno era una buccia: dall'alto sembrava giusto, ma
+scendendo con la telecamera sotto la superficie non c'era niente da vedere. Adesso gli spigoli
+considerati vanno da -1 a dim, e fuori dalla griglia la densita' vale 0 (WorldGrid.getDensity),
+quindi la superficie si chiude con un fondo e quattro pareti di roccia. Niente superfici doppie:
+lo spigolo a -1 appartiene solo al chunk che comincia a 0.
+Verificato (seed 7, mondo 50): 2500 colonne su 2500 piene a y=0, i vertici vanno da -0,5 a 49,5
+su x e scendono a y=-0,5, 2916 vertici sul fondo, 32 chunk con superficie e 22440 triangoli.
+
+CORRETTO ANCHE: le etichette delle targhette dei grafici venivano tagliate all'ultima lettera
+("Nascite" scritto "Nascitc"). BoxLayout non allarga un componente oltre la sua dimensione
+massima, e per una JLabel la massima e' la preferita, misurata senza antialiasing: si misura
+l'etichetta a mano e si tengono otto pixel di margine.
+
+==========================================================================================
+16. LA DIETA E I SESSI (23/10/2026)
+==========================================================================================
+
+DA DOVE NASCE. Guardando il salvataggio della sessione 19 (14040 tick, popolazione da 104 a 1)
+sono saltate fuori due cose. L'entita' #10, sopravvissuta 3554 tick, era CARNIVORA e aveva
+mangiato 277 MELE senza uccidere nessuno. E le due superstiti erano tutt'e due maschi, con 2000
+tick finali senza una sola nascita e 400 mele a terra.
+
+------------------------------------------------------------------------------------------
+LA DIETA: SI MANGIAVA QUELLO CHE NON SI VEDE
+------------------------------------------------------------------------------------------
+La vista filtrava gia' per dieta (Vision: un carnivoro non registra le mele, un erbivoro non
+registra i cadaveri), ma il morso no: appleWithinReach e corpseWithinReach guardavano solo la
+distanza. Un carnivoro mangiava quindi le mele in cui INCIAMPAVA, al 25% di resa, pur non
+potendole vedere. Un gene che non costa niente non viene selezionato: deriva e basta.
+Corretto con ActionWeights.dietFood (1 = la dieta vale anche per mangiare; 0 = come prima, per
+poter misurare nello stesso lotto). Comandi: "dieta on|off" dalla GUI, "dieta=0" in SimRunner.
+Verificato direttamente sul salvataggio: con dietFood=1 la mela sotto i piedi di #10 (carnivora)
+non e' piu' a portata, mentre per #277 (onnivora) lo resta.
+
+MISURATO, 12 SEMI APPAIATI, 6000 tick (braccio "dieta" contro braccio "libera"):
+  vivi a fine corsa  dieta:  13, 38,108,  7, 79,  3, 14, 19,156, 23, 20, 28  -> mediana 21.5
+                     libera: 85,  9,125,  1, 63, 20, 86, 30, 94, 28, 22, 87  -> mediana 46.5
+  8 semi su 12 a favore del comportamento VECCHIO, p = 0.388: non significativo.
+Era atteso che togliere una fonte di cibo riducesse la popolazione; quello che i dati NON dicono
+e' che la riduzione sia reale e non rumore.
+
+Sul punto per cui la correzione e' stata fatta - dare un costo al gene - il segnale va nel verso
+giusto, sempre senza significativita':
+  quota di carnivori, variazione mediana inizio->fine:  dieta -15.4 punti, libera -10.8 punti
+  quota finale mediana:                                 dieta 7.7%,        libera 11.1%
+  8 semi su 11 i carnivori calano di piu' col filtro, p = 0.227.
+Resta acceso perche' e' una CORREZIONE DI COERENZA, non una taratura: mangiare quello che non si
+puo' percepire era un errore del modello, e un modello coerente non si tiene spento in attesa di
+un p-value. L'interruttore c'e' per poterlo rimisurare.
+
+------------------------------------------------------------------------------------------
+I SESSI: NESSUNO SBILANCIAMENTO, E' DERIVA
+------------------------------------------------------------------------------------------
+Il sesso e' una moneta lanciata a ogni nascita (entity: sex = 1 o 2), non sta nel genoma; la
+riproduzione vuole due entita' di sesso opposto, quindi una popolazione di soli maschi e' gia'
+finita anche col bosco pieno. Aggiunti al log (StatsLog) males, females, mature_males,
+mature_females, deaths_m, deaths_f, al comando "sessi" e alla pagina Popolazione della GUI due
+targhette: "maschi / femmine" e "coppie possibili" (il minimo tra maschi e femmine maturi: a
+zero non nascera' piu' nessuno).
+
+MISURATO sulle stesse 24 corse:
+  vivi a fine corsa: 557 maschi, 601 femmine  (48.1% maschi)
+  morti in tutto:   2415 maschi, 2494 femmine (49.2% maschi) -> 1.1 sigma da meta' esatta
+  corse finite con popolazione > 1 ma senza coppie possibili: 0 su 24
+Nessun sesso muore piu' dell'altro e nessuna corsa si e' bloccata per mancanza di coppie. Il
+finale "tutti maschi" della sessione 19 era deriva su DUE superstiti: con due entita' la
+probabilita' che siano dello stesso sesso e' 1/2. Il problema non e' il sesso, e' arrivare a due.
+Quindi non c'e' niente da correggere qui: quello che c'e' da capire e' perche' la popolazione
+scende a numeri cosi' piccoli, dove qualunque deriva diventa letale.
+
+==========================================================================================
+17. LA DIETA SI IMPARA, SI MIRA PRIMA DI COLPIRE, E DEGLI ALTRI SI VEDE L'ASPETTO (23/10/2026)
+==========================================================================================
+
+DA DOVE NASCE. Tre decisioni prese a tavolino prima di scrivere codice, piu' una scoperta
+venuta fuori mentre si controllava una delle tre.
+
+------------------------------------------------------------------------------------------
+LA DEMOGRAFIA: IL LOG DICEVA UNA COSA DIVERSA DA QUELLA CHE CI RACCONTAVAMO
+------------------------------------------------------------------------------------------
+Sessione 19, dal log tick per tick:
+  tick  1020: vive 79, nascite  66, fame  35, uccise  15, mele 257, salute media 123.8
+  tick  5020: vive 35, nascite 171, fame  94, uccise 105, mele 312, salute media 130.9
+  tick  9020: vive 18, nascite 240, fame 125, uccise 160, mele 327, salute media 139.1
+  tick 10020: vive  9, nascite 241, fame 125, uccise 170, mele 358, salute media 142.9
+  tick 14040: vive  1, nascite 243, fame 127, uccise 178, mele 344, salute media 135.9
+Il 57% delle morti e' OMICIDIO, non inedia. La salute media SALE lungo tutta la corsa (120 ->
+142) mentre le mele salgono a 400: i superstiti stanno benissimo, vengono ammazzati sani. E tra
+il tick 9020 e il 10020 c'e' UNA nascita e DIECI omicidi. Sotto la ventina la riproduzione si
+spegne: dopo il 10020 sono due nascite in quattromila tick.
+Nota di metodo: si ragionava sulla fame da due giorni, e il log non registrava ne' il cibo ne'
+la sete. Adesso ci sono (avg_food, avg_thirst, avg_diet_bias). Misurato: il cibo medio sta tra
+80 e 110 su 200, cioe' si vive sul filo - e prima non si poteva sapere.
+
+------------------------------------------------------------------------------------------
+1. LA DIETA DIVENTA UN'ABITUDINE
+------------------------------------------------------------------------------------------
+Era un'etichetta decisa alla nascita (tre scatole dal gene behavior.diet_bias) con rese fisse,
+e ieri il rimedio al carnivoro che mangiava 277 mele era stato un DIVIETO (il vecchio
+interruttore dietFood). Un divieto non e' una pressione selettiva, e' un muro: non costa niente
+a nessuno e non ci si puo' sbagliare.
+Adesso chiunque mangia qualunque cosa, ma ogni pasto sposta l'abitudine (entity.dietBias) verso
+cio' che si e' mangiato, e piu' l'abitudine e' sbilanciata piu' quel cibo sazia:
+  dietBias += dietAdapt * (bersaglio - dietBias)      bersaglio 0 = vegetale, 1 = carne
+  resa(x) = 0.25 + 1.10 * x        x = 1-dietBias per la mela, dietBias per la carne
+Il centro cade su 0.80, identico all'onnivoro di prima: la media del mondo non si sposta, si
+allargano solo gli estremi, e si raggiungono per esperienza invece che per sorteggio. Con
+dietAdapt = 0.02 servono ~35 pasti per dimezzare la distanza: una specializzazione e' il lavoro
+di una vita, non di un pranzo.
+NON SI EREDITA (decisione): il figlio riparte dal gene dei genitori. Quello che si tramanda e'
+il gusto di partenza, non l'abitudine - cosi' il gene decide da dove parti, non dove arrivi.
+LA PARTE BUONA E' CHE LA SPECIALIZZAZIONE DIVENTA UNA TRAPPOLA: chi ha mangiato solo carne per
+cinquanta pasti ricava un quarto da una mela, quindi se i cadaveri finiscono muore di fame in
+mezzo al cibo. E' un prezzo, non un divieto.
+Anche la preferenza a tavola non e' piu' una regola per categoria: con mela e carogna entrambe a
+portata si prende quella che SAZIA PIU' ME, cioe' il conto del nutrimento atteso.
+Tolto dietFood, tolti i filtri secchi della dieta in appleWithinReach, corpseWithinReach e
+Vision.nearestFood. La dieta entra tra gli ingressi della rete: senza quell'ingresso un'entita'
+non ha modo di sapere quale cibo le conviene.
+
+MISURATO, 12 SEMI APPAIATI, 6000 tick (dieta=0.02 contro dieta=0, cioe' abitudine ferma sul gene):
+  vivi a fine corsa  plastica: 129, 84,244, 79, 57, 42, 25, 97,  2,191, 19, 98  -> mediana 81
+                     fissa:    197, 87,  2, 39,  7,  3, 32, 65, 25, 45, 16,168  -> mediana 35
+  7 semi su 12 alla plastica, p = 0.774: NON SIGNIFICATIVO.
+La mediana e' piu' che doppia e il test dei segni non vede niente: e' la varianza di questa
+grandezza (da 2 a 244 dentro lo stesso braccio). Nascite: mediana 316 contro 209, di nuovo 7 su
+12, stesso p. La plastica ha piu' nascite E piu' morti, cioe' piu' ricambio.
+Dove il segnale e' coerente (ma sempre senza significativita'):
+  abitudine media mediana  0.502 -> 0.412 con la plastica, 0.468 con la fissa
+  quota finale di carnivore          8.9% con la plastica,  12.2% con la fissa
+La selezione spinge verso il vegetale in entrambi i bracci (nel braccio fisso lo fa muovendo i
+GENI, perche' l'abitudine individuale non si sposta mai), e la plastica la spinge di piu'.
+Resta accesa perche' sostituisce un divieto con un prezzo, che e' una correzione di modello e
+non una taratura - lo stesso criterio di ieri, con l'interruttore (dieta=0) sempre disponibile.
+
+------------------------------------------------------------------------------------------
+2. SI MIRA PRIMA DI COLPIRE
+------------------------------------------------------------------------------------------
+attack() prendeva "il piu' debole a portata", a 360 gradi e senza guardare: si ammazzavano i
+cuccioli che passavano dietro, compresi i propri figli e la propria compagna. Da qui i 178 morti
+ammazzate della sessione 19.
+Adesso il bersaglio deve stare nel CONO DELLO SGUARDO e si prende il piu' CENTRATO (a parita' il
+piu' vicino). Nessuna penalita' di parentela e nessuna difesa obbligatoria, per decisione: non
+servono. Chi mena alla cieca colpisce il vuoto, e il colpo a vuoto costa gia' 6 di stamina e un
+punto di ricompensa - il prezzo dell'aggressione esce dalla geometria, non da un divieto morale.
+
+------------------------------------------------------------------------------------------
+3. DEGLI ALTRI SI VEDE L'ASPETTO, NON L'IDENTITA'
+------------------------------------------------------------------------------------------
+Vision.CAT_ENTITY era UN numero per settore, la vicinanza: maschi, femmine, cuccioli, aggressori,
+rivali e compagne tutti indistinguibili. La proposta iniziale era aggiungere un canale "partner
+possibile" (sesso opposto, maturo, sazio, senza attesa): sarebbe stato passare alla rete
+l'IDENTITA' dell'altro, cioe' darle la risposta invece degli indizi. Decisione: si passa cio' che
+SI VEDE.
+Ogni settore riporta adesso l'entita' piu' vicina con sette attributi:
+  vicinanza, mole, vigore, mi-guarda, si-muove, segnale A, segnale B
+Niente sesso, niente dieta, niente parentela. I DUE CANALI DI SEGNALE NASCONO MUTI (sempre 0) e
+sono riservati al dialogo: quando le entita' potranno parlare saranno due USCITE in piu' che
+riempiono due ingressi che esistono gia', non una riscrittura della percezione. Il posto si
+prepara adesso perche' ogni cambio del tracciato invalida i cervelli salvati, e si paga una volta
+sola.
+  ingressi: 59 -> 108   (oggetti 4x8 = 32, entita' 7x8 = 56, "qui" 5, "non vedo niente" 1,
+                         se stessi 14 compresa la propria dieta)
+  topologia invariata 32/16: i nove neuroni di intenzione restano quelli.
+LA MOLE E' LA MASSA, NON L'ALTEZZA. Prima versione: altezza / 2 metri. Misurata su 68 corpi
+l'altezza va da 1.90 a 2.97 con mediana 2.44, cioe' saturava a 1 per chiunque - un ingresso che
+vale sempre lo stesso non e' un'informazione. La massa va da 19 a 315 chili con mediana 72:
+normalizzata su 230 (il doppio della massa di riferimento) discrimina davvero.
+VIA L'ULTIMO SENSO A 360 GRADI: l'acqua delle otto celle intorno scriveva "qui acqua" anche per
+una pozza di lato, ed era l'unica cosa in tutta la percezione che non passava dal cono. Bere
+resta possibile da una cella adiacente (quella e' fisica, il braccio ci arriva) ma l'entita' non
+SA di poterlo fare finche' non ci gira la testa. Cancellato anche l'interruttore hereWaterAdj,
+che era rimasto senza nessun lettore.
+I CERVELLI SALVATI SI TRAPIANTANO invece di finire nel cestino: si costruisce una rete della
+topologia attuale e si copiano i pesi che combaciano (i primi ingressi di ogni neurone del primo
+strato, e tutti gli strati successivi). Verificato sul salvataggio della #10 (59 ingressi):
+differenza massima 0.00e+00 sui 59 pesi vecchi, somma 0.000 sui 49 nuovi. Il vecchio cervello si
+risveglia identico, solo cieco a cio' che prima non esisteva. Se cambiano gli strati o le uscite
+non c'e' niente da trapiantare e si riparte (il salvataggio s-1, topologia 44/32/16/10, viene
+correttamente rifiutato).
+Verifiche della vista: 632 su 632. Probe: un'entita' vede due vicine con mole 0.26 e 0.45, una di
+spalle (mi-guarda 0.000) e una di tre quarti (0.064); chi non vede nessuno ha tutto il blocco
+delle entita' a zero esatto.
+
+------------------------------------------------------------------------------------------
+4. LA SCOPERTA: IL CERVELLO FACEVA UNA PASSEGGIATA CASUALE
+------------------------------------------------------------------------------------------
+Controllando le ricompense e' venuto fuori che Netreward non e' solo la fitness: e' il maestro di
+un APPRENDIMENTO IN VITA che non era mai stato considerato. entity.step():
+  ogni WINDOW_SIZE = 10 passi:  score = (Netreward - inizioFinestra) / 10
+  if (score >= bestWindowScore) tieni   else torna indietro;   poi muta comunque (10% dei pesi,
+  += gaussiana * 0.25)
+E a riga 780 c'era "Netreward += 0.5, un passo sopravvissuto". In una finestra in cui non succede
+niente il punteggio e' quindi 0.5 ESATTI, uguale alla finestra precedente: il confronto >= passa,
+il cervello di riferimento viene riscritto e si muta di nuovo. Cioe' in tutte le finestre vuote
+il cervello faceva una passeggiata casuale, e qualche centinaio di passi bastava a cancellare gli
+istinti di partenza.
+E' LA SPIEGAZIONE DEL CERVELLO DELLA #10 (bias a destra, "mangia" al 44% delle scene casuali):
+non era un difetto del cablaggio iniziale - era deriva, e il cablaggio era stato cancellato molto
+prima che il salvataggio venisse fatto.
+Rimedio, in due pezzi:
+  a) IL PREMIO VIENE DAL CORPO, NON DA UN ORACOLO. Via il +0.5 per passo e via la ricompensa di
+     avvicinamento al cibo (quella guardava correttamente dentro il cono, quindi non premiava la
+     fortuna, ma era un ORACOLO: diceva "quella direzione e' giusta" invece di lasciarlo dire
+     alla vista, cioe' regalava il comportamento che vogliamo far emergere). Al loro posto il
+     bisogno che fa male: needPain * (fame + sete) per passo, da 0 a 2. Denso, viene dal proprio
+     stato e NON INDICA NESSUNA DIREZIONE - sentire la fame non dice dov'e' la mela.
+     Mangiare e bere premiano ora in proporzione al cibo DAVVERO ricavato, quindi con l'abitudine
+     alimentare la stessa mela premia molto un erbivoro e quasi niente un carnivoro.
+  b) CONFRONTO STRETTO (>) cosi' una finestra piatta ANNULLA la mutazione invece di tenerla, piu'
+     una soglia che scende del 10% verso il punteggio recente quando la mutazione viene rifiutata.
+     Senza quella discesa il confronto stretto avrebbe il difetto opposto: una finestra fortunata
+     resterebbe imbattibile per sempre e il cervello si congelerebbe a vita. windowDecay e'
+     tarato a occhio, non misurato.
+Nota: dormire attenua il dolore del bisogno (da addormentati il consumo e' dimezzato). Non
+ricrea la torpore della sessione 11 perche' il metabolismo e' legato al tempo e rallentare non
+regala piu' vita, ma e' un incentivo a dormire quando si ha fame, e va tenuto d'occhio.
+
+------------------------------------------------------------------------------------------
+LIMITE DI QUESTA SESSIONE, DA NON RIPETERE
+------------------------------------------------------------------------------------------
+Dieta, mira, percezione e ricompensa sono modifiche di CODICE, non interruttori, e non esiste
+nessuna copia dello stato di partenza: il lavoro delle sessioni precedenti era ancora non
+committato, quindi HEAD e' lo stato di prima della GUI e un confronto con HEAD misurerebbe tre
+giorni insieme. Quindi di tutto questo lotto l'unica cosa misurata in modo appaiato e' la dieta
+plastica, che era esprimibile come interruttore.
+REGOLA: prima di una modifica di codice, commit (o copia dell'albero), cosi' il braccio "prima"
+esiste. Dove la modifica si puo' esprimere come interruttore senza inventare un braccio finto,
+preferire l'interruttore.
+Resta inoltre NON misurato l'effetto della mira e della nuova percezione: nei dodici semi di
+questo lotto ci sono in entrambi i bracci.

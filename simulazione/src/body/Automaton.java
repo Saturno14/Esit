@@ -27,7 +27,7 @@ public final class Automaton {
     public static final double DENSITY = 1000.0;      // kg/m^3 (corpo ~ acqua)
     public static final double GRAVITY = 9.81;
 
-    private static final double TORQUE_FACTOR = 2.5;  // coppia max = fattore * peso del sottoalbero * braccio
+    private static final double TORQUE_FACTOR = 2.5;  // coppia max = fattore * peso del lato piu' pesante * braccio
     private static final double TORQUE_MIN = 2.0;
     private static final double MAX_VELOCITY = 12.0;  // rad/s
 
@@ -117,27 +117,54 @@ public final class Automaton {
     }
 
     /**
-     * Coppia massima euristica: fattore * massa del sottoalbero a valle del giunto * g * distanza del suo
-     * baricentro dal perno, in posa di riposo. Serve solo come punto di partenza per l'addestramento.
+     * Coppia massima euristica: un giunto deve poter sostenere il piu' pesante dei due lati che
+     * separa - l'arto che ha a valle quando lo muove in aria, e TUTTO IL RESTO DEL CORPO quando
+     * quell'arto e' quello che sta a terra.
+     *
+     * Contava solo il lato a valle, ed era un difetto grave: la caviglia di un umanoide da 116 kg
+     * si ritrovava 2 N*m (il peso del piede per il suo piccolo braccio) contro un corpo che pesa
+     * 1136 N, e il corpo CROLLAVA IN 1.4 SECONDI anche stando fermo nella posa eretta, con tutti i
+     * giunti all'angolo di riposo. Era questo a far cadere 76 corpi su 78 nelle misure di
+     * locomozione, non l'andatura: nessun controllore puo' tenere in piedi un corpo i cui motori
+     * non arrivano a sostenerlo. Vedi STATO_LAVORO.txt, voce del 23/10/2026.
+     *
+     * Resta un'euristica, cioe' un punto di partenza, non una misura di muscoli veri.
      */
     private void assignTorques() {
         BodyPose rest = pose(null, V3.ZERO, Rot.IDENTITY);
+        double totalMass = totalMass();
+        V3 totalCom = V3.ZERO;
+        for (Link l : links) {
+            totalCom = totalCom.add(rest.get(l.name).center().scale(l.mass));
+        }
+        totalCom = totalMass > 0 ? totalCom.scale(1.0 / totalMass) : V3.ZERO;
+
         for (Joint j : joints) {
             if (j.isFixed()) continue;
             java.util.Set<String> subtree = new java.util.HashSet<>();
             subtree.add(j.child());
-            double m = 0;
-            V3 com = V3.ZERO;
+            double mBelow = 0;
+            V3 comBelow = V3.ZERO;
             for (Link l : links) {
                 if (l.parent != null && subtree.contains(l.parent)) subtree.add(l.name);
                 if (!subtree.contains(l.name)) continue;
                 BodyPose.LinkPose lp = rest.get(l.name);
-                m += l.mass;
-                com = com.add(lp.center().scale(l.mass));
+                mBelow += l.mass;
+                comBelow = comBelow.add(lp.center().scale(l.mass));
             }
-            com = com.scale(1.0 / m);
-            double reach = Math.max(com.sub(rest.get(j.child()).origin()).length(), 0.05);
-            double torque = Math.max(TORQUE_MIN, TORQUE_FACTOR * m * GRAVITY * reach);
+            V3 pivot = rest.get(j.child()).origin();
+            comBelow = mBelow > 0 ? comBelow.scale(1.0 / mBelow) : pivot;
+
+            // il lato a monte: tutto quello che non sta nel sottoalbero
+            double mAbove = Math.max(0, totalMass - mBelow);
+            V3 comAbove = mAbove > 1e-9
+                    ? totalCom.scale(totalMass).sub(comBelow.scale(mBelow)).scale(1.0 / mAbove)
+                    : pivot;
+
+            double armBelow = Math.max(comBelow.sub(pivot).length(), 0.05);
+            double armAbove = Math.max(comAbove.sub(pivot).length(), 0.05);
+            double load = Math.max(mBelow * armBelow, mAbove * armAbove);
+            double torque = Math.max(TORQUE_MIN, TORQUE_FACTOR * load * GRAVITY);
             for (Dof d : j.dofs()) d.maxTorque = torque;
         }
     }

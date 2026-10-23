@@ -12,6 +12,8 @@ public class Mesh {
     private int positionVbo;
     private int normalVbo;
     private int uvVbo;
+    private int materialVbo;
+    private int aoVbo;
     private int ebo;
     private int indexCount;
 
@@ -47,6 +49,27 @@ public class Mesh {
             glDisableVertexAttribArray(2);
         }
 
+        // attributi del terreno: pesi dei materiali (3) e occlusione ambientale (4)
+        if (data.materials != null) {
+            if (materialVbo == 0) materialVbo = glGenBuffers();
+            glBindBuffer(GL_ARRAY_BUFFER, materialVbo);
+            glBufferData(GL_ARRAY_BUFFER, data.materials, GL_DYNAMIC_DRAW);
+            glVertexAttribPointer(3, 4, GL_FLOAT, false, 0, 0);
+            glEnableVertexAttribArray(3);
+        } else {
+            glDisableVertexAttribArray(3);
+        }
+
+        if (data.ao != null) {
+            if (aoVbo == 0) aoVbo = glGenBuffers();
+            glBindBuffer(GL_ARRAY_BUFFER, aoVbo);
+            glBufferData(GL_ARRAY_BUFFER, data.ao, GL_DYNAMIC_DRAW);
+            glVertexAttribPointer(4, 1, GL_FLOAT, false, 0, 0);
+            glEnableVertexAttribArray(4);
+        } else {
+            glDisableVertexAttribArray(4);
+        }
+
         if (ebo == 0) ebo = glGenBuffers();
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, data.indices, GL_DYNAMIC_DRAW);
@@ -66,6 +89,8 @@ public class Mesh {
         glDeleteBuffers(positionVbo);
         glDeleteBuffers(normalVbo);
         if (uvVbo != 0) glDeleteBuffers(uvVbo);
+        if (materialVbo != 0) glDeleteBuffers(materialVbo);
+        if (aoVbo != 0) glDeleteBuffers(aoVbo);
         glDeleteBuffers(ebo);
         glDeleteVertexArrays(vao);
     }

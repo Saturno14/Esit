@@ -157,6 +157,71 @@ public final class Genealogy {
     }
 
     /** Antenati dell'entita' (fino a 4 livelli) e numero di figli. */
+    /**
+     * Un nodo dell'albero, in sola lettura: e' quello che la GUI puo' vedere.
+     *
+     * Il Node interno resta privato e mutabile perche' lo scrive la simulazione; questo e' una
+     * copia immutabile. Esporre il Node direttamente vorrebbe dire che un pannello di interfaccia
+     * puo' modificare l'albero genealogico mentre la simulazione lo scrive, cioe' esattamente il
+     * genere di errore che non si trova piu'.
+     */
+    public record Info(int id, int parentA, int parentB, int generation,
+                       long birthTick, long deathTick, String deathCause) {
+        public boolean alive() {
+            return deathTick < 0;
+        }
+    }
+
+    /** Il nodo di quell'id, o null se non e' in questa sessione. */
+    public static synchronized Info info(int id) {
+        Node n = nodes.get(id);
+        return n == null ? null
+                : new Info(n.id, n.parentA, n.parentB, n.generation, n.birthTick,
+                        n.deathTick, n.deathCause);
+    }
+
+    /** Gli id dei figli di quell'entita', in ordine di nascita. */
+    public static synchronized java.util.List<Integer> childrenOf(int id) {
+        java.util.List<Integer> out = new java.util.ArrayList<>();
+        for (Node n : nodes.values()) {
+            if (n.parentA == id || n.parentB == id) {
+                out.add(n.id);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Quanti figli ha ciascun id, in una passata sola.
+     *
+     * Serve alla lista della GUI, che vuole il numero di figli di ogni riga: chiamare
+     * childrenOf per ogni entita' vorrebbe dire scorrere tutti i nodi per ogni nodo (e tenere il
+     * lucchetto della genealogia per tutto il tempo, mentre la simulazione ci vuole scrivere le
+     * nascite). Qui si scorre una volta e si contano tutti.
+     */
+    public static synchronized java.util.Map<Integer, Integer> conteggioFigli() {
+        java.util.Map<Integer, Integer> out = new java.util.HashMap<>();
+        for (Node n : nodes.values()) {
+            if (n.parentA >= 0) {
+                out.merge(n.parentA, 1, Integer::sum);
+            }
+            if (n.parentB >= 0 && n.parentB != n.parentA) {
+                out.merge(n.parentB, 1, Integer::sum);
+            }
+        }
+        return out;
+    }
+
+    /** Tutti gli id della sessione, in ordine di inserimento. */
+    public static synchronized java.util.List<Integer> allIds() {
+        return new java.util.ArrayList<>(nodes.keySet());
+    }
+
+    /** Quanti nodi ha l'albero della sessione. */
+    public static synchronized int size() {
+        return nodes.size();
+    }
+
     public static synchronized String describe(int id) {
         if (!nodes.containsKey(id)) {
             return "Entita' " + id + " non presente nell'albero della sessione " + session;

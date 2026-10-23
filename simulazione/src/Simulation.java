@@ -55,6 +55,9 @@ public class Simulation {
     private static int births = 0;
     private static int deathsStarved = 0;
     private static int deathsKilled = 0;
+    /** Morti divise per sesso (1 maschio, 2 femmina): vedi kill(). */
+    private static int deathsMale = 0;
+    private static int deathsFemale = 0;
 
     private Simulation() {
     }
@@ -113,6 +116,8 @@ public class Simulation {
         births = 0;
         deathsStarved = 0;
         deathsKilled = 0;
+        deathsMale = 0;
+        deathsFemale = 0;
     }
 
     /**
@@ -154,16 +159,27 @@ public class Simulation {
         }
         e.markDead(cause, tickCount);
         Entity_manager.Entity_remuve(e);
+        // nessuno verra' piu' a ritirare le prove di allenamento di questa entita'
+        src.body.Locomotion.forget(e.getId());
 
         int[] p = e.getPos();
         double meat = e.getStats().maxHealth * 1.5;
         synchronized (corpses) {
             corpses.add(new Corpse(e, p[0], p[1], p[2], meat, tickCount + CORPSE_TICKS));
         }
+        History.morte(cause);
         if (cause.startsWith("fame")) {
             deathsStarved++;
         } else {
             deathsKilled++;
+        }
+        // morti divise per sesso: serve a distinguere "un sesso muore di piu'" da "la moneta
+        // del sesso alla nascita e' andata storta", che portano alla stessa popolazione di soli
+        // maschi ma si correggono in modi opposti
+        if (e.getSex() == 2) {
+            deathsFemale++;
+        } else {
+            deathsMale++;
         }
         Genealogy.recordDeath(e, cause, tickCount);
         System.out.println("Morte ID " + e.getId() + " (" + cause + ") a eta' " + e.getAge());
@@ -216,6 +232,27 @@ public class Simulation {
         }
     }
 
+    /**
+     * Esegue n tick a mano, anche se la simulazione e' in pausa.
+     *
+     * Serve a guardare una cosa che succede in un tick solo: in pausa non succede niente, a
+     * velocita' normale e' gia' passata. Prende lo stesso lucchetto del ciclo, quindi non puo'
+     * sovrapporsi a un tick automatico; se la simulazione non e' in pausa i tick si aggiungono a
+     * quelli suoi, ed e' il motivo per cui il comando lo dice.
+     *
+     * @return quanti tick sono stati eseguiti
+     */
+    public static int passo(int quanti) {
+        int fatti = 0;
+        for (int i = 0; i < quanti; i++) {
+            synchronized (LOCK) {
+                tick();
+            }
+            fatti++;
+        }
+        return fatti;
+    }
+
     private static void tick() {
         tickCount++;
 
@@ -231,17 +268,24 @@ public class Simulation {
         synchronized (corpses) {
             corpses.removeIf(c -> c.isConsumed() || tickCount >= c.getExpireTick());
         }
-        spawnApples();
-        TrainedBrains.checkCapture(tickCount); // no-op se non e' una simulazione di addestramento
+        if (Flora.enabled) {
+            Flora.step(tickCount);
+        } else {
+            spawnApples();
+        }
 
+        History.campiona(tickCount);
         if (tickCount % TICKS_PER_DAY == 0) {
             world.advanceCycle();
         }
         if (tickCount % SUMMARY_INTERVAL_TICKS == 0) {
             StatsLog.record(tickCount, world.countApples(), corpsesSnapshot().size(),
-                    births, deathsStarved, deathsKilled);
+                    births, deathsStarved, deathsKilled, deathsMale, deathsFemale);
             System.out.println("[tick " + tickCount + "] entita'=" + Entity_manager.Entity_count()
+                    + " " + DayNight.phaseName()
                     + " mele=" + world.countApples()
+                    + (Flora.enabled ? "(" + Flora.countOnTree() + " sugli alberi)"
+                        + " alberi=" + Flora.countTrees() : "")
                     + " cadaveri=" + corpsesSnapshot().size()
                     + " nascite=" + births
                     + " morti(fame/combattimento)=" + deathsStarved + "/" + deathsKilled
@@ -261,10 +305,16 @@ public class Simulation {
         for (entity child : born) {
             Entity_manager.Entity_add(child);
             births++;
+            History.nascita();
         }
     }
 
     /** Numero massimo di mele in giro, scalato sull'area della mappa (vedi DENSITY_PER_CELL). */
+    /** Morti per sesso: [maschi, femmine]. */
+    public static int[] mortiPerSesso() {
+        return new int[]{deathsMale, deathsFemale};
+    }
+
     public static int maxApples() {
         int dim = world.getDim();
         return Math.max(60, (int) Math.round(dim * dim * DENSITY_PER_CELL));

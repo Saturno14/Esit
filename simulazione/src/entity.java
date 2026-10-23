@@ -22,31 +22,61 @@ import src.genetics.GenomeSchema;
  * (Simulation) chiama advance() a ogni tick e l'entita' compie un'azione ogni volta che il
  * suo accumulatore di punti azione (legato al gene speed) arriva a 1.
  *
- * Azioni scelte dalla rete neurale (uscite): idle, 4 movimenti, mangia, attacca, dormi,
- * riproduci. Ogni azione (tranne idle e dormi) consuma stamina; la stamina si rigenera solo
- * dormendo. Le caratteristiche vitali derivano dal genoma (EntityStats).
+ * Azioni scelte dalla rete neurale (uscite), tutte EGOCENTRICHE: ferma, avanti, indietro, gira a
+ * destra, gira a sinistra, testa a destra, testa a sinistra, mangia, attacca, dormi, riproduci,
+ * bevi. Ogni azione (tranne ferma, dormi e girare la testa) consuma stamina; la stamina si
+ * rigenera solo dormendo. Le caratteristiche vitali derivano dal genoma (EntityStats).
+ *
+ * PERCHE' EGOCENTRICHE. Prima le mosse erano i quattro punti cardinali e la vista era a settori
+ * assoluti: la stessa scena (una mela davanti al muso) produceva ingressi diversi a seconda di
+ * come l'entita' era girata, e la rete doveva imparare quattro volte la stessa cosa. Ora la vista
+ * e' un cono centrato dove l'entita' guarda (vedi Vision) e le azioni sono riferite al muso,
+ * quindi "cibo davanti, vai avanti" si impara una volta sola. In piu' l'entita' puo' girare la
+ * TESTA senza girare il corpo, entro i limiti del suo collo, che sono genetici (vedi
+ * src.body.Gaze): un collo flessibile fa guardare intorno, uno rigido no.
  */
 public class entity {
 
     // --- Rete neurale: input e output FISSI per tutte le entita' ---
-    public static final int SELF_INPUTS = 8;
+    /**
+     * Ingressi sul proprio stato: salute, cibo, sete, stamina, x, z, eta', sesso, piu' i quattro
+     * della PROPRIOCEZIONE DELLO SGUARDO - seno e coseno di quanto la testa e' girata rispetto al
+     * corpo, e quanto collo resta da girare nei due versi. Senza questi l'entita' vedrebbe un
+     * cono senza sapere dove e' puntato, cioe' non potrebbe collegare quello che vede a dove si
+     * deve muovere.
+     *
+     * L'ultimo e' la LUCE DEL GIORNO. Serve perche' il gene della visione notturna possa essere
+     * selezionato: se l'entita' non sa che e' buio non puo' cambiare comportamento col buio, e un
+     * gene su cui il comportamento non ha presa non viene premiato ne' punito - e' solo rumore.
+     */
+    public static final int SELF_INPUTS = 14;
     public static final int INPUT_SIZE = Vision.SIZE + SELF_INPUTS;
-    public static final int OUTPUT_SIZE = 10;
+    public static final int OUTPUT_SIZE = 12;
     public static final int[] BRAIN_TOPOLOGY = {INPUT_SIZE, 32, 16, OUTPUT_SIZE};
 
     public static final int ACT_IDLE = 0;
-    public static final int ACT_MOVE_XP = 1;
-    public static final int ACT_MOVE_XM = 2;
-    public static final int ACT_MOVE_ZP = 3;
-    public static final int ACT_MOVE_ZM = 4;
-    public static final int ACT_EAT = 5;
-    public static final int ACT_ATTACK = 6;
-    public static final int ACT_SLEEP = 7;
-    public static final int ACT_REPRODUCE = 8;
-    public static final int ACT_DRINK = 9;
+    public static final int ACT_FORWARD = 1;
+    public static final int ACT_BACK = 2;
+    public static final int ACT_TURN_RIGHT = 3;
+    public static final int ACT_TURN_LEFT = 4;
+    public static final int ACT_HEAD_RIGHT = 5;
+    public static final int ACT_HEAD_LEFT = 6;
+    public static final int ACT_EAT = 7;
+    public static final int ACT_ATTACK = 8;
+    public static final int ACT_SLEEP = 9;
+    public static final int ACT_REPRODUCE = 10;
+    public static final int ACT_DRINK = 11;
 
-    // OUTPUT_SIZE aggiornato per includere "bevi"
-    // (vedi sopra: BRAIN_TOPOLOGY usa OUTPUT_SIZE, quindi basta cambiare la costante)
+    /** Di quanto gira il corpo in un'azione (radianti). */
+    private static final double TURN_STEP = Math.PI / 8;
+    /** Di quanto gira la testa in un'azione (radianti): meno del corpo, e' un aggiustamento. */
+    private static final double HEAD_STEP = Math.PI / 12;
+    /**
+     * Girare la testa non costa stamina: e' un muscolo del collo. Il costo e' un altro, e c'e' -
+     * un'azione spesa a guardare e' un'azione non spesa a mangiare, e con il metabolismo legato
+     * al tempo (vedi metabolism) il tempo si paga.
+     */
+    private static final double TURN_COST = 0.5;
 
     // --- Bilanciamento ---
     /** Riserva di cibo standard; e' anche il riferimento con cui si normalizza l'input "food" della rete. */
@@ -59,6 +89,10 @@ public class entity {
     public static final int MAX_THIRST = 200;
     public static final int MATURITY_AGE = 100;          // passi di vita prima di potersi riprodurre
     private static final double SPEED_DIVISOR = 7.0;     // speed medio (~1.75) => 1 azione ogni 4 tick
+    /** Lato di una cella del mondo, in metri (come GridToWorld.CELL_SIZE nel motore grafico). */
+    public static final double CELL_METERS = 1.0;
+    /** Durata in secondi di un tick di mondo. */
+    private static final double TICK_SECONDS = Simulation.TICK_MS / 1000.0;
     private static final double EXPLORATION = 0.15;      // probabilita' di azione casuale
 
     private static final double MOVE_COST = 2;
@@ -66,6 +100,22 @@ public class entity {
     private static final double ATTACK_COST = 6;
     private static final double REPRODUCE_COST = 8;
     private static final double SLEEP_REGEN_FRACTION = 0.15; // della stamina massima per passo di sonno
+    /**
+     * Stamina recuperata da svegli, per tick, in frazione della propria stamina massima.
+     *
+     * PERCHE' ESISTE. Prima la stamina si recuperava SOLO dormendo. Il risultato non era "chi non
+     * dorme si stanca", era peggio: un passo costa ~2.5 e un giro del corpo 0.5, quindi appena la
+     * stamina scendeva sotto il costo di un passo la maschera delle azioni possibili cancellava
+     * il passo e lasciava in piedi le rotazioni - e l'entita' restava intrappolata a girarsi sul
+     * posto, non per scelta ma perche' era l'unica cosa che potesse pagare. Nel primo mondo con
+     * gli alberi erano 20000 rotazioni su 27000 azioni.
+     *
+     * La frazione e' SULLA PROPRIA stamina massima, quindi il gene stat.max_stamina decide anche
+     * quanto velocemente si recupera: con 50 di stamina si recuperano 1.0 a tick contro i ~0.6 a
+     * tick che costa camminare senza sosta, con 15 si recupera 0.3 e camminare in continuazione
+     * non e' sostenibile. E' una pressione selettiva vera su quel gene, che prima non aveva.
+     */
+    private static final double WAKE_REGEN_FRACTION = 0.02;
 
     private static final int REPRO_FOOD_MIN = 80;
     private static final int REPRO_PARTNER_FOOD_MIN = 60;
@@ -79,6 +129,8 @@ public class entity {
 
     private static final int WINDOW_SIZE = 10;           // ogni quanti passi valuti la mutazione del cervello
     private static final double MUTATION_RATE = 0.25;
+    /** Quanto muta l'andatura alla nascita (vedi src.body.Gait.perturb). */
+    private static final double GAIT_MUTATION = 0.08;
 
     // Schema condiviso da tutte le entita' (caricato una volta sola dal classpath).
     private static final GenomeSchema SCHEMA = GenomeSchema.loadFromClasspath("/gene_schema.json");
@@ -95,6 +147,41 @@ public class entity {
     private int applesEaten = 0;
     private int kills = 0;
     private int reproCooldown = 0;
+    /**
+     * LA DIETA E' UN'ABITUDINE, NON UN'ETICHETTA. Da 0 (tutto vegetale) a 1 (tutta carne).
+     * Parte dalla predisposizione del gene (stats.dietBias) e si sposta a ogni pasto verso cio'
+     * che si e' appena mangiato; piu' e' sbilanciata verso un cibo, piu' quel cibo sazia (vedi
+     * resa()). Nessuno vieta niente a nessuno: un erbivoro la carne la puo' mangiare, solo che
+     * gli rende poco, e se insiste smette di essere un erbivoro.
+     *
+     * E' il motivo per cui la specializzazione diventa una TRAPPOLA, che e' la parte buona: chi
+     * ha mangiato solo carne per cinquanta pasti ricava un quarto da una mela, quindi se i
+     * cadaveri finiscono muore di fame in mezzo al cibo. Al gene della dieta serviva un prezzo,
+     * e questo e' un prezzo - non un divieto.
+     *
+     * NON SI EREDITA: il figlio riparte dal gene dei genitori (vedi Genome.reproduce). Quello che
+     * si tramanda e' il gusto di partenza, non l'abitudine acquisita.
+     */
+    private double dietBias;
+    /**
+     * I DUE CANALI DI SEGNALE, per ora MUTI (sempre 0).
+     *
+     * Sono quello che un'entita' EMETTE e che le altre percepiscono nel loro cono visivo (vedi
+     * Vision.ENT_SIGNAL_A e B). Oggi nessuno li scrive: esistono perche' il dialogo, quando
+     * arrivera', sara' solo un paio di USCITE in piu' della rete che riempiono due ingressi che
+     * ci sono gia' - non una riscrittura della percezione. Il tracciato degli ingressi si cambia
+     * una volta sola, e si paga una volta sola in cervelli salvati da trapiantare.
+     *
+     * Quando si accenderanno, la parte difficile non sara' il codice: un segnale non ha nessun
+     * significato innato, quindi niente lo seleziona finche' non correla con qualcosa di utile.
+     * Il posto e' pronto, la domanda e' aperta.
+     */
+    private volatile double signalA = 0;
+    private volatile double signalB = 0;
+
+    public double getSignalA(){ return signalA; }
+
+    public double getSignalB(){ return signalB; }
     private double Netreward = 0;
     private double actionPoints = 0;
     private boolean sleeping = false;
@@ -102,6 +189,15 @@ public class entity {
     private String deathCause = "";
     private long deathTick = -1;
     private AtomicInteger[] position = new AtomicInteger[3];
+    /**
+     * Posizione CONTINUA in metri sul piano (la cella e' sempre il pavimento di questi valori:
+     * vedi syncCell). Il mondo resta a celle per terreno, acqua e mele; l'entita' invece si
+     * muove di quanto le permette il suo corpo, che non e' un numero intero di celle.
+     */
+    private volatile double exactX;
+    private volatile double exactZ;
+    /** Direzione verso cui guarda (radianti attorno a Y): la usa l'animazione e la fisica. */
+    private volatile double facing = 0;
     public String process = "";
     public AtomicBoolean life = new AtomicBoolean();
     private AtomicInteger tick = new AtomicInteger();
@@ -134,7 +230,8 @@ public class entity {
         this.EntityID = id;
         this.genome = genome;
         this.stats = EntityStats.resolve(genome, SCHEMA);
-        this.healt = (int) Math.round(stats.maxHealth);
+        this.dietBias = stats.dietBias;   // si nasce con il gusto del gene, poi lo decidono i pasti
+        this.healt = maxHealthInt();
         this.food = maxFood;
         this.thirst = MAX_THIRST;
         this.stamina = stats.maxStamina;
@@ -145,6 +242,8 @@ public class entity {
         position[0] = new AtomicInteger(x);
         position[1] = new AtomicInteger(y);
         position[2] = new AtomicInteger(z);
+        this.exactX = x + 0.5;   // al centro della cella in cui nasce
+        this.exactZ = z + 0.5;
         Brain = new NeuralNetwork(BRAIN_TOPOLOGY);
 
         bestBrain = Brain.copy();
@@ -168,6 +267,7 @@ public class entity {
         o.put("applesEaten", applesEaten);
         o.put("kills", kills);
         o.put("reproCooldown", reproCooldown);
+        o.put("dietbias", dietBias);
         o.put("netreward", Netreward);
         o.put("ticks", tick.get());
         JSONArray pos = new JSONArray();
@@ -175,6 +275,11 @@ public class entity {
         pos.put(position[1].get());
         pos.put(position[2].get());
         o.put("pos", pos);
+        o.put("exactX", exactX);
+        o.put("exactZ", exactZ);
+        o.put("facing", facing);
+        o.put("gazeYaw", gazeYaw);
+        o.put("gait", getGait().toJson());
         o.put("genome", genome.toJson());
         o.put("brain", BrainIO.toJson(Brain));
         o.put("bestBrain", BrainIO.toJson(bestBrain));
@@ -197,8 +302,19 @@ public class entity {
         e.applesEaten = o.optInt("applesEaten", 0);
         e.kills = o.optInt("kills", 0);
         e.reproCooldown = o.optInt("reproCooldown", 0);
+        // un salvataggio vecchio non ha l'abitudine: si riparte dalla predisposizione del gene
+        e.dietBias = o.optDouble("dietbias", e.stats.dietBias);
         e.Netreward = o.optDouble("netreward", 0);
         e.tick.set(o.optInt("ticks", 0));
+        // i salvataggi vecchi non hanno posizione continua ne' andatura: si ricavano dalla cella
+        // e dal seme strutturato (come per un'entita' nuova)
+        e.exactX = o.optDouble("exactX", pos.getInt(0) + 0.5);
+        e.exactZ = o.optDouble("exactZ", pos.getInt(2) + 0.5);
+        e.facing = o.optDouble("facing", 0);
+        e.gazeYaw = o.optDouble("gazeYaw", 0);
+        if(o.has("gait")){
+            e.gait = src.body.Gait.fromJson(o.getJSONObject("gait"));
+        }
 
         NeuralNetwork brainLoaded = loadBrain(o, "brain");
         NeuralNetwork bestLoaded = loadBrain(o, "bestBrain");
@@ -212,12 +328,57 @@ public class entity {
     private static NeuralNetwork loadBrain(JSONObject o, String key){
         if(!o.has(key)){ return null; }
         NeuralNetwork n = BrainIO.fromJson(o.getJSONObject(key));
-        if(!Arrays.equals(n.getTopology(), BRAIN_TOPOLOGY)){
-            System.out.println("Cervello salvato con topologia diversa "+Arrays.toString(n.getTopology())
-                    +": ne uso uno nuovo.");
+        if(Arrays.equals(n.getTopology(), BRAIN_TOPOLOGY)){
+            return n;
+        }
+        return trapianta(n);
+    }
+
+    /**
+     * TRAPIANTO DI UN CERVELLO VECCHIO IN UNA TESTA NUOVA.
+     *
+     * Allargare la percezione cambia il numero di ingressi, e un cervello salvato con il
+     * tracciato vecchio non ci entra piu'. Prima in quel caso si buttava e si ripartiva da zero:
+     * un salvataggio di venti sessioni diventava carta straccia a ogni ritocco della vista.
+     *
+     * Qui invece si costruisce una rete della topologia attuale e si copiano i pesi che
+     * COMBACIANO: i primi ingressi di ogni neurone del primo strato, e tutti gli strati
+     * successivi, che non sono cambiati. I sensi nuovi restano a peso zero, cioe' il vecchio
+     * cervello si risveglia esattamente com'era, solo cieco a quello che prima non esisteva - e
+     * liberissimo di imparare a usarlo. Se a cambiare e' qualcosa di piu' di un allargamento
+     * degli ingressi (strati diversi, uscite diverse) non c'e' niente da trapiantare e si riparte.
+     */
+    private static NeuralNetwork trapianta(NeuralNetwork vecchio){
+        int[] vt = vecchio.getTopology();
+        if(vt.length != BRAIN_TOPOLOGY.length){
+            System.out.println("Cervello salvato con strati diversi " + Arrays.toString(vt)
+                    + ": ne uso uno nuovo.");
             return null;
         }
-        return n;
+        for(int l = 1; l < vt.length; l++){
+            if(vt[l] != BRAIN_TOPOLOGY[l]){
+                System.out.println("Cervello salvato con strati diversi " + Arrays.toString(vt)
+                        + ": ne uso uno nuovo.");
+                return null;
+            }
+        }
+        NeuralNetwork nuovo = new NeuralNetwork(BRAIN_TOPOLOGY);
+        for(int l = 0; l < BRAIN_TOPOLOGY.length - 1; l++){
+            brain.Layer vl = vecchio.getLayer(l);
+            brain.Layer nl = nuovo.getLayer(l);
+            for(int j = 0; j < nl.size(); j++){
+                brain.Neuron vn = vl.getNeuron(j);
+                brain.Neuron nn = nl.getNeuron(j);
+                double[] pesi = new double[nn.inputSize()];
+                double[] vecchi = vn.getWeight();
+                System.arraycopy(vecchi, 0, pesi, 0, Math.min(pesi.length, vecchi.length));
+                nn.setWeights(pesi);
+                nn.setBias(vn.getBias());
+            }
+        }
+        System.out.println("Cervello salvato con " + vt[0] + " ingressi trapiantato in "
+                + BRAIN_TOPOLOGY[0] + ": i sensi nuovi partono muti.");
+        return nuovo;
     }
 
     // ------------------------------------------------------------------ getter
@@ -262,6 +423,20 @@ public class entity {
     private volatile src.body.Automaton body;
     private volatile Genome bodyGenome;
     private volatile int bodyGrowthKey = -1;
+    private volatile src.body.Automaton adultBody;
+    private volatile Genome adultGenome;
+    private volatile src.body.BodyTraits traits;
+    private volatile src.body.Gait gait;
+    private volatile boolean gaitInherited = false;
+    private volatile src.body.Locomotion.Profile locomotion;
+    /** Ogni quante azioni si ricontrolla se la misura fisica della locomozione e' arrivata. */
+    private static final int LOCOMOTION_RECHECK = 25;
+    /**
+     * Ogni quante azioni l'entita' fa una prova di allenamento (vedi Locomotion.practice). Con
+     * una vita media di qualche centinaio di azioni sono una decina di prove di fisica per vita,
+     * che si sommano a quelle pagate alla nascita e si ereditano.
+     */
+    private static final int PRACTICE_INTERVAL = 40;
 
     /** Corpo articolato (automa) dell'entita': costruito dal suo piano del corpo (struttura mutabile), scalato dalla crescita. */
     public src.body.Automaton getBody(){
@@ -275,6 +450,109 @@ public class entity {
             bodyGrowthKey = key;
         }
         return b;
+    }
+
+    // ---- tratti e locomozione: vedi src.body.BodyTraits e src.body.Locomotion ----
+
+    /**
+     * Corpo ADULTO (crescita 1) di questa entita'. Statistiche e locomozione si misurano su
+     * questo, non sul corpo attuale: cosi' non cambiano a ogni tick di crescita e la misura
+     * fisica si fa una volta per morfologia invece che una per eta'.
+     */
+    public src.body.Automaton getAdultBody(){
+        Genome g = genome;
+        src.body.Automaton a = adultBody;
+        if(a == null || adultGenome != g){
+            a = src.body.Automaton.fromPlan(g.bodyPlan(SCHEMA), 1.0);
+            adultBody = a;
+            adultGenome = g;
+            traits = null;
+            locomotion = null;
+        }
+        return a;
+    }
+
+    /** Massa, altezza, portata, arti di appoggio del corpo adulto. */
+    public src.body.BodyTraits getTraits(){
+        src.body.Automaton a = getAdultBody();
+        src.body.BodyTraits t = traits;
+        if(t == null){
+            t = src.body.BodyTraits.of(a);
+            traits = t;
+        }
+        return t;
+    }
+
+    /** Andatura: ereditata dai genitori, o seminata per le fondatrici. */
+    public src.body.Gait getGait(){
+        src.body.Gait g = gait;
+        if(g == null){
+            g = src.body.Gait.seed(getAdultBody(), rng());
+            gait = g;
+        }
+        return g;
+    }
+
+    /** Un figlio parte dall'andatura incrociata dei genitori (come per il cervello). */
+    void inheritGait(src.body.Gait g){
+        this.gait = g;
+        this.gaitInherited = true;
+        this.locomotion = null;
+    }
+
+    /**
+     * Profilo di locomozione: velocita' reale in m/s misurata facendo camminare il corpo nella
+     * fisica. Non blocca: finche' la misura non e' pronta vale la stima geometrica, e si
+     * richiede di nuovo ogni tanto per prendere il valore misurato quando arriva.
+     */
+    public src.body.Locomotion.Profile getLocomotion(){
+        src.body.Locomotion.Profile p = locomotion;
+        if(p == null || (!p.measured() && tick.get() % LOCOMOTION_RECHECK == 0)){
+            // andatura ereditata: una sola misura; fondatrice: ottimizzazione completa
+            p = src.body.Locomotion.profile(getAdultBody(), getGait(),
+                    EntityID * 7919L + Simulation.getSeed(),
+                    gaitInherited ? src.body.Locomotion.trialsPerChild
+                                  : src.body.Locomotion.trialsPerBody);
+            // Quando la fisica risponde, l'entita' ADOTTA l'andatura con cui ha camminato: e'
+            // quella che i figli erediteranno. Senza questo passaggio la fisica misurerebbe
+            // un'andatura che nessuno usa, e l'evoluzione del controllore si fermerebbe.
+            if(p.measured() && p.gait() != null && p.gait() != this.gait){
+                this.gait = p.gait();
+                this.gaitInherited = true;
+                src.body.Locomotion.remember(getAdultBody(), p.gait(), p);
+            }
+            locomotion = p;
+        }
+        return p;
+    }
+
+    /** Velocita' di camminata attuale (m/s): quella del corpo adulto ridotta dalla crescita. */
+    public double getWalkSpeed(){
+        return getLocomotion().speed() * src.body.BodyParams.growthFactor(age);
+    }
+
+    /**
+     * Quanti metri copre una singola azione di movimento: una cella per il corpo di riferimento,
+     * piu' o meno a seconda di quanto quel corpo cammina meglio o peggio (vedi
+     * src.body.Locomotion.REFERENCE_SPEED). Il minimo evita che un corpo che la fisica non riesce
+     * a far camminare resti inchiodato a terra per sempre: striscia, lentamente.
+     */
+    public double stepLength(){
+        if(ActionWeights.bodyGaitSpeed <= 0){
+            return CELL_METERS;
+        }
+        double ratio = getWalkSpeed() / src.body.Locomotion.REFERENCE_SPEED;
+        return CELL_METERS * Math.max(MIN_STEP_RATIO, Math.min(MAX_STEP_RATIO, ratio));
+    }
+
+    /** Un corpo che non cammina striscia a un terzo di passo; il migliore arriva al doppio. */
+    private static final double MIN_STEP_RATIO = 0.35;
+    private static final double MAX_STEP_RATIO = 2.0;
+
+    /** Secondi di mondo che passano tra un'azione e la successiva (dal gene speed). */
+    private double secondsPerAction(){
+        double pointsPerTick = Math.max(1e-6, stats.speed / SPEED_DIVISOR);
+        return TICK_SECONDS / pointsPerTick;
     }
     public boolean isAlive(){ return life.get(); }
     public double getNetreward(){return Netreward;}
@@ -302,113 +580,171 @@ public class entity {
      * mangiare e la prima popolazione si estingue prima che l'evoluzione parta.
      */
     public void seedInstincts(){
-        int aBase = Vision.CAT_APPLE * Vision.SECTORS;
-        int wBase = Vision.CAT_WATER * Vision.SECTORS;
-        int eBase = Vision.CAT_ENTITY * Vision.SECTORS;
-        int hereBase = Vision.SECTORS * Vision.CATEGORIES;
-        int self = Vision.SIZE;
-        int hereApple = hereBase + Vision.CAT_APPLE;
-        int hereCorpse = hereBase + Vision.CAT_CORPSE;
-        int inFood = self + 1, inThirst = self + 2, inStamina = self + 3, inMature = self + 6;
+        final int aBase = Vision.IDX_OBJ + Vision.CAT_APPLE * Vision.SECTORS;
+        final int wBase = Vision.IDX_OBJ + Vision.CAT_WATER * Vision.SECTORS;
+        final int cBase = Vision.IDX_OBJ + Vision.CAT_CORPSE * Vision.SECTORS;
+        // "qualcuno nei paraggi" e' la VICINANZA delle altre entita', il primo dei loro
+        // attributi: l'istinto di partenza non sa niente di mole, vigore o sguardo, e nemmeno di
+        // chi sia l'altro. Deve impararlo.
+        final int eBase = Vision.IDX_ENT + Vision.ENT_NEAR * Vision.SECTORS;
+        final int hereApple = Vision.IDX_HERE + Vision.CAT_APPLE;
+        final int hereWater = Vision.IDX_HERE + Vision.CAT_WATER;
+        final int hereCorpse = Vision.IDX_HERE + Vision.CAT_CORPSE;
+        final int nothing = Vision.IDX_NOTHING;
+        final int self = Vision.SIZE;
+        final int inFood = self + 1, inThirst = self + 2, inStamina = self + 3, inMature = self + 6;
+        final int inRemRight = self + 10, inRemLeft = self + 11;
+        // self + 12 e' la dieta e self + 13 la luce: nessun istinto innato ne' sull'una ne'
+        // sull'altra (per la luce vedi il commento qui sotto; per la dieta vale lo stesso
+        // ragionamento - un peso di partenza deciderebbe noi quello che deve decidere la fame)
+        /*
+         * NESSUN ISTINTO SULLA LUCE. L'ingresso self + 12 (la luce del giorno) esiste e la rete lo
+         * riceve, ma il cablaggio di partenza non gli da' alcun peso.
+         *
+         * PERCHE'. Un peso innato "col buio fermati" sembra ragionevole e invece decide in partenza
+         * la cosa che volevamo far decidere alla selezione: con quel peso ogni entita' nasce
+         * diurna, la notte la passa ferma, e il gene della visione notturna non viene mai messo
+         * alla prova - un gene che nessuno usa non puo' essere premiato, quindi non evolve. Senza
+         * peso iniziale la luce e' solo un'informazione, e diurne e notturne partono pari.
+         */
 
-        if(ActionWeights.seedVersion >= 3){
-            seedInstinctsV3(aBase, wBase, eBase, hereBase, hereApple, hereCorpse, inFood, inThirst, inStamina, inMature);
-            return;
-        }
-        // Strato 1: 9 neuroni dedicati (4 direzioni verso mele/acqua, mangia, bevi, dormi, riproduci)
-        int[][] moveSectors = {{3, 4}, {7, 0}, {5, 6}, {1, 2}}; // +x, -x, +z, -z
-        for(int d = 0; d < 4; d++){
-            double[] w = new double[INPUT_SIZE];
-            for(int s : moveSectors[d]){
-                w[aBase + s] = 6;
-                w[wBase + s] = 6;
-            }
-            setNeuron(0, d, w, -1);
-        }
-        double[] eat = new double[INPUT_SIZE];
-        eat[hereApple] = ActionWeights.eatNeuronWeight;
-        eat[hereCorpse] = ActionWeights.eatNeuronWeight;
-        setNeuron(0, 4, eat, -4);
-        double[] drinkN = new double[INPUT_SIZE];
-        for(int s = 0; s < Vision.SECTORS; s++){ drinkN[wBase + s] = 6; }
-        drinkN[inThirst] = -6;
-        setNeuron(0, 5, drinkN, -1);
-        double[] rest = new double[INPUT_SIZE];
-        rest[inStamina] = -8;
-        setNeuron(0, 6, rest, ActionWeights.restBias);
-        double[] mate = new double[INPUT_SIZE];
-        mate[inFood] = 4;
-        mate[inMature] = 4;
-        for(int s = 0; s < Vision.SECTORS; s++){ mate[eBase + s] = 2; }
-        setNeuron(0, 7, mate, ActionWeights.mateBias);
+        // il cono e' diviso in otto settori da sinistra a destra: i due centrali sono il muso
+        final int[] left = {0, 1, 2};
+        final int[] middle = {3, 4};
+        final int[] right = {5, 6, 7};
 
-        // Strato 2: ogni neurone dedicato ripete il corrispondente dello strato 1
-        for(int j = 0; j < 8; j++){
-            double[] w = new double[BRAIN_TOPOLOGY[1]];
-            w[j] = 8;
-            setNeuron(1, j, w, j < 4 ? -2 : -4);
+        // --- Strato 1: un neurone dedicato per intenzione
+        // avanti: cibo o acqua davanti al muso
+        double[] fwd = new double[INPUT_SIZE];
+        for(int sct : middle){
+            fwd[aBase + sct] = ActionWeights.n_moveGain;
+            fwd[cBase + sct] = ActionWeights.n_moveGain;
+            fwd[wBase + sct] = ActionWeights.n_moveGain / 2;   // come nel neurone di rotazione
+            // (qui il freno della sete c'e' gia': fwd[inThirst] = n_moveThirst, piu' sotto)
         }
+        fwd[inFood] = ActionWeights.n_moveFood;
+        fwd[inThirst] = ActionWeights.n_moveThirst;
+        fwd[hereWater] = ActionWeights.n_moveHereWater;
+        // SE NON VEDO NIENTE, CAMMINO. Girare sul posto non cambia il posto, e il posto e'
+        // l'unica cosa che decide se davanti ci sara' qualcosa: guardare lo fa la testa, che e'
+        // gratis. Senza questo peso un'entita' in un mondo con il cibo concentrato sugli alberi
+        // passa la vita a girarsi dove e' nata.
+        fwd[nothing] = ActionWeights.n_moveNothing;
+        setNeuron(0, 0, fwd, ActionWeights.n_moveBias);
 
-        // Uscite: mosse (1-4), mangia (5), dormi (7), riproduci (8), bevi (9)
-        int[] outputs = {1, 2, 3, 4, 5, 7, 8, 9};
-        for(int j = 0; j < outputs.length; j++){
-            double[] w = new double[BRAIN_TOPOLOGY[2]];
-            w[j] = j < 4 ? 10 : 12;
-            setNeuron(2, outputs[j], w, -6);
-        }
-        bestBrain = Brain.copy();
-    }
+        // girare il corpo: cibo di lato. La spinta del "non vedo niente" va SOLO a destra, non
+        // ai due lati: con lo stesso peso su entrambi i neuroni le due rotazioni si annullavano e
+        // l'entita' oscillava di mezzo passo d'angolo avanti e indietro - nel primo mondo con gli
+        // alberi erano 7900 giri del corpo su 13000 azioni, e 450 passi. Asimmetrica, la spinta
+        // diventa un ARCO: insieme al passo avanti e' una traiettoria che copre terreno nuovo.
+        setNeuron(0, 1, turnNeuron(right, left, aBase, cBase, wBase, nothing, inThirst,
+                ActionWeights.n_turnNothing), ActionWeights.n_moveBias);
+        setNeuron(0, 2, turnNeuron(left, right, aBase, cBase, wBase, nothing, inThirst, 0),
+                ActionWeights.n_moveBias);
 
-    /** Istinti v3: spinte graduate (niente saturazione) cosi' le priorita' tra le azioni sono vere. */
-    private void seedInstinctsV3(int aBase, int wBase, int eBase, int hereBase, int hereApple, int hereCorpse,
-                                 int inFood, int inThirst, int inStamina, int inMature){
-        int[][] moveSectors = {{3, 4}, {7, 0}, {5, 6}, {1, 2}}; // +x, -x, +z, -z
-        for(int d = 0; d < 4; d++){
-            double[] w = new double[INPUT_SIZE];
-            for(int s : moveSectors[d]){
-                w[aBase + s] = ActionWeights.n_moveGain;
-                w[wBase + s] = ActionWeights.n_moveGain;
-            }
-            w[inFood] = ActionWeights.n_moveFood;
-            w[inThirst] = ActionWeights.n_moveThirst;
-            w[hereBase + Vision.CAT_WATER] = ActionWeights.n_moveHereWater;
-            setNeuron(0, d, w, ActionWeights.n_moveBias);
-        }
+        // girare la testa: se non vedo niente, guardo da dove mi resta collo
+        double[] scanR = new double[INPUT_SIZE];
+        scanR[nothing] = ActionWeights.n_scanGain;
+        scanR[inRemRight] = ActionWeights.n_scanGain / 3;
+        setNeuron(0, 3, scanR, ActionWeights.n_scanBias);
+        double[] scanL = new double[INPUT_SIZE];
+        scanL[nothing] = ActionWeights.n_scanGain;
+        scanL[inRemLeft] = ActionWeights.n_scanGain / 3;
+        setNeuron(0, 4, scanL, ActionWeights.n_scanBias);
+
+        // mangiare cio' che si ha a portata
         double[] eat = new double[INPUT_SIZE];
         eat[hereApple] = ActionWeights.n_eatGain;
         eat[hereCorpse] = ActionWeights.n_eatGain;
         eat[inFood] = ActionWeights.n_eatFood;
-        setNeuron(0, 4, eat, ActionWeights.n_eatBias);
-        double[] drinkN = new double[INPUT_SIZE];
-        for(int s = 0; s < Vision.SECTORS; s++){ drinkN[wBase + s] = ActionWeights.n_drinkGain; }
-        drinkN[hereBase + Vision.CAT_WATER] = ActionWeights.n_drinkHere;
-        drinkN[inThirst] = ActionWeights.n_drinkThirst;
-        setNeuron(0, 5, drinkN, ActionWeights.n_drinkBias);
+        setNeuron(0, 5, eat, ActionWeights.n_eatBias);
+
+        // bere: acqua vicina e sete
+        double[] drink = new double[INPUT_SIZE];
+        for(int sct = 0; sct < Vision.SECTORS; sct++){ drink[wBase + sct] = ActionWeights.n_drinkGain; }
+        drink[hereWater] = ActionWeights.n_drinkHere;
+        drink[inThirst] = ActionWeights.n_drinkThirst;
+        setNeuron(0, 6, drink, ActionWeights.n_drinkBias);
+
+        // dormire quando la stamina e' bassa
         double[] rest = new double[INPUT_SIZE];
         rest[inStamina] = ActionWeights.n_restGain;
-        setNeuron(0, 6, rest, ActionWeights.n_restBias);
+        setNeuron(0, 7, rest, ActionWeights.n_restBias);
+
+        // riprodursi: sazia, matura, e qualcuno nei paraggi
         double[] mate = new double[INPUT_SIZE];
         mate[inFood] = ActionWeights.n_mateFood;
         mate[inMature] = ActionWeights.n_mateMature;
-        for(int s = 0; s < Vision.SECTORS; s++){ mate[eBase + s] = ActionWeights.n_mateEntity; }
-        setNeuron(0, 7, mate, ActionWeights.n_mateBias);
+        for(int sct = 0; sct < Vision.SECTORS; sct++){ mate[eBase + sct] = ActionWeights.n_mateEntity; }
+        setNeuron(0, 8, mate, ActionWeights.n_mateBias);
 
-        // Strato 2: h2 = sigmoid(4*h1 - 2)  (spinta graduata tra ~0.12 e ~0.88)
-        for(int j = 0; j < 8; j++){
+        // --- Strato 2: h2 = sigmoid(4*h1 - 2), spinta graduata tra ~0.12 e ~0.88
+        for(int j = 0; j < INTENTIONS; j++){
             double[] w = new double[BRAIN_TOPOLOGY[1]];
             w[j] = 4;
             setNeuron(1, j, w, -2);
         }
-        // Uscite: out = sigmoid(8*h2 - 4); mosse 1-4, mangia 5, bevi 9, dormi 7, riproduci 8. IDLE e ATTACK quasi spente.
-        int[] outputs = {1, 2, 3, 4, 5, 9, 7, 8};
+
+        // --- Uscite: out = sigmoid(8*h2 - 4). Ferma, indietro e attacca partono quasi spente.
+        int[] outputs = {ACT_FORWARD, ACT_TURN_RIGHT, ACT_TURN_LEFT, ACT_HEAD_RIGHT, ACT_HEAD_LEFT,
+                ACT_EAT, ACT_DRINK, ACT_SLEEP, ACT_REPRODUCE};
         for(int j = 0; j < outputs.length; j++){
             double[] w = new double[BRAIN_TOPOLOGY[2]];
             w[j] = 8;
             setNeuron(2, outputs[j], w, -4);
         }
-        setNeuron(2, 0, new double[BRAIN_TOPOLOGY[2]], ActionWeights.n_idleBias);
-        setNeuron(2, 6, new double[BRAIN_TOPOLOGY[2]], ActionWeights.n_idleBias);
+        for(int a : new int[]{ACT_IDLE, ACT_BACK, ACT_ATTACK}){
+            setNeuron(2, a, new double[BRAIN_TOPOLOGY[2]], ActionWeights.n_idleBias);
+        }
         bestBrain = Brain.copy();
+    }
+
+    /** Quante intenzioni hanno un neurone dedicato negli istinti iniziali. */
+    private static final int INTENTIONS = 9;
+
+    /**
+     * Neurone "gira il corpo da questo lato".
+     *
+     * RISPONDE A UNA DIFFERENZA, NON A UNA PRESENZA: i settori del proprio lato pesano positivo,
+     * quelli del lato opposto NEGATIVO con lo stesso peso. Una scena simmetrica si annulla a
+     * zero e solo un vero squilibrio tra destra e sinistra produce una rotazione.
+     *
+     * PERCHE' COSI'. Con i pesi solo sul proprio lato bastava qualcosa di diffuso - l'acqua, che
+     * in un mondo con 376 colonne allagate si vede quasi sempre da tutte le parti - per saturare
+     * TUTTI E DUE i neuroni insieme: l'entita' aveva un motivo forte per girare a destra e lo
+     * stesso motivo per girare a sinistra, e passava la vita a oscillare. Nel primo mondo con gli
+     * alberi erano 13700 giri del corpo su 24000 azioni, con 1128 passi avanti, e la popolazione
+     * si estingueva al tick 2400. Un neurone che misura una differenza non puo' avere quel
+     * problema: e' la differenza stessa a dirgli da che parte girare.
+     *
+     * L'acqua pesa la META' del cibo ED E' SPENTA DA CHI NON HA SETE (il peso negativo su
+     * inThirst, che vale 1 quando si e' dissetati).
+     *
+     * PERCHE' LA SETE C'ENTRA. Senza quel freno l'acqua guidava le rotazioni sempre, e un lago
+     * e' un bersaglio ENORME e DIFFUSO: l'entita' lo vedeva un po' piu' a destra, girava di 22
+     * gradi, ora lo vedeva un po' piu' a sinistra, rigirava - un ciclo limite a due stati, con le
+     * uscite che alternavano 0.93/0.12 e 0.08/0.94 per tutta la vita. Il bersaglio non si
+     * raggiunge mai perche' non e' un punto: e' meta' dell'orizzonte. Il cibo invece e' un punto,
+     * e verso un punto la retroazione negativa converge. Quindi l'acqua resta un motivo per
+     * cambiare strada solo quando serve bere, che e' anche l'unico momento in cui ha senso.
+     */
+    private double[] turnNeuron(int[] mySide, int[] otherSide, int aBase, int cBase, int wBase,
+                                int nothing, int inThirst, double nothingWeight){
+        double[] w = new double[INPUT_SIZE];
+        double gain = ActionWeights.n_moveGain;
+        for(int sct : mySide){
+            w[aBase + sct] = gain;
+            w[cBase + sct] = gain;
+            w[wBase + sct] = gain / 2;
+        }
+        for(int sct : otherSide){
+            w[aBase + sct] = -gain;
+            w[cBase + sct] = -gain;
+            w[wBase + sct] = -gain / 2;
+        }
+        w[nothing] = nothingWeight;
+        w[inThirst] = ActionWeights.n_turnSated;
+        return w;
     }
 
     private void setNeuron(int layer, int index, double[] weights, double bias){
@@ -441,6 +777,17 @@ public class entity {
         input[i++] = position[2].get() / (double) world.getDim();
         input[i++] = Math.min(1.0, age / (double) MATURITY_AGE);
         input[i++] = sex == 2 ? 1.0 : 0.0;
+        // propriocezione dello sguardo: dove ho la testa, e quanto collo mi resta nei due versi
+        double range = gazeRange();
+        input[i++] = Math.sin(gazeYaw);
+        input[i++] = Math.cos(gazeYaw);
+        input[i++] = range > 1e-3 ? (range - gazeYaw) / (2 * range) : 0.0;
+        input[i++] = range > 1e-3 ? (gazeYaw + range) / (2 * range) : 0.0;
+        // la propria abitudine alimentare: senza questo ingresso un'entita' non ha modo di
+        // sapere quale cibo le conviene, e la specializzazione resta una cosa che le capita
+        // addosso invece di una cosa che puo' inseguire
+        input[i++] = dietBias;
+        input[i++] = DayNight.daylight();
         return input;
     }
 
@@ -448,12 +795,74 @@ public class entity {
 
     /** Chiamato dal ciclo centrale a ogni tick: accumula punti azione e agisce quando arriva a 1. */
     public void advance(){
+        metabolism();
         actionPoints += stats.speed / SPEED_DIVISOR;
         if(actionPoints >= 1.0){
             actionPoints -= 1.0;
             step();
         }
     }
+
+    /**
+     * Fame, sete, danno da inedia e guarigione legati al TEMPO, non alle azioni (vedi
+     * ActionWeights.timeMetabolism).
+     *
+     * La taratura tiene la media di prima: il consumo era di 1 per azione e un'entita' media fa
+     * speed/SPEED_DIVISOR = 1.75/7 = 0.25 azioni per tick, quindi 0.25 per tick e' lo stesso
+     * ritmo per chi ha velocita' media. Cambia per gli estremi, ed e' il punto: un'entita' lenta
+     * non guadagna piu' vita stando ferma, una veloce non la paga due volte.
+     *
+     * La massa entra nel consumo di base perche' un corpo grosso brucia di piu' anche da fermo:
+     * cosi' essere massicci ha un prezzo continuo, non solo il costo del passo.
+     */
+    private void metabolism(){
+        if(ActionWeights.timeMetabolism <= 0){
+            return;
+        }
+        double rate = BASAL_PER_TICK;
+        if(ActionWeights.bodyMassStats > 0){
+            rate *= getTraits().massFactor();
+        }
+        // il fiato torna anche da svegli, piano: dormire resta il modo rapido
+        if(!sleeping && stamina < stats.maxStamina){
+            stamina = Math.min(stats.maxStamina,
+                    stamina + stats.maxStamina * WAKE_REGEN_FRACTION);
+        }
+        // dormire dimezza il consumo di cibo e azzera quello d'acqua, come nel vecchio ciclo
+        foodDrain += sleeping ? rate * 0.5 : rate;
+        thirstDrain += sleeping ? 0 : rate;
+        while(foodDrain >= 1.0){ foodDrain -= 1.0; food--; }
+        while(thirstDrain >= 1.0){ thirstDrain -= 1.0; thirst--; }
+        if(food < 0){ food = 0; }
+        if(thirst < 0){ thirst = 0; }
+
+        if(food <= 0 || thirst <= 0){
+            starveDamage += STARVE_DAMAGE_PER_TICK;
+            if(starveDamage >= 1.0){
+                int dmg = (int) starveDamage;
+                starveDamage -= dmg;
+                takeDamage(dmg, food <= 0 ? "fame" : "sete");
+            }
+        }else if(food >= 85 && thirst >= 85 && healt < maxHealthInt()){
+            healing += BASAL_PER_TICK;
+            if(healing >= 1.0){
+                healing -= 1.0;
+                healt++;
+            }
+        }
+        if(healt <= 0 && life.get()){
+            Simulation.kill(this, lastDamageCause);
+        }
+    }
+
+    /**
+     * Consumo di base per tick di mondo: 0.25 e' il consumo per azione di prima (1) moltiplicato
+     * per le azioni al tick di un'entita' di velocita' media (1.75/7).
+     */
+    private static final double BASAL_PER_TICK = 0.25;
+    /** Danno da inedia per tick: 3 per azione di prima, per 0.25 azioni al tick. */
+    private static final double STARVE_DAMAGE_PER_TICK = 0.75;
+    private double foodDrain, thirstDrain, starveDamage, healing;
 
     private void step(){
         if(!life.get()){ return; }
@@ -462,46 +871,113 @@ public class entity {
         applyAgeDrift();
         if(reproCooldown > 0){ reproCooldown--; }
         sleeping = false;
-        Netreward += 0.5; // un passo sopravvissuto
+        /*
+         * IL PREMIO VIENE DAL CORPO, NON DA UN ORACOLO.
+         *
+         * Qui prima c'era "Netreward += 0.5, un passo sopravvissuto": denso ma IDENTICO in ogni
+         * finestra, quindi inutile a distinguere una finestra buona da una inutile (vedi la
+         * finestra di valutazione piu' sotto). Al suo posto c'e' il bisogno che fa male: piu' si
+         * ha fame e sete, piu' ogni passo costa. E' un segnale denso, viene dal proprio stato e
+         * NON INDICA NESSUNA DIREZIONE - sentire la fame non dice dov'e' la mela.
+         *
+         * Dormire attenua un poco questo dolore (il consumo e' dimezzato), ed e' giusto: stare
+         * fermi quando non si ha niente da mangiare e' una strategia vera. Non riporta la torpore
+         * di una volta perche' il metabolismo e' legato al tempo e non alle azioni, quindi
+         * rallentare non regala piu' vita.
+         */
+        double fameRel = 1.0 - Math.min(1.0, food / (double) maxFood);
+        double seteRel = 1.0 - Math.min(1.0, thirst / (double) MAX_THIRST);
+        Netreward -= ActionWeights.needPain * (fameRel + seteRel);
 
         double[] output = Brain.predict(get_NetInput());
         perform(chooseAction(output));
         if(!life.get()){ return; }
 
-        // Fame, sete e salute (dormire consuma meta' del cibo, non consuma sete)
-        if(!sleeping || age % 2 == 0){
-            food -= 1;
-        }
-        if(!sleeping){
-            thirst -= 1;
-        }
-        if(food < 0){ food = 0; }
-        if(thirst < 0){ thirst = 0; }
-        if(food <= 0){
-            takeDamage(3, "fame");
-        }else if(thirst <= 0){
-            takeDamage(3, "sete");
-        }else if(food >= 85 && thirst >= 85 && healt < maxHealthInt()){
-            healt++;
+        // Fame, sete e salute: col metabolismo legato al tempo stanno in metabolism(), chiamato a
+        // ogni tick. Qui resta il vecchio consumo per AZIONE, usato solo con timeMetabolism = 0.
+        if(ActionWeights.timeMetabolism <= 0){
+            if(!sleeping || age % 2 == 0){
+                food -= 1;
+            }
+            if(!sleeping){
+                thirst -= 1;
+            }
+            if(food < 0){ food = 0; }
+            if(thirst < 0){ thirst = 0; }
+            if(food <= 0){
+                takeDamage(3, "fame");
+            }else if(thirst <= 0){
+                takeDamage(3, "sete");
+            }else if(food >= 85 && thirst >= 85 && healt < maxHealthInt()){
+                healt++;
+            }
         }
 
         // Finestra di valutazione: tengo la mutazione del cervello solo se ha fatto uguale o meglio
         windowTick++;
         if (windowTick >= WINDOW_SIZE) {
             double score = (Netreward - windowStartReward) / windowTick;
-            if (score >= bestWindowScore) {
+            /*
+             * CONFRONTO STRETTO. Prima era "score >= bestWindowScore", e con il vecchio premio
+             * fisso di 0.5 per passo una finestra in cui non succedeva niente valeva ESATTAMENTE
+             * 0.5 come la precedente: il confronto passava, il cervello di riferimento veniva
+             * riscritto e si mutava di nuovo. Risultato: in tutte le finestre vuote il cervello
+             * faceva una passeggiata casuale - il 10% dei pesi spostati di 0.25 ogni dieci passi.
+             * Qualche centinaio di passi e gli istinti di partenza non esistevano piu'. E' la
+             * spiegazione del cervello della #10 (bias a destra, "mangia" al 44%): non era un
+             * difetto del cablaggio iniziale, era deriva.
+             *
+             * Con il confronto stretto una finestra piatta ANNULLA la mutazione invece di tenerla.
+             */
+            if (score > bestWindowScore) {
                 bestBrain = Brain.copy();
                 bestWindowScore = score;
             } else {
                 Brain = bestBrain.copy();
+                /*
+                 * E la soglia scende piano verso il punteggio recente. Senza questo il confronto
+                 * stretto avrebbe il difetto opposto: una finestra fortunata (due pasti di fila)
+                 * resterebbe imbattibile per sempre e il cervello si congelerebbe a vita.
+                 */
+                bestWindowScore += (score - bestWindowScore) * ActionWeights.windowDecay;
             }
             Brain.mutate(MUTATION_RATE);
             windowStartReward = Netreward;
             windowTick = 0;
         }
 
+        // la stessa cosa, sul modo di camminare invece che sul cervello
+        practiceWalking();
+
         if(healt <= 0){
             Simulation.kill(this, lastDamageCause);
+        }
+    }
+
+    /**
+     * Si allena a camminare, vivendo: ritira l'andatura che la prova precedente ha trovato (se e'
+     * andata meglio di quella che usava) e ogni tanto ne chiede un'altra.
+     *
+     * Sta accanto alla finestra di valutazione del cervello perche' e' lo stesso meccanismo: si
+     * prova una variazione, si tiene se migliora. La differenza e' che il punteggio non lo da' la
+     * vita ma la fisica, su un thread a parte: provare un'andatura davvero vivendo vorrebbe dire
+     * camminare peggio per un po', e in un mondo dove si muore di fame non si puo'.
+     *
+     * Quello che impara non resta a lei: i figli partono dall'andatura incrociata dei genitori
+     * (vedi inheritGait e Genome.reproduce), quindi l'allenamento di una vita e' il punto di
+     * partenza della successiva.
+     */
+    private void practiceWalking(){
+        src.body.Locomotion.Profile better = src.body.Locomotion.collectPractice(EntityID);
+        if(better != null){
+            this.gait = better.gait();
+            this.gaitInherited = true;
+            this.locomotion = better;
+        }
+        src.body.Locomotion.Profile p = locomotion;
+        if(p != null && p.measured() && tick.get() % PRACTICE_INTERVAL == 0){
+            src.body.Locomotion.practice(EntityID, getAdultBody(), p,
+                    EntityID * 7919L + Simulation.getSeed() + tick.get());
         }
     }
 
@@ -534,13 +1010,23 @@ public class entity {
         int dim = world.getDim();
         ok[ACT_IDLE] = true;
         ok[ACT_SLEEP] = true;
-        int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
-        int[] moveActs = {ACT_MOVE_XP, ACT_MOVE_XM, ACT_MOVE_ZP, ACT_MOVE_ZM};
-        for(int d = 0; d < 4; d++){
-            int nx = x + dirs[d][0], nz = z + dirs[d][1];
-            ok[moveActs[d]] = stamina >= MOVE_COST && nx >= 0 && nx < dim && nz >= 0 && nz < dim && !world.isWaterColumn(nx, nz);
+        // avanti e indietro: si guarda dove si finirebbe davvero, con il passo di questo corpo
+        double cost = moveCost();
+        for(int sign = -1; sign <= 1; sign += 2){
+            double step = stepLength() * sign;
+            int nx = cellOf(exactX + Math.sin(facing) * step);
+            int nz = cellOf(exactZ + Math.cos(facing) * step);
+            boolean can = stamina >= cost && nx >= 0 && nx < dim && nz >= 0 && nz < dim
+                    && !world.isWaterColumn(nx, nz);
+            ok[sign > 0 ? ACT_FORWARD : ACT_BACK] = can;
         }
-        ok[ACT_EAT] = stamina >= EAT_COST && ("M".equals(world.getSymbol(x, y, z)) || Simulation.corpseAt(x, y, z) != null);
+        ok[ACT_TURN_RIGHT] = stamina >= TURN_COST;
+        ok[ACT_TURN_LEFT] = stamina >= TURN_COST;
+        // la testa si gira solo se il collo ha ancora corsa in quel verso
+        double range = gazeRange();
+        ok[ACT_HEAD_RIGHT] = range > 1e-3 && gazeYaw < range - 1e-3;
+        ok[ACT_HEAD_LEFT] = range > 1e-3 && gazeYaw > -range + 1e-3;
+        ok[ACT_EAT] = stamina >= EAT_COST && (appleWithinReach() != null || corpseWithinReach() != null);
         boolean water = false;
         for(int dx = -1; dx <= 1 && !water; dx++){
             for(int dz = -1; dz <= 1; dz++){
@@ -556,12 +1042,21 @@ public class entity {
         return ok;
     }
 
+    /**
+     * Distanza entro cui si trova un partner: resta PARTNER_RANGE, ma un corpo con arti molto
+     * lunghi arriva piu' lontano. Non si restringe mai, perche' le nascite sono il collo di
+     * bottiglia della popolazione (vedi STATO_LAVORO.txt).
+     */
+    private double partnerRange(){
+        return ActionWeights.bodyReach > 0 ? Math.max(PARTNER_RANGE, reachNow()) : PARTNER_RANGE;
+    }
+
     private boolean findPartnerNoRandom(){
-        int x = position[0].get(), y = position[1].get(), z = position[2].get();
+        int y = position[1].get();
+        double range = partnerRange();
         for(entity o : Entity_manager.snapshotAlive()){
             if(o == this || o.sex == this.sex || !o.canMate()){ continue; }
-            int[] p = o.getPos();
-            if(p[1] == y && Math.abs(p[0] - x) <= PARTNER_RANGE && Math.abs(p[2] - z) <= PARTNER_RANGE){ return true; }
+            if(reachableLevel(y, o.getPos()[1]) && distanceTo(o) <= range){ return true; }
         }
         return false;
     }
@@ -572,10 +1067,12 @@ public class entity {
             case ACT_IDLE:
                 Netreward -= 0.5;
                 break;
-            case ACT_MOVE_XP: move(1, 0); break;
-            case ACT_MOVE_XM: move(-1, 0); break;
-            case ACT_MOVE_ZP: move(0, 1); break;
-            case ACT_MOVE_ZM: move(0, -1); break;
+            case ACT_FORWARD: walk(1); break;
+            case ACT_BACK: walk(-1); break;
+            case ACT_TURN_RIGHT: turn(TURN_STEP); break;
+            case ACT_TURN_LEFT: turn(-TURN_STEP); break;
+            case ACT_HEAD_RIGHT: turnHead(HEAD_STEP); break;
+            case ACT_HEAD_LEFT: turnHead(-HEAD_STEP); break;
             case ACT_EAT:
                 if(spend(EAT_COST)){ eat(); }
                 break;
@@ -606,10 +1103,20 @@ public class entity {
         return true;
     }
 
-    private void move(int dx, int dz){
-        int nx = position[0].get() + dx;
-        int nz = position[2].get() + dz;
+    /**
+     * Un passo nel verso del muso (sign = +1 avanti, -1 indietro). La DISTANZA non e' piu' una cella fissa: e' quanta
+     * strada il corpo riesce a fare in un'azione con la sua andatura (vedi stepLength), quindi
+     * gambe lunghe e andatura efficace portano piu' lontano a parita' di azioni. La cella resta
+     * il riferimento del mondo (terreno, acqua, mele) ed e' sempre il pavimento della posizione
+     * continua.
+     */
+    private void walk(double sign){
         int dim = world.getDim();
+        double step = stepLength() * sign;
+        double tx = exactX + Math.sin(facing) * step;
+        double tz = exactZ + Math.cos(facing) * step;
+        int nx = cellOf(tx);
+        int nz = cellOf(tz);
         if(nx < 0 || nx >= dim || nz < 0 || nz >= dim){
             Netreward -= 10;
             return;
@@ -619,26 +1126,230 @@ public class entity {
             Netreward -= 2;
             return;
         }
-        if(!spend(MOVE_COST)){ return; }
-        // Ricompensa di avvicinamento: se ha fame o sete, avvicinarsi alla risorsa e' un passo giusto
-        double before = (food < 150 || thirst < 150) ? nearestNeed() : -1;
-        position[0].set(nx);
-        position[1].set(world.surfaceY(nx, nz)); // segue l'altezza del terreno (salita/discesa di 1 cella)
-        position[2].set(nz);
-        if(before >= 0){
-            double after = nearestNeed();
-            if(after >= 0){ Netreward += 1.0 * (before - after); }
+        if(Flora.isTrunk(nx, nz)){
+            // Un albero e' un oggetto fisico: lo si gira attorno, non lo si attraversa. E' anche
+            // il primo ostacolo solido del mondo, quindi il primo motivo per girarsi.
+            Netreward -= 1;
+            return;
         }
-        Netreward += 0.5;
+        if(!spend(moveCost())){ return; }
+        /*
+         * NIENTE RICOMPENSA DI AVVICINAMENTO. Qui c'era un gradiente che premiava il passo se
+         * accorciava la distanza dal cibo o dall'acqua visibili. Era corretto in un punto (
+         * guardava solo dentro il cono, quindi non premiava la fortuna) e sbagliato nel principio:
+         * era un ORACOLO, diceva "quella direzione e' quella giusta" invece di lasciare che
+         * fosse la vista a dirlo. E' il comportamento che vogliamo far emergere, quindi non si
+         * puo' regalare. Si portava dietro anche i vecchi interruttori secchi della dieta, che
+         * con l'abitudine alimentare non hanno piu' senso.
+         *
+         * Via anche il "+0.5 per un passo": camminare non e' buono in se'.
+         */
+        exactX = tx;
+        exactZ = tz;
+        // facing NON si tocca: la direzione e' uno stato che cambia solo girandosi (vedi turn).
+        // Prima era l'effetto collaterale dell'ultimo spostamento, e un'entita' non poteva
+        // guardare da una parte e camminare verso un'altra.
+        gaitPhase += secondsPerAction();   // il ciclo dell'andatura avanza solo quando cammina
+        lastMoveTick = Simulation.getTick();
+        syncCell();
     }
 
-    /** La piu' vicina tra cibo visibile (se ha fame) e acqua visibile (se ha sete). */
-    private double nearestNeed(){
-        double food = this.food < 150 ? Vision.nearestFood(this) : -1;
-        double water = this.thirst < 150 ? Vision.nearestWater(this) : -1;
-        if(food < 0){ return water; }
-        if(water < 0){ return food; }
-        return Math.min(food, water);
+    /** Mette l'entita' in una posizione continua (nascita, caricamento di un salvataggio). */
+    void placeAt(double x, double z){
+        this.exactX = x;
+        this.exactZ = z;
+        syncCell();
+    }
+
+    /** Allinea la cella (e la quota del terreno) alla posizione continua. */
+    private void syncCell(){
+        int nx = cellOf(exactX);
+        int nz = cellOf(exactZ);
+        position[0].set(nx);
+        position[1].set(world.surfaceY(nx, nz)); // segue l'altezza del terreno
+        position[2].set(nz);
+    }
+
+    private static int cellOf(double metres){
+        return (int) Math.floor(metres / CELL_METERS);
+    }
+
+    /**
+     * Costo in stamina di un passo: un corpo massiccio costa di piu' a spostare, e con il
+     * metabolismo legato al tempo costa in proporzione alla STRADA che il passo copre.
+     *
+     * Senza la proporzione alla distanza un corpo con le gambe lunghe prende il doppio di strada
+     * allo stesso prezzo: il vantaggio di camminare bene diventa energia gratis. Con essa, il
+     * costo per metro dipende solo dalla massa (come nella realta') e camminare bene fa
+     * risparmiare TEMPO - che adesso costa, perche' fame e sete scendono per tick.
+     */
+    private double moveCost(){
+        double cost = MOVE_COST;
+        if(ActionWeights.bodyMassStats > 0){
+            cost *= getTraits().massFactor();
+        }
+        if(ActionWeights.timeMetabolism > 0){
+            cost *= stepLength() / CELL_METERS;
+        }
+        return cost;
+    }
+
+    // ------------------------------------------------------------------ sguardo
+
+    /** Quanto la testa e' girata rispetto al corpo (radianti, dentro +/- gazeRange). */
+    private volatile double gazeYaw;
+    private volatile src.body.Gaze.Head head;
+
+    /** Testa e portata del collo, dedotte dal corpo adulto (vedi src.body.Gaze). */
+    public src.body.Gaze.Head getHead(){
+        src.body.Gaze.Head h = head;
+        if(h == null){
+            h = src.body.Gaze.of(getAdultBody(), getTraits());
+            head = h;
+        }
+        return h;
+    }
+
+    /** Quanto puo' girare la testa da un lato (radianti, 0 = collo rigido). */
+    public double gazeRange(){
+        return getHead().yawRange();
+    }
+
+    /** Quanto la testa e' girata rispetto al corpo (radianti). */
+    public double getGazeYaw(){ return gazeYaw; }
+
+    /**
+     * Direzione in cui l'entita' sta GUARDANDO (radianti, come facing): corpo piu' testa. E' il
+     * centro del cono di visuale.
+     */
+    public double getGazeDirection(){
+        return Vision.wrap(facing + gazeYaw);
+    }
+
+    /** Gira il corpo. Il cono di visuale segue, perche' e' centrato sullo sguardo. */
+    private void turn(double delta){
+        if(!spend(TURN_COST)){ return; }
+        facing = Vision.wrap(facing + delta);
+    }
+
+    /** Gira la testa, entro i limiti del collo: oltre, l'azione non fa niente. */
+    private void turnHead(double delta){
+        double range = gazeRange();
+        if(range <= 1e-3){
+            Netreward -= 0.5;   // collo rigido: l'azione e' sprecata
+            return;
+        }
+        double want = gazeYaw + delta;
+        gazeYaw = Math.max(-range, Math.min(range, want));
+    }
+
+    /** Posizione continua in metri (per grafica, portata e distanze reali). */
+    public double getExactX(){ return exactX; }
+    public double getExactZ(){ return exactZ; }
+    /** Direzione verso cui guarda (radianti attorno a Y). */
+    public double getFacing(){ return facing; }
+
+    // ------------------------------------------------------------------ posa per la grafica
+
+    /** Secondi di cammino accumulati: e' la fase del ciclo dell'andatura. */
+    private volatile double gaitPhase;
+    private volatile long lastMoveTick = Long.MIN_VALUE;
+
+    public double getGaitPhase(){ return gaitPhase; }
+
+    /** True se si e' mossa negli ultimi tick: la grafica anima gli arti solo mentre cammina. */
+    public boolean isWalking(){
+        return Simulation.getTick() - lastMoveTick <= 2;
+    }
+
+    /**
+     * Posa del corpo nel suo sistema locale: origine sotto i piedi (y = 0 al terreno, x = z = 0
+     * al centro dell'entita'), girata nella direzione in cui guarda e con gli angoli dei giunti
+     * presi dall'andatura al punto del ciclo in cui si trova.
+     *
+     * La grafica la traduce nel mondo con una sola traslazione, cosi' la simulazione non deve
+     * sapere nulla di come e' disegnato il terreno. extraSeconds serve al motore grafico per
+     * interpolare tra due tick e avere un movimento fluido anche a velocita' bassa.
+     */
+    public src.body.BodyPose poseLocal(double extraSeconds){
+        src.body.Automaton b = getBody();
+        double[] q = jointAngles(b, extraSeconds);
+        src.body.Rot rot = src.body.Rot.yaw(facing);
+        // prima posa all'origine per sapere quanto e' alto il punto piu' basso, poi si rialza
+        // di quel tanto: cosi' i piedi (o la pancia, per chi striscia) toccano terra
+        src.body.BodyPose at0 = b.pose(q, src.body.V3.ZERO, rot);
+        return b.pose(q, new src.body.V3(0, -at0.lowestPoint(), 0), rot);
+    }
+
+    /**
+     * Angoli dei giunti: andatura in movimento, posizione di riposo da ferma, e in ogni caso la
+     * testa girata dove l'entita' sta guardando - cosi' sullo schermo si VEDE dove guarda, e la
+     * posa disegnata e' la stessa cosa che il cervello percepisce.
+     */
+    private double[] jointAngles(src.body.Automaton b, double extraSeconds){
+        double[] q = new double[b.dofCount()];
+        if(ActionWeights.bodyGaitSpeed > 0 && isWalking()){
+            float[] f = getGait().anglesAt(b, gaitPhase + extraSeconds, null);
+            for(int i = 0; i < q.length && i < f.length; i++){
+                q[i] = f[i];
+            }
+        }
+        applyGaze(q);
+        return q;
+    }
+
+    /**
+     * Distribuisce la rotazione dello sguardo sui giunti del collo, in proporzione a quanto
+     * ognuno puo' girare (vedi src.body.Gaze). Si somma all'andatura invece di sostituirla: il
+     * collo di chi cammina oscilla e intanto guarda.
+     */
+    private void applyGaze(double[] q){
+        src.body.Gaze.Head h = getHead();
+        if(!h.canTurn()){
+            return;
+        }
+        for(src.body.Gaze.YawDof d : h.yawDofs()){
+            if(d.index() < q.length){
+                double a = q[d.index()] + gazeYaw * d.share();
+                q[d.index()] = Math.max(-d.limit(), Math.min(d.limit(), a));
+            }
+        }
+    }
+
+    /**
+     * Quanto lontano vede ADESSO (celle): la propria vista ridotta dal buio e recuperata dalla
+     * visione notturna. Da usare al posto di stats.sightDistance in tutto cio' che percepisce,
+     * altrimenti il ciclo del giorno non cambia niente per nessuno.
+     */
+    public double sightNow(){
+        return stats.sightDistance * DayNight.visibility(stats.nightVision);
+    }
+
+    /**
+     * A che altezza arriva una presa, in metri sopra i propri piedi: il corpo in piedi piu' le
+     * braccia alzate. E' questo numero a decidere se una mela sulla chioma e' raccoglibile
+     * (vedi Flora.pickFrom).
+     *
+     * Qui sta l'unico vantaggio puro dell'essere grandi in tutto il progetto. Tutto il resto
+     * della taglia e' un costo: piu' massa = passo piu' caro, metabolismo piu' caro. Senza un
+     * posto in cui l'altezza PAGHI, la selezione spinge sempre verso corpi piccoli e il corpo
+     * evoluto diventa una questione di una sola dimensione.
+     */
+    public double pickHeight(){
+        src.body.BodyTraits t = getTraits();
+        return (t.height() + t.reach()) * src.body.BodyParams.growthFactor(age);
+    }
+
+    /** Portata delle estremita' alla taglia attuale (m): quanto lontano arriva un colpo o una presa. */
+    public double reachNow(){
+        return getTraits().reach() * src.body.BodyParams.growthFactor(age);
+    }
+
+    /** Distanza orizzontale in metri da un'altra entita'. */
+    public double distanceTo(entity other){
+        double dx = other.exactX - exactX;
+        double dz = other.exactZ - exactZ;
+        return Math.sqrt(dx * dx + dz * dz);
     }
 
     // ------------------------------------------------------------------ bere
@@ -671,47 +1382,158 @@ public class entity {
 
     // ------------------------------------------------------------------ mangiare
 
-    private void eat(){
-        int x = position[0].get();
-        int y = position[1].get();
-        int z = position[2].get();
-        boolean apple = "M".equals(world.getSymbol(x, y, z));
-        Corpse corpse = Simulation.corpseAt(x, y, z);
+    /** Mezza diagonale di una cella: la distanza entro cui si raggiunge cio' che si ha sotto i piedi. */
+    private static final double SAME_CELL_RANGE = 0.75;
 
-        // I carnivori preferiscono il cadavere, gli altri la mela
-        if(corpse != null && (!apple || stats.diet == DietType.CARNIVORE)){
+    /**
+     * Da che distanza si riesce a prendere il cibo: con gli effetti del corpo attivi e' la
+     * portata delle estremita' (braccia lunghe = si raccoglie una mela dalla cella accanto senza
+     * spostarsi), altrimenti solo la propria cella come prima.
+     */
+    private double eatRange(){
+        return ActionWeights.bodyReach > 0 ? Math.max(SAME_CELL_RANGE, reachNow()) : SAME_CELL_RANGE;
+    }
+
+    /** Distanza dal centro di una cella. */
+    private double distanceToCell(int x, int z){
+        double dx = (x + 0.5) * CELL_METERS - exactX;
+        double dz = (z + 0.5) * CELL_METERS - exactZ;
+        return Math.sqrt(dx * dx + dz * dz);
+    }
+
+    /**
+     * Cella con la mela piu' vicina entro la portata, oppure null. La mela sta sulla superficie
+     * della sua colonna, quindi si cerca alla quota di QUELLA colonna e si accetta se il
+     * dislivello rispetto ai propri piedi sta entro ActionWeights.levelTolerance: una mela a una
+     * cella di distanza su un gradino alto 30 cm si raccoglie, com'e' ovvio.
+     */
+    private Flora.Apple appleWithinReach(){
+        // NESSUN FILTRO DI DIETA: chiunque puo' prendere qualunque cibo. Quanto gli rende lo
+        // decide appleEfficiency(), cioe' la sua abitudine - un divieto non e' una pressione.
+        int y = position[1].get();
+        int cx = position[0].get();
+        int cz = position[2].get();
+        double height = pickHeight();
+        if(ActionWeights.bodyReach <= 0){
+            return Flora.pickFrom(cx, cz, y, height);
+        }
+        double range = eatRange();
+        int r = (int) Math.ceil(range);
+        int dim = world.getDim();
+        Flora.Apple best = null;
+        double bestValue = -1;
+        for(int x = cx - r; x <= cx + r; x++){
+            if(x < 0 || x >= dim){ continue; }
+            for(int z = cz - r; z <= cz + r; z++){
+                if(z < 0 || z >= dim){ continue; }
+                double d = distanceToCell(x, z);
+                if(d > range){ continue; }
+                Flora.Apple a = Flora.pickFrom(x, z, y, height);
+                if(a == null){ continue; }
+                // a parita' di distanza vince la mela piu' matura, e una mela matura vale la pena
+                // di un passo in piu': il valore cala con la distanza invece di escluderla
+                double value = a.nutrition() - 0.05 * d;
+                if(value > bestValue){
+                    bestValue = value;
+                    best = a;
+                }
+            }
+        }
+        return best;
+    }
+
+    /** True se un oggetto alla quota "other" e' raggiungibile da chi ha i piedi alla quota "mine". */
+    static boolean reachableLevel(int mine, int other){
+        return Math.abs(mine - other) <= (int) ActionWeights.levelTolerance;
+    }
+
+    /** Cadavere piu' vicino entro la portata (allo stesso livello), oppure null. */
+    private Corpse corpseWithinReach(){
+        int y = position[1].get();
+        if(ActionWeights.bodyReach <= 0){
+            return Simulation.corpseAt(position[0].get(), y, position[2].get());
+        }
+        double range = eatRange();
+        Corpse best = null;
+        double bestD = Double.MAX_VALUE;
+        for(Corpse c : Simulation.corpsesSnapshot()){
+            if(c.isConsumed() || !reachableLevel(y, c.getY())){ continue; }
+            double d = distanceToCell(c.getX(), c.getZ());
+            if(d <= range && d < bestD){
+                bestD = d;
+                best = c;
+            }
+        }
+        return best;
+    }
+
+    private void eat(){
+        Flora.Apple apple = appleWithinReach();
+        Corpse corpse = corpseWithinReach();
+
+        // Con entrambi a portata si prende quello che SAZIA PIU' ME: la stessa carogna conviene a
+        // chi ha l'abitudine alla carne e non conviene a chi non ce l'ha. La preferenza non e'
+        // piu' una regola per categoria, e' il conto del nutrimento atteso.
+        boolean carneMeglio = corpse != null && apple != null
+                && BITE_MEAT * meatEfficiency() > 100 * appleEfficiency() * apple.nutrition();
+        if(corpse != null && (apple == null || carneMeglio)){
             eatCorpse(corpse);
-        }else if(apple){
-            eatApple(x, y, z);
+        }else if(apple != null){
+            eatApple(apple);
         }else{
             Netreward -= 2.0;
         }
     }
 
-    private double appleEfficiency(){
-        switch (stats.diet) {
-            case HERBIVORE: return 1.0;
-            case OMNIVORE: return 0.8;
-            default: return 0.25;
-        }
+    /**
+     * Quanto rende un cibo per cui si e' specializzati per una quota x (0 = non e' affatto il mio
+     * cibo, 1 = e' esattamente il mio cibo). Lineare tra dietEffMin e dietEffMax.
+     *
+     * Con 0.25 e 1.35 il centro cade esattamente su 0.80, cioe' sull'onnivoro di prima: il
+     * cambiamento non sposta la media del mondo, allarga solo gli estremi - e li rende
+     * raggiungibili per esperienza invece che per sorteggio alla nascita.
+     */
+    private static double resa(double x){
+        double min = ActionWeights.dietEffMin;
+        return min + (ActionWeights.dietEffMax - min) * Math.max(0.0, Math.min(1.0, x));
     }
 
-    private double meatEfficiency(){
-        switch (stats.diet) {
-            case HERBIVORE: return 0.25;
-            case OMNIVORE: return 0.8;
-            default: return 1.2;
-        }
+    private double appleEfficiency(){ return resa(1.0 - dietBias); }
+
+    private double meatEfficiency(){ return resa(dietBias); }
+
+    /** Un pasto sposta l'abitudine verso quello che si e' mangiato (0 = vegetale, 1 = carne). */
+    private void adattaDieta(double bersaglio){
+        dietBias += ActionWeights.dietAdapt * (bersaglio - dietBias);
+        if(dietBias < 0){ dietBias = 0; }
+        if(dietBias > 1){ dietBias = 1; }
     }
 
-    private void eatApple(int x, int y, int z){
+    public double getDietBias(){ return dietBias; }
+
+    /**
+     * L'etichetta della dieta ADESSO, calcolata dall'abitudine corrente e non dal gene: e' quella
+     * che si mostra nella GUI e si conta nei log, e nel corso di una vita puo' cambiare.
+     */
+    public DietType dietNow(){ return DietType.fromResolvedBias(dietBias); }
+
+    /**
+     * Mangia la mela. Il cibo che da' dipende dalla sua MATURAZIONE (Flora.Apple.nutrition): una
+     * verde sfama un quarto di una matura, una passata la meta'. Quindi la ricompensa che la rete
+     * riceve non premia "mangiare" ma "mangiare qualcosa che vale", che e' la differenza tra
+     * ripulire una chioma di frutti verdi e aspettare.
+     */
+    private void eatApple(Flora.Apple a){
         int oldFood = food;
-        world.remove(x, y, z, "M");
-        food += (int) Math.round(100 * stats.foodAbsorption * appleEfficiency());
+        double value = Flora.take(a);
+        food += (int) Math.round(100 * stats.foodAbsorption * appleEfficiency() * value);
         if(food > maxFood){ food = maxFood; }
         consumedFood++;
+        adattaDieta(0.0);   // mangiare vegetale sposta l'abitudine verso il vegetale
         if(oldFood != food){
-            Netreward += ActionWeights.eatApple;
+            // in proporzione al cibo DAVVERO ricavato: con l'abitudine alimentare la stessa mela
+            // sazia molto un erbivoro e quasi niente un carnivoro, e la ricompensa lo dice
+            Netreward += ActionWeights.eatApple * (food - oldFood) / 100.0;
             applesEaten++; // conta solo le mele che hanno davvero dato cibo
         }
     }
@@ -722,8 +1544,9 @@ public class entity {
         food += (int) Math.round(bite * stats.foodAbsorption * meatEfficiency());
         if(food > maxFood){ food = maxFood; }
         consumedFood++;
+        adattaDieta(1.0);   // mangiare carne sposta l'abitudine verso la carne
         // Il cibo ottenuto dal corpo e' cio' che si premia (non l'attacco in se')
-        if(oldFood != food){ Netreward += ActionWeights.eatCorpse * (bite / BITE_MEAT); }
+        if(oldFood != food){ Netreward += ActionWeights.eatCorpse * (food - oldFood) / 100.0; }
     }
 
     // ------------------------------------------------------------------ combattimento
@@ -734,16 +1557,66 @@ public class entity {
         Netreward -= amount * 0.2; // si punisce la salute persa
     }
 
+    /** Distanza entro cui un colpo arriva: la portata delle estremita', almeno una cella. */
+    private double attackRange(){
+        return Math.max(CELL_METERS, reachNow());
+    }
+
+    /**
+     * Quanto conta il corpo nel danno: la massa (inerzia del colpo) e la portata (leva). Entrambe
+     * compresse, cosi' un corpo enorme con braccia lunghe colpisce circa il doppio di uno medio,
+     * non dieci volte tanto.
+     */
+    private double attackFactor(){
+        if(ActionWeights.bodyAttackPower <= 0){
+            return 1.0;
+        }
+        src.body.BodyTraits t = getTraits();
+        return Math.sqrt(t.massFactor()) * (0.7 + 0.3 * t.reachFactor());
+    }
+
     private void attack(){
         int x = position[0].get();
         int y = position[1].get();
         int z = position[2].get();
         entity target = null;
+        double range = attackRange();
+        /*
+         * SI COLPISCE QUELLO CHE SI HA INQUADRATO, non il piu' debole a portata.
+         *
+         * Prima il bersaglio era "il piu' debole entro un passo", a 360 gradi: un'entita'
+         * ammazzava a occhi chiusi i cuccioli che le passavano dietro - compresi i propri figli e
+         * la propria compagna, senza averli nemmeno visti. Nella sessione 19 sono 178 morti
+         * ammazzate contro 127 di fame, cioe' il 57% delle morti, con la salute media che SALIVA:
+         * non era predazione, era una falciatrice.
+         *
+         * Adesso il bersaglio deve stare nel cono dello sguardo (corpo + testa, lo stesso cono di
+         * Vision) e si prende il piu' CENTRATO, a parita' il piu' vicino. Non serve nessuna
+         * regola sulla parentela e nessuna difesa obbligatoria: chi mena alla cieca colpisce il
+         * vuoto, e il colpo a vuoto costa gia' sei di stamina e un punto di ricompensa. Il
+         * prezzo dell'aggressione esce dalla geometria, non da un divieto.
+         */
+        double gaze = getGazeDirection();
+        double half = Math.toRadians(stats.fieldOfView) / 2.0;
+        double bestScarto = Double.MAX_VALUE;
+        double bestDist = Double.MAX_VALUE;
         for(entity o : Entity_manager.snapshotAlive()){
             if(o == this || !o.isAlive()){ continue; }
             int[] p = o.getPos();
-            if(p[1] != y || Math.abs(p[0] - x) > 1 || Math.abs(p[2] - z) > 1){ continue; }
-            if(target == null || o.healt < target.healt){
+            if(p[1] != y){ continue; }
+            double d;
+            if(ActionWeights.bodyReach > 0){
+                d = distanceTo(o);
+                if(d > range){ continue; }
+            }else{
+                if(Math.abs(p[0] - x) > 1 || Math.abs(p[2] - z) > 1){ continue; }
+                d = distanceToCell(p[0], p[2]);
+            }
+            double scarto = Vision.offAxis(p[0] - x, p[2] - z, gaze, half);
+            if(scarto < 0){ continue; }   // fuori dal cono: non lo vedo, non lo colpisco
+            if(scarto < bestScarto || (scarto == bestScarto && d < bestDist)){
+                bestScarto = scarto;
+                bestDist = d;
                 target = o;
             }
         }
@@ -751,7 +1624,7 @@ public class entity {
             Netreward -= 1.0; // colpo a vuoto
             return;
         }
-        int damage = Math.max(1, (int) Math.round(stats.attackPower * (0.8 + 0.4 * rng().nextDouble())));
+        int damage = Math.max(1, (int) Math.round(stats.attackPower * attackFactor() * (0.8 + 0.4 * rng().nextDouble())));
         String cause = "ucciso da #" + EntityID;
         target.takeDamage(damage, cause);
         // Nessuna ricompensa per il colpo: conta solo il cibo che si ricava dal corpo
@@ -785,10 +1658,10 @@ public class entity {
         int y = position[1].get();
         int z = position[2].get();
         java.util.ArrayList<entity> candidates = new java.util.ArrayList<>();
+        double range = partnerRange();
         for(entity o : Entity_manager.snapshotAlive()){
             if(o == this || o.sex == this.sex || !o.canMate()){ continue; }
-            int[] p = o.getPos();
-            if(p[1] == y && Math.abs(p[0] - x) <= PARTNER_RANGE && Math.abs(p[2] - z) <= PARTNER_RANGE){
+            if(reachableLevel(y, o.getPos()[1]) && distanceTo(o) <= range){
                 candidates.add(o);
             }
         }
@@ -820,6 +1693,12 @@ public class entity {
         double avgFitness = Entity_manager.getAverageFitness();
         double rate = getFitness() > avgFitness * 1.2 ? 0.05 : 0.2;
         child.inheritBrain(Reproduction.crossover(this.bestBrain, partner.bestBrain, rate));
+        // L'andatura si eredita come il cervello: incrocio dei due genitori piu' una piccola
+        // mutazione. Cosi' il controllore evolve INSIEME al corpo, e un figlio con una gamba in
+        // piu' parte dall'andatura dei genitori sui giunti che ha ereditato.
+        child.inheritGait(src.body.Gait.cross(this.getGait(), partner.getGait(), child.getAdultBody(), rng())
+                .perturb(child.getAdultBody(), rng(), GAIT_MUTATION));
+        child.placeAt(exactX, exactZ);
         child.food = 120;
 
         this.food -= REPRO_FOOD_COST;
@@ -837,8 +1716,22 @@ public class entity {
 
     // ------------------------------------------------------------------ genoma
 
+    /**
+     * Salute massima: il gene stat.max_health dice la "costituzione", la massa del corpo la
+     * scala (compressa e limitata, vedi BodyTraits.massFactor). Un corpo piu' grosso regge piu'
+     * colpi, ma paga in costo del movimento e in velocita'.
+     */
     private int maxHealthInt(){
-        return (int) Math.round(stats.maxHealth);
+        double base = stats.maxHealth;
+        if(ActionWeights.bodyMassStats > 0){
+            base *= getTraits().massFactor();
+        }
+        return (int) Math.max(1, Math.round(base));
+    }
+
+    /** Salute massima effettiva (per diagnostica e per il motore grafico). */
+    public int getMaxHealth(){
+        return maxHealthInt();
     }
 
     /** Il genoma si modifica con l'eta': deriva somatica periodica, poi le stat vengono ricalcolate. */

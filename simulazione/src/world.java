@@ -145,8 +145,16 @@ public class world {
         return new int[]{0, 0};
     }
 
-    /** Numero di mele presenti nel mondo. */
+    /**
+     * Numero di mele presenti nel mondo.
+     *
+     * Con gli alberi attivi le mele non sono piu' un bit della cella ma oggetti con una storia
+     * (vedi Flora): hanno una maturazione, possono stare appese in aria sopra la colonna, e due
+     * mele possono stare nella stessa cella. Il bit della cella non puo' rappresentare niente di
+     * tutto questo, quindi l'autorita' passa a Flora e qui si delega.
+     */
     public static int countApples(){
+        if(Flora.enabled){ return Flora.countApples(); }
         int count = 0;
         for(int x=0;x<Dimension;x++){
             for(int y=0;y<Dimension;y++){
@@ -187,6 +195,10 @@ public class world {
                         }
                     }
                     String cellSymbol = waterColumn[i][j] ? "~" : getSymbol(i, surface[i][j], j);
+                    if(Flora.enabled && cellSymbol.isEmpty()){
+                        if(Flora.isTrunk(i, j)){ cellSymbol = "T"; }
+                        else if(Flora.visibleAppleAt(i, j, surface[i][j])){ cellSymbol = "M"; }
+                    }
                     str +=  cellSymbol+str2+"\t";
                 }
                 System.out.println(str + "|");
@@ -260,6 +272,9 @@ public class world {
         terrainVersion++;
         System.out.println("Terreno: base="+base+" livello acqua="+waterLevel
                 +" colonne allagate="+flooded+" (seed "+Simulation.getSeed()+(flatTerrain?", piatto":"")+")");
+        // I boschi vengono DOPO il terreno perche' un albero ha bisogno di sapere a che quota sta
+        // il suo piede e se la sua colonna e' allagata.
+        Flora.generate(Dimension, Simulation.getSeed());
         return true;
         
     }

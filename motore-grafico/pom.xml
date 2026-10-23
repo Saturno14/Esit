@@ -18,6 +18,19 @@
         <!-- Cambia in natives-linux o natives-macos se non sei su Windows -->
         <lwjgl.natives>natives-windows</lwjgl.natives>
         <joml.version>1.10.5</joml.version>
+
+        <!--
+            Fisica rigida: jolt-jni e' il binding Java del motore Jolt (lo stesso usato da
+            Horizon Forbidden West / Godot 4). Serve per la locomozione dei corpi articolati
+            (src.body). Come LWJGL ha bisogno dei nativi della piattaforma: il jar senza
+            classifier porta le classi Java, quello con classifier porta la libreria nativa
+            (joltjni.dll). Su Linux/macOS cambia jolt.platform (Linux64, MacOSX64, MacOSX_ARM64).
+            "ReleaseSp" = build ottimizzata, precisione singola (basta: le distanze in gioco
+            sono metri, non chilometri).
+        -->
+        <jolt.version>6.2.0</jolt.version>
+        <jolt.platform>Windows64</jolt.platform>
+        <jolt.flavor>ReleaseSp</jolt.flavor>
     </properties>
 
     <dependencyManagement>
@@ -67,6 +80,19 @@
             <groupId>org.joml</groupId>
             <artifactId>joml</artifactId>
             <version>${joml.version}</version>
+        </dependency>
+
+        <!-- Fisica rigida (vedi le proprieta' jolt.* sopra): classi Java + libreria nativa -->
+        <dependency>
+            <groupId>com.github.stephengold</groupId>
+            <artifactId>jolt-jni-${jolt.platform}</artifactId>
+            <version>${jolt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.stephengold</groupId>
+            <artifactId>jolt-jni-${jolt.platform}</artifactId>
+            <version>${jolt.version}</version>
+            <classifier>${jolt.flavor}</classifier>
         </dependency>
 
         <!-- GENETICS_SPEC.md punto 11: nessuna libreria JSON era presente nel progetto,
@@ -146,6 +172,11 @@
                 <version>3.2.0</version>
                 <configuration>
                     <mainClass>com.saturno14.esit.graphics.Main</mainClass>
+                    <!--
+                        Java 25 avverte a ogni System.load di una libreria nativa (jolt-jni).
+                        Il flag dichiara che l'accesso nativo e' voluto e togle l'avviso.
+                    -->
+                    <commandlineArgs>--enable-native-access=ALL-UNNAMED</commandlineArgs>
                 </configuration>
             </plugin>
         </plugins>

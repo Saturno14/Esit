@@ -1,45 +1,55 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 4,
   "genes": [
     {
       "id": "body.torso_scale",
-      "realMin": 0.40,
-      "realMax": 1.20,
+      "realMin": 0.4,
+      "realMax": 1.2,
       "defaultValue": 0.5,
       "mutationStdDev": 0.05,
-      "mutationChance": 0.10,
+      "mutationChance": 0.1,
       "dominanceMode": "additive",
-      "affects": ["mesh:torso_bone", "mesh:pelvis_bone"]
+      "affects": [
+        "mesh:torso_bone",
+        "mesh:pelvis_bone"
+      ]
     },
     {
       "id": "body.neck_length",
       "realMin": 0.05,
-      "realMax": 0.30,
+      "realMax": 0.3,
       "defaultValue": 0.5,
       "mutationStdDev": 0.06,
-      "mutationChance": 0.10,
+      "mutationChance": 0.1,
       "dominanceMode": "additive",
-      "affects": ["mesh:neck_bone"]
+      "affects": [
+        "mesh:neck_bone"
+      ]
     },
     {
       "id": "body.head_scale",
       "realMin": 0.15,
-      "realMax": 0.40,
+      "realMax": 0.4,
       "defaultValue": 0.5,
       "mutationStdDev": 0.05,
-      "mutationChance": 0.10,
+      "mutationChance": 0.1,
       "dominanceMode": "additive",
-      "affects": ["mesh:head_bone"]
+      "affects": [
+        "mesh:head_bone"
+      ]
     },
     {
       "id": "body.limb_length",
-      "realMin": 0.70,
-      "realMax": 1.40,
+      "realMin": 0.7,
+      "realMax": 1.4,
       "defaultValue": 0.5,
       "mutationStdDev": 0.05,
-      "mutationChance": 0.10,
+      "mutationChance": 0.1,
       "dominanceMode": "additive",
-      "affects": ["mesh:arm_bone", "mesh:leg_bone"]
+      "affects": [
+        "mesh:arm_bone",
+        "mesh:leg_bone"
+      ]
     },
     {
       "id": "body.limb_thickness",
@@ -47,9 +57,13 @@
       "realMax": 0.15,
       "defaultValue": 0.5,
       "mutationStdDev": 0.05,
-      "mutationChance": 0.10,
+      "mutationChance": 0.1,
       "dominanceMode": "dominant_low",
-      "affects": ["mesh:arm_bone", "mesh:leg_bone", "mesh:torso_bone"]
+      "affects": [
+        "mesh:arm_bone",
+        "mesh:leg_bone",
+        "mesh:torso_bone"
+      ]
     },
     {
       "id": "body.hand_length",
@@ -57,9 +71,11 @@
       "realMax": 0.25,
       "defaultValue": 0.5,
       "mutationStdDev": 0.06,
-      "mutationChance": 0.10,
+      "mutationChance": 0.1,
       "dominanceMode": "additive",
-      "affects": ["mesh:hand_bone"]
+      "affects": [
+        "mesh:hand_bone"
+      ]
     },
     {
       "id": "body.finger_length",
@@ -67,19 +83,23 @@
       "realMax": 0.15,
       "defaultValue": 0.5,
       "mutationStdDev": 0.07,
-      "mutationChance": 0.10,
+      "mutationChance": 0.1,
       "dominanceMode": "additive",
-      "affects": ["mesh:finger_bone"]
+      "affects": [
+        "mesh:finger_bone"
+      ]
     },
     {
       "id": "body.foot_length",
-      "realMin": 0.10,
+      "realMin": 0.1,
       "realMax": 0.35,
       "defaultValue": 0.5,
       "mutationStdDev": 0.06,
-      "mutationChance": 0.10,
+      "mutationChance": 0.1,
       "dominanceMode": "additive",
-      "affects": ["mesh:foot_bone"]
+      "affects": [
+        "mesh:foot_bone"
+      ]
     },
     {
       "id": "body.skin_hue",
@@ -89,7 +109,9 @@
       "mutationStdDev": 0.12,
       "mutationChance": 0.15,
       "dominanceMode": "additive",
-      "affects": ["render:base_color"]
+      "affects": [
+        "render:base_color"
+      ]
     },
     {
       "id": "stat.max_health",
@@ -97,9 +119,11 @@
       "realMax": 200,
       "defaultValue": 0.5,
       "mutationStdDev": 0.05,
-      "mutationChance": 0.10,
+      "mutationChance": 0.1,
       "dominanceMode": "additive",
-      "affects": ["stat:max_health"]
+      "affects": [
+        "stat:max_health"
+      ]
     },
     {
       "id": "stat.sight_distance",
@@ -107,9 +131,35 @@
       "realMax": 15,
       "defaultValue": 0.4,
       "mutationStdDev": 0.06,
-      "mutationChance": 0.10,
+      "mutationChance": 0.1,
       "dominanceMode": "dominant_high",
-      "affects": ["stat:sight_distance"]
+      "affects": [
+        "stat:sight_distance"
+      ]
+    },
+    {
+      "id": "stat.field_of_view",
+      "realMin": 40.0,
+      "realMax": 170.0,
+      "defaultValue": 0.5,
+      "mutationStdDev": 0.06,
+      "mutationChance": 0.1,
+      "dominanceMode": "additive",
+      "affects": [
+        "vision:cone"
+      ]
+    },
+    {
+      "id": "stat.night_vision",
+      "realMin": 0.0,
+      "realMax": 1.0,
+      "defaultValue": 0.3,
+      "mutationStdDev": 0.07,
+      "mutationChance": 0.1,
+      "dominanceMode": "additive",
+      "affects": [
+        "vision:night"
+      ]
     },
     {
       "id": "stat.base_speed",
@@ -117,9 +167,11 @@
       "realMax": 3.0,
       "defaultValue": 0.5,
       "mutationStdDev": 0.06,
-      "mutationChance": 0.10,
+      "mutationChance": 0.1,
       "dominanceMode": "additive",
-      "affects": ["stat:base_speed"]
+      "affects": [
+        "stat:base_speed"
+      ]
     },
     {
       "id": "stat.max_stamina",
@@ -127,9 +179,11 @@
       "realMax": 100,
       "defaultValue": 0.5,
       "mutationStdDev": 0.05,
-      "mutationChance": 0.10,
+      "mutationChance": 0.1,
       "dominanceMode": "additive",
-      "affects": ["stat:max_stamina"]
+      "affects": [
+        "stat:max_stamina"
+      ]
     },
     {
       "id": "stat.food_absorption",
@@ -137,9 +191,11 @@
       "realMax": 2.0,
       "defaultValue": 0.5,
       "mutationStdDev": 0.05,
-      "mutationChance": 0.10,
+      "mutationChance": 0.1,
       "dominanceMode": "dominant_high",
-      "affects": ["stat:food_absorption"]
+      "affects": [
+        "stat:food_absorption"
+      ]
     },
     {
       "id": "stat.attack_power",
@@ -147,9 +203,11 @@
       "realMax": 25,
       "defaultValue": 0.5,
       "mutationStdDev": 0.05,
-      "mutationChance": 0.10,
+      "mutationChance": 0.1,
       "dominanceMode": "additive",
-      "affects": ["stat:attack_power"]
+      "affects": [
+        "stat:attack_power"
+      ]
     },
     {
       "id": "behavior.diet_bias",
@@ -157,47 +215,88 @@
       "realMax": 1.0,
       "defaultValue": 0.5,
       "mutationStdDev": 0.08,
-      "mutationChance": 0.10,
+      "mutationChance": 0.1,
       "dominanceMode": "additive",
-      "affects": ["behavior:diet"]
+      "affects": [
+        "behavior:diet"
+      ]
     }
   ],
   "phenotypeFormulas": {
     "stat.max_health": {
       "terms": [
-        { "gene": "stat.max_health",     "weight": 1.0 },
-        { "gene": "body.torso_scale",    "weight": 0.5 },
-        { "gene": "body.limb_thickness", "weight": 0.3 }
+        {
+          "gene": "stat.max_health",
+          "weight": 1.0
+        },
+        {
+          "gene": "body.torso_scale",
+          "weight": 0.5
+        },
+        {
+          "gene": "body.limb_thickness",
+          "weight": 0.3
+        }
       ]
     },
     "stat.sight_distance": {
       "terms": [
-        { "gene": "stat.sight_distance", "weight": 1.0 },
-        { "gene": "body.head_scale",     "weight": 0.4 }
+        {
+          "gene": "stat.sight_distance",
+          "weight": 1.0
+        },
+        {
+          "gene": "body.head_scale",
+          "weight": 0.4
+        }
       ]
     },
     "stat.base_speed": {
       "terms": [
-        { "gene": "stat.base_speed",  "weight": 1.0 },
-        { "gene": "body.limb_length", "weight": 0.6 }
+        {
+          "gene": "stat.base_speed",
+          "weight": 1.0
+        },
+        {
+          "gene": "body.limb_length",
+          "weight": 0.6
+        }
       ]
     },
     "stat.max_stamina": {
       "terms": [
-        { "gene": "stat.max_stamina", "weight": 1.0 },
-        { "gene": "body.torso_scale", "weight": 0.4 }
+        {
+          "gene": "stat.max_stamina",
+          "weight": 1.0
+        },
+        {
+          "gene": "body.torso_scale",
+          "weight": 0.4
+        }
       ]
     },
     "stat.attack_power": {
       "terms": [
-        { "gene": "stat.attack_power", "weight": 1.0 },
-        { "gene": "body.torso_scale",  "weight": 0.5 },
-        { "gene": "body.limb_length",  "weight": 0.3 }
+        {
+          "gene": "stat.attack_power",
+          "weight": 1.0
+        },
+        {
+          "gene": "body.torso_scale",
+          "weight": 0.5
+        },
+        {
+          "gene": "body.limb_length",
+          "weight": 0.3
+        }
       ]
     },
     "stat.food_absorption": {
       "terms": [
-        { "gene": "stat.food_absorption", "weight": 1.0 }
+        {
+          "gene": "stat.food_absorption",
+          "weight": 1.0
+        }
       ]
     }
   }
