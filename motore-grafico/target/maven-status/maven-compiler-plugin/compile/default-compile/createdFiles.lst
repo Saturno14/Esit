@@ -1,18 +1,34 @@
+<<<<<<< HEAD
 com\saturno14\esit\graphics\world\VoxelMaterial.class
 src\gui\SchedaEntita$Parente.class
 src\Commands$1.class
 src\gui\PannelloComandi$6.class
 com\saturno14\esit\graphics\flora\FloraField.class
+=======
+src\genetics\Allele.class
+src\body\BodyParams.class
+com\saturno14\esit\graphics\entity\EntityManagerBridge.class
+src\genetics\PhenotypeFormula.class
+com\saturno14\esit\graphics\world\SimulationWorldBridge.class
+>>>>>>> 244b246cd3da6842c3502cf88e5ab449eb7083a0
 src\genetics\BodyPlan$Hinge.class
 src\Experiment.class
 src\world$cell.class
 src\body\Gaze$YawDof.class
 src\body\Locomotion$Profile.class
 src\genetics\GeneDefinition.class
+<<<<<<< HEAD
 src\gui\PannelloEntita.class
 src\body\PhysicsNatives.class
 src\gui\PannelloComandi.class
 src\body\JoltRagdoll$JointCtl.class
+=======
+com\saturno14\esit\graphics\engine\Window.class
+com\saturno14\esit\graphics\mesh\Mesh.class
+com\saturno14\esit\graphics\entity\skeleton\BoneRig.class
+src\body\Dof.class
+com\saturno14\esit\graphics\world\ConsoleLauncher.class
+>>>>>>> 244b246cd3da6842c3502cf88e5ab449eb7083a0
 src\body\Joint.class
 src\Corpse.class
 src\genetics\PhenotypeResolver.class
@@ -95,10 +111,15 @@ main.class
 src\Simulation.class
 src\genetics\GenomeSchema.class
 src\body\V3.class
+<<<<<<< HEAD
+=======
+com\saturno14\esit\graphics\apple\AppleField.class
+>>>>>>> 244b246cd3da6842c3502cf88e5ab449eb7083a0
 src\body\BodyCollision$Contact.class
 com\saturno14\esit\graphics\Main.class
 src\gui\PannelloComandi$5.class
 src\world.class
+<<<<<<< HEAD
 src\gui\SchedaEntita$ModelloGeni.class
 src\body\Rot.class
 src\gui\PannelloPopolazione.class
@@ -108,41 +129,82 @@ src\body\BodyPlanTest.class
 src\Genealogy$Node.class
 src\body\BodyPose.class
 src\DayNight.class
+=======
+ConsoleInput.class
+src\body\Rot.class
+src\TrainedBrains.class
+src\genetics\MutationService.class
+com\saturno14\esit\graphics\entity\skeleton\Bone.class
+com\saturno14\esit\graphics\world\WorldGrid.class
+src\genetics\BodyPlan.class
+src\entity$1.class
+src\body\BodyPlanTest.class
+src\Genealogy$Node.class
+src\body\Link.class
+src\body\BodyPose.class
+com\saturno14\esit\graphics\entity\GenomeMeshApplier.class
+>>>>>>> 244b246cd3da6842c3502cf88e5ab449eb7083a0
 src\genetics\DietType.class
 src\body\Gaze.class
 src\BrainIO.class
+<<<<<<< HEAD
 src\body\Balance.class
 src\genetics\BodyPlan$Seg.class
 src\gui\PannelloComandi$1.class
 src\gui\ControlFrame$1.class
 src\genetics\DominanceResolver.class
 src\TerrainGenerator.class
+=======
+src\utils.class
+src\genetics\BodyPlan$Seg.class
+src\genetics\DominanceResolver.class
+src\TerrainGenerator.class
+com\saturno14\esit\graphics\mesh\SurfaceNetsMesher.class
+src\body\BodyCollision.class
+>>>>>>> 244b246cd3da6842c3502cf88e5ab449eb7083a0
 src\brain$Neuron.class
 src\body\Locomotion.class
 com\saturno14\esit\graphics\mesh\MeshData.class
+<<<<<<< HEAD
 src\Flora$Apple.class
 src\body\GaitEvaluator$1Case.class
 src\body\Gait$Osc.class
+=======
+src\body\BodySelfTest.class
+src\Vision.class
+com\saturno14\esit\graphics\engine\Camera.class
+>>>>>>> 244b246cd3da6842c3502cf88e5ab449eb7083a0
 src\brain$Layer.class
 src\Entity_manager.class
 src\genetics\EntityStats.class
+src\body\BodyPose$LinkPose.class
 src\brain$NeuralNetwork.class
 src\Flora.class
 com\saturno14\esit\graphics\render\MaterialTextures.class
 src\StatsLog.class
+src\body\BodyTool.class
 src\Genealogy.class
 src\gui\Targhetta.class
 src\gui\Gui.class
 src\body\EvolvedBodies.class
 src\genetics\DominanceResolver$1.class
+<<<<<<< HEAD
 src\gui\PannelloEntita$Celle.class
 src\genetics\BodyPlan$MutationRates.class
 src\History.class
 src\gui\ControlFrame$2.class
+=======
+src\genetics\BodyPlan$MutationRates.class
+>>>>>>> 244b246cd3da6842c3502cf88e5ab449eb7083a0
 src\brain$Reproduction.class
 src\Flora$Tree.class
 src\genetics\Genome.class
 src\body\Automaton.class
+<<<<<<< HEAD
+=======
+src\body\BodyExport.class
+src\ActionWeights.class
+>>>>>>> 244b246cd3da6842c3502cf88e5ab449eb7083a0
 src\brain.class
 com\saturno14\esit\graphics\flora\FloraField$Apple.class
 src\Commands$Command.class

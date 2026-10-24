@@ -1,6 +1,12 @@
 {
+<<<<<<< HEAD
   "seed": 2989974614600,
   "genealogySession": 13,
   "tick": 28000,
+=======
+  "seed": 4279622937000,
+  "genealogySession": 12,
+  "tick": 7301,
+>>>>>>> 244b246cd3da6842c3502cf88e5ab449eb7083a0
   "formatVersion": 2
 }
