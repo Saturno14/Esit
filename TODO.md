@@ -44,16 +44,35 @@ Aggiornato il 25/10/2026. Le voci chiuse stanno in STATO_LAVORO.txt, non qui.
       andature che spiraleggiano invece di andare dritte (voce 25).
       Un numero che conferma dal lato opposto: la sete era il 37.5% delle morti (voce 19), ora e'
       il 5-21% - non perche' l'acqua sia migliorata, perche' si muore di fame prima.
+      AGGIORNATO (voce 27): il punto (2), la scalinata, non esisteva - era la fisica a non vedere
+      il terreno lisciato. Restano (1) e (3). Il lotto appaiato tick/tempo continuo e' nella
+      voce 27.
 
-- [ ] **IL TERRENO E' UNA SCALINATA DI GRADINI DA UN METRO.** `world.surfaceY` e' un INDICE di
-      cella, cioe' un intero: il campo di altezze che la fisica riceve ha gradini verticali da un
-      metro esatto dove il terreno cambia quota. Un corpo alto 40 cm non ci sale. E' fedele a
-      quello che il motore grafico DISEGNA (cubi), quindi non e' un difetto da correggere di
-      nascosto: e' una scelta, e l'alternativa (mediare le quote delle quattro celle attorno a
-      ogni nodo, cioe' rampe a 45 gradi) renderebbe il terreno fisico diverso da quello disegnato
-      di mezzo metro. Da decidere con l'utente, non da sistemare. Il numero da portare alla
-      decisione: nel mondo un corpo che all'oracolo fa 0.2+ m/s copre 1.43 m in dieci secondi,
-      cioe' 0.14 m/s.
+- [x] ~~**IL TERRENO E' UNA SCALINATA DI GRADINI DA UN METRO.**~~ NON C'ERA NIENTE DA DECIDERE
+      (voce 27): il motore grafico NON disegnava cubi, disegnava gia' una superficie lisciata
+      (media pesata con le quattro colonne vicine), e la fisica era l'unica a vedere la
+      scalinata. Adesso `world.quotaTerreno` e' l'unica fonte per tutti e due, e `SuoloSelfTest`
+      MISURA la mesh contro il campo di altezze (0.02 m di scarto medio; con la vecchia
+      convenzione del disegno erano 0.52 m). In 200 tick i metri percorsi sono passati da 1939 a
+      3143.
+
+- [ ] **MELE A TERRA E ACQUA USANO ANCORA IL -0.5** (`Renderer.SURFACE_OFFSET`, `WaterSurface`).
+      Per le entita' e i tronchi quel mezzo metro era sbagliato (voce 27), quindi quasi di certo
+      lo e' anche per le mele a terra (si vedranno mezze interrate) e per il pelo dell'acqua. Da
+      misurare con lo stesso metodo di `SuoloSelfTest`, non da correggere a occhio.
+
+- [ ] **IL TEMPO E' DEL CORPO: cosa resta aperto** (voce 27). Il mondo avanza a fette di 1/60 s e
+      ogni entita' decide col SUO periodo (3.5/speed s); le scelte di una fetta sono simultanee e
+      si risolvono in ordine di velocita' motoria. Restano da guardare:
+      - quante CONTESE succedono davvero (due entita' sulla stessa mela nella stessa fetta): oggi
+        non si contano. Se sono zero, la finestra da 16 ms e' troppo stretta per il fenomeno che
+        l'utente vuole vedere, e va misurato prima di allargarla;
+      - il costo: la fisica a fette costa quanto a tick (1.25 ms per corpo per tick), ma
+        `allestisciMondo` ricostruisce la lista dei candidati 60 volte al secondo;
+      - IL GIOCATORE, quando arrivera' (l'utente: solo dopo che il mondo e' vivo e
+        autosufficiente): sceglie COSA, mai QUANDO - il suo input e' un'intenzione che il corpo
+        consuma al proprio ritmo motorio, come l'uscita della rete. E' l'unico modo di non
+        rompere la parita'; l'asimmetria cognitiva (vede lo schermo, pianifica) resta e va detta.
 
 - [ ] **GLI INCONTRI SONO ANCORA NELLA GRIGLIA.** La fisica muove i corpi e i corpi si urtano
       (un gruppo di collisione per entita', quindi due entita' che si incontrano si incontrano

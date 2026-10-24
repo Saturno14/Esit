@@ -2584,3 +2584,168 @@ opzioni, prima del passo 3 (palco, tetto, premi), facevano 79 nascite e 13 vivi;
 NON E' UN CONFRONTO APPAIATO - e' codice diverso con un tetto diverso e premi diversi, e fra i due
 lotti ci sono tre modifiche - quindi non attribuisco il raddoppio a nessuna delle tre. Dice solo
 che il mondo unico non ha peggiorato le cose rispetto al palco, che era la paura legittima.
+
+==========================================================================================
+27. IL TEMPO E' DEL CORPO, E IL SUOLO E' UNO SOLO (25/10/2026)
+==========================================================================================
+
+L'utente ha guardato la finestra per la prima volta dopo il mondo unico e ha detto due cose:
+"si vede proprio lo stacco del tick, e' diventato un gioco a turni, cosa che non deve essere" e
+"le entita' si muovono tutte compenetrate con il primo layer di terreno". Aveva ragione su
+entrambe, e su entrambe la colpa era di lavoro recente.
+
+------------------------------------------------------------------------------------------
+1. LO STACCO DEL TICK, E DI CHI ERA LA COLPA
+------------------------------------------------------------------------------------------
+Simulation.loop faceva un tick ogni 500 ms di orologio; dentro il tick la fisica faceva 60 PASSI
+IN UN COLPO e pubblicava UNA SOLA ISTANTANEA alla fine. Quindi i corpi si aggiornavano due volte al
+secondo. Prima del passo 3 (voce 26) la posa veniva dall'oscillatore con extraSeconds, e il
+renderer interpolava la fase a ogni fotogramma: lo stacco non si vedeva. Collegando la fisica ho
+tolto proprio quell'interpolazione, e extraSeconds e' rimasto nel codice senza piu' alcun effetto
+sui corpi in fisica. Il tick era sempre stato li'; l'ho reso visibile io.
+
+E tutte le entita' decidevano NELLO STESSO ISTANTE, in ordine mescolato. Lo shuffle con il suo
+commento ("ordine casuale: nessuna entita' e' sempre prima") era la confessione che il modello era
+a turni: esisteva per nascondere l'iniquita' di un ordine sequenziale.
+
+------------------------------------------------------------------------------------------
+2. COSA VOLEVA L'UTENTE, E PERCHE' NON SONO I THREAD
+------------------------------------------------------------------------------------------
+Nella prima versione del progetto ogni entita' era un thread, e ognuna "rispettava i suoi tempi".
+L'utente ha precisato cosa gli serve nella sostanza, ed e' piu' preciso di "momenti diversi":
+"le scelte devono essere SIMULTANEE, parallele: due entita' si possono colpire nello stesso
+momento, due entita' possono dare l'input mangia alla stessa mela nello stesso momento e in quel
+momento vince chi ha la velocita' motoria migliore".
+
+Questa frase decide il progetto, e decide CONTRO i thread. Con un thread per entita' chi vince la
+mela e' chi prende il lucchetto per primo, cioe' lo decide lo scheduler del sistema operativo: il
+CASO, non il corpo. I thread danno la contesa risolta dalla fortuna; l'utente la vuole risolta dal
+corpo. In piu' si perde il seme riproducibile su cui si regge tutto il metodo di misura del
+progetto (i confronti appaiati). Non e' una questione di costo: e' che i thread non danno la cosa
+chiesta.
+
+L'utente ha anche messo alla prova il progetto con il caso del GIOCATORE (che arrivera' solo dopo,
+"mi serve prima che il mondo sia vivo e autosufficiente"): con un orologio del mondo che decide
+quando ogni entita' puo' decidere, un umano che preme quando vuole rompe la parita'. E' vero, e la
+risposta non e' cambiare schema ma SPOSTARE L'OROLOGIO DENTRO IL CORPO: ogni corpo ha un ritmo
+motorio, e chiunque lo guidi - rete o umano - sceglie COSA, mai QUANDO. Un umano che agisse fuori
+dal ritmo del suo corpo sarebbe un dio, e sarebbe esattamente la parita' rotta. Quindi mettere il
+giocatore dentro lo schema e' la soluzione, non il problema. Resta un'asimmetria vera che nessuno
+schema risolve - quella cognitiva, l'umano vede lo schermo e pianifica - e va detta.
+
+------------------------------------------------------------------------------------------
+3. COM'E' FATTO ADESSO
+------------------------------------------------------------------------------------------
+IL MONDO AVANZA A FETTE di un sessantesimo di secondo (Simulation.FETTA_S): due passi di Jolt, una
+istantanea per fetta. Il tick da mezzo secondo resta, ma solo per quello che e' davvero a tempo di
+mondo - metabolismo, flora, campionamento, giorno e notte. Niente nel tick decide o muove.
+
+L'OROLOGIO E' DEL CORPO. E qui una scoperta che ha reso tutto piu' piccolo: il ritmo per entita'
+ESISTEVA GIA'. entity.advance accumulava speed/7 punti-azione a ogni tick e agiva quando arrivava
+a 1: un'entita' media (speed 1.75) decideva ogni 4 tick, cioe' ogni 2 secondi di mondo. Era solo
+QUANTIZZATO al tick e valutato per tutte nello stesso istante. Adesso e' un orologio continuo
+(entity.prossimaDecisione, periodo = 3.5/speed secondi): LA MEDIA NON CAMBIA, quindi non si e'
+ribilanciato niente - sono sparite la quantizzazione e il lockstep. La fase iniziale di ogni
+orologio e' a caso dentro il primo periodo, da un generatore SUO (seminato con l'id) e non da
+quello condiviso: un'estrazione in piu' li' avrebbe spostato i geni di tutte le entita' create
+dopo, e due corse con lo stesso seme non sarebbero piu' state appaiate.
+
+LA SIMULTANEITA' E' IN DUE FASI dentro la fetta (Simulation.fetta):
+ 1. tutte le entita' in scadenza GUARDANO LO STESSO MONDO e scelgono (entity.decidi). Nessuna
+    tocca niente, quindi l'ordine non conta per costruzione.
+ 2. le scelte diventano fatti IN ORDINE DI VELOCITA' MOTORIA (entity.esegui): chi e' piu' veloce
+    arriva prima alla mela, e la seconda trova il posto vuoto perche' ogni azione ricontrolla il
+    suo bersaglio nel momento in cui agisce, non quando ha scelto. A PARITA' DECIDE IL CASO,
+    dichiarato - ma un caso che non consuma il generatore condiviso (una chiave mescolata da id e
+    numero della fetta), per la stessa ragione di sopra.
+ 3. le MORTI si dichiarano alla fine della fetta, tutte insieme. Un colpo non uccide piu'
+    nell'istante in cui arriva: chi muore in questa fetta ha fatto la sua azione, quindi due
+    entita' che si colpiscono nello stesso istante si colpiscono davvero entrambe.
+La fetta e' la FINESTRA DI SIMULTANEITA', e non e' una concessione all'implementazione: con tempi
+reali esatti "nello stesso istante" ha probabilita' zero e nessuna contesa esisterebbe mai. Dentro
+una finestra di 16 ms essere 15 ms piu' avanti non compra niente: vince il corpo migliore. E' una
+parita' piu' stretta di quella dei thread, dove arrivare un microsecondo prima vince tutto.
+
+LA VELOCITA' MOTORIA E' IL GENE speed, lo stesso che decide quanto spesso un corpo riesce ad agire.
+Avevo proposto la velocita' di cammino misurata (getWalkSpeed); ho cambiato idea scrivendo: la
+contesa riguarda QUANDO un corpo arriva a fare una cosa, ed e' la stessa proprieta' che decide
+quanto spesso la fa. Usare la velocita' di cammino avrebbe confuso il camminare con l'afferrare.
+
+L'INTENZIONE DURA FINCHE' IL CORPO NON DECIDE DI NUOVO. Via le finestre "vuole muoversi se l'ha
+chiesto negli ultimi due tick": azioneScelta e' quello che il corpo sta facendo, e se e'
+camminare le gambe si muovono per tutto il periodo. E' anche la risposta a "l'intenzione persiste
+o scade?" per il giocatore futuro: persiste, come l'uscita della rete.
+
+UN ERRORE CHE LE FETTE AVREBBERO PRODOTTO, preso prima: MondoFisico contava il galleggio e i sensi
+con l'indice del passo DENTRO la chiamata ("i % 4"). Con fette di due passi "i" vale sempre 0 o
+1, quindi la spinta dell'acqua sarebbe arrivata a OGNI fetta con il dt di quattro passi: una spinta
+doppia. Adesso contano i passi di tutta la sessione.
+
+------------------------------------------------------------------------------------------
+4. IL SUOLO: DUE CONVENZIONI E UNA TERZA DIFFERENZA SOTTO
+------------------------------------------------------------------------------------------
+Il renderer disegnava la base dell'entita' a "indice della cella - 0.5" (SURFACE_OFFSET); la mia
+fisica metteva il terreno a "indice della cella". E sotto c'era una differenza indipendente: il
+terreno DISEGNATO era lisciato (media pesata con le quattro colonne vicine, il centro pesa due,
+dentro SimulationWorldBridge), quello FISICO era la scalinata grezza di gradini da un metro - fino
+a quasi mezzo metro di scarto sui pendii, e la stessa scalinata che nella voce 26 avevo messo in
+TODO come "da decidere con l'utente". Non c'era niente da decidere: il progetto aveva GIA' deciso
+che il terreno e' lisciato, per quello che si vede. La fisica non lo sapeva.
+
+QUALE DELLE DUE ERA GIUSTA NON L'HO DEDOTTO. Dipendeva da dove il mesher piazza i vertici, e
+questa sessione mi aveva appena insegnato cosa succede quando scrivo una deduzione come una misura
+(voce 26). SuoloSelfTest genera la mesh con lo stesso mesher del motore grafico - senza finestra,
+la mesh e' un array di vertici - e confronta ogni vertice con il campo di altezze consegnato a
+Jolt nello stesso punto:
+    con la convenzione del disegno (cella - 0.5):   0.519 m di scarto medio
+    adesso:                                          0.020 m medio, 0.125 m massimo, 3514 vertici
+Il disegno era mezzo metro sotto. Il mesher mette la soglia esattamente a y = h
+(VoxelMesher.cubeVertex), e il -0.5 era un residuo di qualcosa che non c'e' piu'.
+
+COM'E' FATTO: world.quotaTerreno(x, z) e' L'UNICA FONTE della quota lisciata. La leggono il ponte
+grafico, il campo di altezze (MondoFisico.campionaTerreno, un metodo puro proprio per poterlo
+provare), la messa in campo dei corpi, il perno della posa e il piede dei tronchi. Posizione
+pubblica la quota del suolo che la posa ha sottratto, e il disegno somma QUELLA (entity.quotaSuolo)
+- non una ricostruzione sua, perche' e' esattamente cosi' che le due convenzioni erano divergite.
+
+Effetto sul movimento, non cercato: in 200 tick i metri percorsi passano da 1939 a 3143 (+62%). La
+scalinata era un muro per corpi alti 40 cm, e il muro non esisteva in quello che si vedeva.
+
+Non toccati, e in TODO: le mele a terra e l'acqua usano ancora il -0.5 (le mele si vedranno mezze
+interrate), e l'acqua non viene disegnata affatto.
+
+------------------------------------------------------------------------------------------
+5. DUE COSE TROVATE MISURANDO, NON CERCATE
+------------------------------------------------------------------------------------------
+LA FACCIA DI FONDO. La prima stesura di SuoloSelfTest misurava 10.7 m di scarto medio: contava
+anche i vertici a y = -0.5, perche' il volume e' chiuso e il mesher chiude anche il fondo del
+mondo. Un numero vero su una domanda sbagliata. La densita' e' monotona in ogni colonna, quindi
+oltre al fondo e alle pareti del bordo l'unica superficie e' il suolo: si escludono quelle due.
+
+yawRoot SALTAVA DI MEZZO GIRO ESATTO. MondoFisicoSelfTest ha misurato una svolta "a destra" di
+-3.141 rad - esattamente -pi greco - e non e' cambiata integrando tick per tick. Quindi non era
+l'ambiguita' di wrapPi: era JoltRagdoll.yawRoot, che quando l'asse avanti e' quasi verticale
+ricadeva sull'asse laterale "riportato indietro di 90 gradi" SENZA GUARDARE se il muso stava in
+giu' o in su - e nel secondo caso i 90 gradi vanno dall'altra parte. Nella voce 25 l'avevo
+descritto come un difetto di misura della svolta all'oracolo; nel mondo unico quella e' LA
+DIREZIONE DELL'ENTITA', quindi il suo cono di vista si capovolgeva ogni volta che si piegava col
+muso in su. Adesso la direzione e' avanti_orizzontale - avanti.y * su_orizzontale: continua, zero
+contributo del termine correttivo quando il corpo e' dritto o solo rollato, e si annulla soltanto
+per un tronco verticale E rovesciato attorno alla verticale, dove "da che parte guarda" non ha
+comunque senso.
+
+E UNA RINUNCIA DICHIARATA. "I due versi dello sterzo girano da parti opposte" era una verifica e
+adesso e' una stampa. Sul terreno lisciato del mondo il corpo di prova CROLLA in due secondi
+(quota del tronco 0.31 da 1.0) sia a destra sia dritto, e la rotazione di chi crolla e' della
+caduta, non dello sterzo: "rotolare non e' girare" (voce 25). La specularita' dei due versi e' una
+proprieta' dell'andatura e si misura all'oracolo, in piedi e sul piano, dove optimizeTurn prova
+entrambi i versi e tiene il peggiore. Nel mondo resta la verifica che il mondo puo' garantire:
+chiedere di girare cambia quello che il corpo fa.
+
+------------------------------------------------------------------------------------------
+6. VERIFICHE
+------------------------------------------------------------------------------------------
+MondoFisicoSelfTest 84/84, SuoloSelfTest 7/7 (nuovo), BodySelfTest 335/335, VisionSelfTest
+632/632, PhysicsSmokeTest OK. Corsa breve di 200 tick: 16 nascite, 79 vive, 1.25 ms per corpo per
+tick, 26 s di orologio - in linea con il mondo a tick. BodyPlanTest resta rosso da prima (10 su
+2421, voce 20).
