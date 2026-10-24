@@ -406,6 +406,9 @@ public final class JoltRagdoll {
         }
     }
 
+    /** Gli assi di rotazione di un vincolo a sei gradi, nell'ordine dei gradi di liberta'. */
+    private static final EAxis[] ROT_AXES = {EAxis.RotationX, EAxis.RotationY, EAxis.RotationZ};
+
     private static float clamp(float angle, Dof d) {
         return (float) Math.max(limit(d.lower), Math.min(limit(d.upper), angle));
     }
@@ -437,12 +440,122 @@ public final class JoltRagdoll {
     }
 
     /**
-     * Orientamento del link radice (il "tronco"): serve al riflesso di equilibrio per sapere da
-     * che parte sta cadendo il corpo (vedi {@link Balance#tilt}).
+     * Orientamento del link radice (il "tronco"): dice da che parte sta cadendo il corpo. Lo
+     * legge {@link MotorSense} come senso (beccheggio e rollio, vedi {@link Rot#tilt()}) e il
+     * disegno per sapere come mettere il corpo nel mondo.
      */
     public Rot rootRotation() {
         Quat q = world.bodies().getRotation(clusterBodyIds.get(0));
         return Rot.quaternion(q.getX(), q.getY(), q.getZ(), q.getW());
+    }
+
+    /**
+     * LA POSA VERA: dove sta ogni pezzo del corpo nel mondo fisico, adesso.
+     *
+     * Non ricostruisce niente. Prima il disegno prendeva da qui gli ANGOLI dei giunti e poi
+     * rifaceva la posa con la cinematica diretta, riappoggiando i piedi a terra e girando tutto
+     * verso la direzione in cui l'entita' guarda: era una ricreazione del movimento, e si vedeva
+     * un corpo in piedi anche quando nel mondo fisico era a terra. Questo metodo legge invece la
+     * trasformata di ogni corpo rigido come sta in Jolt, quindi quello che si disegna E' il corpo
+     * fisico: se si trascina, si trascina; se cade in continuazione, cade in continuazione.
+     *
+     * COME: ogni cluster e' un corpo rigido la cui origine e' il perno del suo link radice (vedi
+     * createBodies), e i link dentro un cluster sono fusi, quindi condividono la rotazione. Per
+     * un link basta portare il suo scostamento a riposo dentro il cluster nel mondo con la
+     * rotazione del cluster.
+     */
+    public BodyPose posaFisica() {
+        int n = clusterCount();
+        V3[] pos = new V3[n];
+        Rot[] rot = new Rot[n];
+        leggiTrasformate(pos, rot);
+        return posaDa(pos, rot);
+    }
+
+    /** Quante parti rigide ha questo corpo (i cluster: vedi groupClusters). */
+    public int clusterCount() {
+        return clusterBodyIds.size();
+    }
+
+    /**
+     * Copia fuori le trasformate delle parti rigide. Separato da {@link #posaDa} perche' LEGGERE
+     * il mondo fisico si puo' fare solo dal thread della fisica, mentre comporre la posa e' puro
+     * calcolo e lo puo' fare chiunque, anche il disegno (vedi Palco e la sua istantanea).
+     */
+    public void leggiTrasformate(V3[] pos, Rot[] rot) {
+        BodyInterface bi = world.bodies();
+        int n = Math.min(clusterBodyIds.size(), Math.min(pos.length, rot.length));
+        for (int c = 0; c < n; c++) {
+            int id = clusterBodyIds.get(c);
+            RVec3 p = bi.getPosition(id);
+            pos[c] = new V3(p.x(), p.y(), p.z());
+            rot[c] = rotationOf(bi, id);
+        }
+    }
+
+    /**
+     * La posa che corrisponde a queste trasformate delle parti rigide. Non tocca il mondo fisico:
+     * usa solo la struttura del corpo, che non cambia piu' dopo la costruzione.
+     */
+    public BodyPose posaDa(V3[] pos, Rot[] rot) {
+        List<BodyPose.LinkPose> out = new ArrayList<>();
+        for (Link l : automaton.links()) {
+            int c = clusterOfLink.get(l.name);
+            V3 dentro = restOrigin.get(l.name).sub(restOrigin.get(clusterRoots.get(c)));
+            V3 origin = pos[c].add(rot[c].apply(dentro));
+            Rot r = rot[c];
+            out.add(new BodyPose.LinkPose(l.name, origin, r,
+                    origin.add(r.apply(l.coreA())), origin.add(r.apply(l.coreB())), l.radius));
+        }
+        return new BodyPose(out);
+    }
+
+    /**
+     * Verso che parte e' girato il corpo attorno all'asse verticale, in radianti.
+     *
+     * Serve a portare la posa fisica nel mondo: l'imbardata e' l'unica rotazione che NON viene
+     * dalla fisica, perche' e' la simulazione a possederla (il campo facing dell'entita', che
+     * decide anche dove l'entita' va per davvero). Togliendo questa si lascia tutto il resto -
+     * inclinazione, torsione, crollo - esattamente come la fisica l'ha prodotto.
+     *
+     * Si guarda l'asse "avanti" del tronco portato nel mondo e si prende la sua direzione
+     * orizzontale. Se quel vettore e' quasi verticale (il corpo e' a faccia in giu' o a testa in
+     * su) la sua direzione orizzontale non vuol dire niente, e allora si usa l'asse laterale: due
+     * assi perpendicolari non possono essere verticali insieme.
+     */
+    public double yawRoot() {
+        Rot r = rootRotation();
+        V3 avanti = r.apply(new V3(0, 0, 1));
+        if (Math.hypot(avanti.x(), avanti.z()) > 0.2) {
+            return Math.atan2(avanti.x(), avanti.z());
+        }
+        V3 lato = r.apply(new V3(1, 0, 0));
+        // il laterale guarda a 90 gradi dall'avanti: si riporta indietro di altrettanto
+        return Math.atan2(lato.x(), lato.z()) - Math.PI / 2;
+    }
+
+    /**
+     * Spegne o riaccende TUTTI i motori dei giunti.
+     *
+     * Spenti, il corpo e' una marionetta senza fili: i giunti restano attaccati e dentro i loro
+     * limiti, ma niente li tiene, quindi il corpo cede sotto il suo peso. E' quello che serve a
+     * un'entita' che DORME: non da' piu' comandi al corpo, e se cade e' normale. Non e' un modo
+     * di far cadere i corpi - e' l'assenza di comandi, che e' una cosa diversa.
+     */
+    public void motoriSpenti(boolean spenti) {
+        EMotorState stato = spenti ? EMotorState.Off : EMotorState.Position;
+        for (JointCtl ctl : controls) {
+            if (ctl.hinge() != null) {
+                ctl.hinge().setMotorState(stato);
+            } else {
+                for (int k = 0; k < ctl.dofCount() && k < 3; k++) {
+                    ctl.six().setMotorState(ROT_AXES[k], stato);
+                }
+            }
+        }
+        if (!spenti) {
+            applyTargets();
+        }
     }
 
     /** Baricentro di tutto il corpo, pesato sulle masse dei cluster. */

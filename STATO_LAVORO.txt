@@ -2016,3 +2016,111 @@ dove non si piega e' un'entita' rotta sullo schermo.
 
 PalcoSelfTest 53/53, BodySelfTest 335/335, VisionSelfTest 632/632, PhysicsSmokeTest OK.
 BodyPlanTest resta rosso da prima (10 su 2421, voce 20).
+
+==========================================================================================
+23. L'ENTITA' VIVENTE: LA POSA NON SI RICREA, SI LEGGE (24/10/2026)
+==========================================================================================
+
+L'utente, dopo la voce 22: "non puoi usare la stessa immagine della fisica nella simulazione
+senza avere un'altra immagine da sincronizzare. Devi rendermelo tale che deve essere Vivente
+l'entita', quindi se non sta in piedi e si trascina utilizzando 1/2 arti devo vederlo dalla
+simulazione, se cade in continuo e avanza con una sola gamba devo vederlo dalla simulazione. Non
+mi serve vedere una ricreazione del movimento, voglio vedere il movimento. Se l'entita' sceglie
+di dormire non dara' altri input al corpo quindi se cade e' normale ma voglio comunque vederlo".
+
+Aveva ragione, e il difetto era piu' profondo di come l'avevo chiuso nella voce 22. Lì avevo
+scritto "la posa disegnata sono gli angoli VERI dei giunti": vero a meta'. Gli ANGOLI erano veri,
+ma venivano rimontati su una posa in piedi calcolata dal piano del corpo. Un corpo coricato nel
+mondo fisico sullo schermo restava eretto con le gambe nella posizione giusta: una ricreazione,
+esattamente la cosa che l'utente non voleva.
+
+------------------------------------------------------------------------------------------
+1. UNA SOLA IMMAGINE, NESSUNA SINCRONIZZAZIONE
+------------------------------------------------------------------------------------------
+Adesso la posa disegnata E' la posa fisica. JoltRagdoll.posaFisica legge posizione e rotazione di
+ogni cluster dal mondo fisico e costruisce la BodyPose da quelle: non ci sono angoli da rimontare,
+non c'e' un piano del corpo da ricostruire, non c'e' niente da tenere in pari fra due immagini.
+Se il corpo e' per terra, sullo schermo e' per terra; se avanza su una gamba trascinando il resto,
+sullo schermo fa quello.
+
+L'UNICA cosa che la simulazione impone e' DOVE e VERSO DOVE: la posa viene ruotata di
+(facing - imbardata del tronco) e traslata sul perno dell'entita' nel mondo della simulazione,
+perche' il palco e' una corsia di 8 m dove il corpo cammina sempre diritto mentre l'entita' nel
+mondo gira dove vuole. Rotazione attorno all'asse verticale e traslazione: la POSA - come sono
+piegati gli arti, quanto e' inclinato il tronco, se e' alto o schiacciato - arriva intatta.
+JoltRagdoll.yawRoot da' l'imbardata (proiezione orizzontale dell'asse in avanti del tronco, con
+ricaduta sull'asse laterale quando quello avanti e' quasi verticale - un corpo a testa in giu'
+non ha un "avanti" orizzontale).
+
+COME PASSA DAL FILO DELLA FISICA A QUELLO DEL DISEGNO. La fisica gira nel tick, il disegno gira
+fra i tick: leggere Jolt dal filo del disegno vorrebbe dire leggerlo mentre si muove. Alla fine di
+ogni Palco.avanza ogni corpo deposita una ISTANTANEA (posizioni, rotazioni, perno, imbardata) in
+una ConcurrentHashMap; Palco.posaDi la prende e calcola la posa SENZA toccare Jolt. Il disegno
+legge un'istantanea ferma, senza lucchetti e senza rischiare di vedere il mondo a meta' passo.
+Palco.angoliDi resta, ma solo per la diagnostica e i test: non disegna piu' niente.
+
+------------------------------------------------------------------------------------------
+2. TRE STATI, PERCHE' DORMIRE E' UNA SCELTA
+------------------------------------------------------------------------------------------
+"Se l'entita' sceglie di dormire non dara' altri input al corpo": quindi il palco ha bisogno di
+sapere cosa l'entita' sta scegliendo. Palco.Stato: CAMMINA, FERMA, DORME.
+
+    CAMMINA  la fase dell'oscillatore avanza, i motori ricevono gli angoli obiettivo, i metri
+             percorsi diventano credito di movimento per l'entita'
+    FERMA    i motori tengono l'ultima posa (sta in piedi, non cammina), niente credito
+    DORME    JoltRagdoll.motoriSpenti(true): i motori si spengono DAVVERO (EMotorState.Off), il
+             corpo e' solo massa e giunti. Se cade, cade - e si vede.
+
+entity.statoDelCorpo lo decide: isSleeping() -> DORME, altrimenti CAMMINA se l'entita' ha chiesto
+di muoversi in questo tick, FERMA se no.
+
+------------------------------------------------------------------------------------------
+3. DUE ERRORI MIEI, TROVATI DAI NUMERI
+------------------------------------------------------------------------------------------
+IL PRIMO: HO CHIUSO UN ANELLO SU SE STESSO. Avevo legato le gambe a isWalking(), cioe' "si e'
+mosso". Un corpo fermo non si muove, quindi non cammina, quindi le gambe restano ferme, quindi non
+si muove: zero per sempre. La velocita' vera e' crollata da 0.2 a 0.008 m/s e le nascite da 84 a
+11. Il comando al corpo deve venire dall'INTENZIONE, non dal risultato: entity.walk segna la
+volonta' in cima alla funzione, prima di qualunque uscita anticipata, e il palco guarda quella.
+
+IL SECONDO: PAGAVO LE CADUTE. Il PalcoSelfTest ha trovato che un corpo COI MOTORI SPENTI copriva
+piu' strada di uno che cammina (1.32 m contro 1.09): si ribalta in avanti e scivola, e i metri
+glieli contavo. Era un sussidio alla caduta, l'opposto di quello che serve. Adesso il credito si
+accumula SOLO in CAMMINA. Il conto e' cambiato molto:
+
+    nascite su 3 semi x 3000 tick     3 semi   vivi    m/s veri
+    senza fisica                        300     119      -       (la formula regalava 0.27)
+    fisica viva, prima versione         270      93    0.040-0.050
+    credito solo a chi cammina          107      22    0.021-0.046
+    chi e' sveglio si rialza            168      44    0.043-0.053
+
+Cioe': quel 270 quasi in pari con la simulazione senza fisica era in buona parte CREDITO DA
+CADUTA. Togliendolo, la popolazione e' andata a 107. Non e' una regressione: e' il primo numero
+onesto che questo progetto ha sulla locomozione vera. La velocita' davvero camminata e' 0.04-0.05
+m/s contro gli 0.27 che la formula geometrica regalava: un sussidio di sei volte.
+
+IL TERZO, DENTRO LA CORREZIONE DEL SECONDO: rialzavo solo chi era in CAMMINA. Quindi chi cadeva
+mentre mangiava restava per terra a vita (un corpo sveglio e fermo collassa: 0.054 m misurati), e
+le nascite erano scese a 37/40/30. Un animale sveglio che e' a terra PROVA a tirarsi su: adesso
+si rimonta chiunque sia abbassato e fermo e NON stia dormendo. 107 -> 168 nascite, 22 -> 44 vivi.
+Chi dorme resta dove e' caduto, come ha chiesto l'utente.
+
+RESTA UN BUCO VERO, ed e' scritto nel TODO: "rimontare" un corpo caduto e' un trucco - lo
+risollevo io, il corpo non impara ad alzarsi. Un'ABILITA' DI RIALZARSI cercata come il passo e'
+la cosa giusta, e non c'e'. Finche' non c'e', meta' della popolazione che manca e' questo.
+
+------------------------------------------------------------------------------------------
+4. VERIFICHE
+------------------------------------------------------------------------------------------
+src.body.PalcoSelfTest e' passato da 53 a 63 verifiche, e le nuove sono esattamente le tre cose
+che l'utente ha chiesto di vedere:
+ - la posa ha tutti i segmenti, valori finiti, e NON e' forzata a terra ne' forzata in piedi;
+ - l'imbardata disegnata corrisponde al facing richiesto (la rotazione e' l'unica cosa imposta);
+ - chi cammina copre piu' strada di chi sta fermo (il corpo di prova viene cercato con
+   GaitEvaluator.optimize finche' uno cammina davvero: con un'andatura casuale faceva 1 cm in
+   10 secondi e la verifica non voleva dire niente);
+ - chi dorme devia dagli angoli comandati PIU' di chi e' sveglio e fermo, cioe' i motori spenti
+   sono spenti per davvero.
+
+PalcoSelfTest 63/63, BodySelfTest 335/335, VisionSelfTest 632/632, PhysicsSmokeTest OK.
+BodyPlanTest resta rosso da prima (10 su 2421, voce 20).

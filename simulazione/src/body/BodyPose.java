@@ -20,6 +20,25 @@ public final class BodyPose {
         }
     }
 
+    /**
+     * La stessa posa spostata e girata: ogni punto diventa {@code r * (p - origine)}.
+     *
+     * Serve a portare nel mondo della simulazione la posa che arriva dal mondo fisico (vedi
+     * JoltRagdoll.posaFisica): la ragdoll cammina sulla sua corsia, l'entita' sta da un'altra
+     * parte e guarda da un'altra parte. Si sposta e si gira TUTTO IL CORPO insieme, cioe' non si
+     * ricostruisce niente: quello che la fisica ha prodotto resta esattamente com'e', compresa
+     * l'inclinazione, le gambe storte e il fatto che sia a terra.
+     */
+    public BodyPose transformed(Rot r, V3 origine) {
+        List<LinkPose> out = new java.util.ArrayList<>();
+        for (LinkPose p : byName.values()) {
+            out.add(new LinkPose(p.name(),
+                    r.apply(p.origin().sub(origine)), r.mul(p.rot()),
+                    r.apply(p.coreA().sub(origine)), r.apply(p.coreB().sub(origine)), p.radius()));
+        }
+        return new BodyPose(out);
+    }
+
     public LinkPose get(String link) { return byName.get(link); }
     public Iterable<LinkPose> links() { return byName.values(); }
 

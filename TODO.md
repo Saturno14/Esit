@@ -51,9 +51,11 @@ Aggiornato il 24/10/2026. Le voci chiuse stanno in STATO_LAVORO.txt, non qui.
 - [ ] **Giunti a 2-3 gradi di liberta' nella fisica.** In Jolt diventano un solo
       SixDofConstraint con assi ortogonalizzati (Gram-Schmidt): e' un'approssimazione, la catena
       di cerniere esatta resta solo nell'esportazione URDF. Da verificare se sposta le misure.
-- [ ] **Fisica sempre viva, invece che come oracolo.** Misurato: 380 corpi con tutti i giunti
-      comandati costano 1.93 ms per passo (116 ms per tick di mondo contro i 10 disponibili a
-      x50): si potrebbe fare solo fino a circa x4. Da riprendere se si accetta quel tetto.
+- [x] ~~**Fisica sempre viva, invece che come oracolo.**~~ FATTO (voci 22 e 23). Il tetto che la
+      teneva spenta era un errore di contabilita': 10 ms sono il budget di un tick A x50, ma un
+      tick vale mezzo secondo di mondo. Il palco misura il costo per corpo tick per tick e ci
+      mette dentro quante entita' ci stanno nel budget; a x1 ci sta il mondo intero. E la posa
+      disegnata E' la posa fisica, non una ricreazione.
 - [ ] **Budget di prove per corpo.** Ora: 8 prove per una fondatrice, 4 per un figlio
       (Locomotion.trialsPerBody / trialsPerChild). Con 0 prove per i figli la popolazione non
       impara a camminare (mediana 0.03 m/s); con 4 arriva a 0.27. Non e' stato cercato l'optimum.
@@ -97,13 +99,26 @@ Aggiornato il 24/10/2026. Le voci chiuse stanno in STATO_LAVORO.txt, non qui.
       242 -> 152 (-37%), cinque semi su sei peggio, p = 0.22 (da chiudere a 12 semi). La velocita'
       vera e' 0.15-0.29 m/s contro gli 0.27 che la formula regalava a ogni tick: non e' una
       penalita' della fisica, e' la fine di un sussidio.
-- [ ] **Chiudere il lotto della fisica viva a 12 semi**: a sei la direzione e' netta (5 su 6 in
-      entrambe le misure) ma p = 0.22 non dichiara niente. Serve anche capire il seme 4, l'unico
-      in cui la fisica viva ha fatto MEGLIO (nascite 134 -> 140, vivi 52 -> 55).
-- [ ] **Rialzarsi da terra.** Nel palco un corpo abbassato e fermo per 6 tick viene rimesso in
-      piedi DAL MONDO. Rialzarsi e' un'abilita' che si potrebbe imparare, ma per impararla deve
-      valere qualcosa nel punteggio, e oggi il punteggio guarda solo l'avanzare: chi e' per terra
-      non ha nessun motivo per muoversi in un modo invece che in un altro.
+- [ ] **Rimisurare la fisica viva a 12 semi, da capo.** I sei semi della voce 22 sono SCADUTI:
+      quel braccio contava i metri anche a chi cadeva in avanti scivolando, cioe' pagava le
+      cadute (voce 23). Sul codice di adesso, 3 semi x 3000 tick:
+          senza fisica                  300 nascite  119 vivi   (formula: 0.27 m/s regalati)
+          credito solo a chi cammina    107 nascite   22 vivi   0.021-0.046 m/s veri
+          chi e' sveglio si rialza      168 nascite   44 vivi   0.043-0.053 m/s veri
+      Tre semi non dichiarano niente e il confronto interessante non e' piu' "fisica si/no" ma
+      "quanto manca ai 300". Da chiudere a 12 semi, e da rifare il seme 4 (l'unico in cui la
+      fisica viva aveva fatto meglio) ora che il credito e' onesto.
+- [ ] **RIALZARSI DA TERRA E' IL BUCO PIU' GROSSO, e ora ha un numero.** Nel palco un corpo
+      abbassato e fermo per 6 tick viene rimesso in piedi DAL MONDO: e' un trucco, il corpo non
+      impara ad alzarsi. Quanto pesa: senza il rimontaggio la popolazione va da 168 nascite a
+      107 e dai 44 vivi a 22 (voce 23), cioe' un terzo della popolazione dipende da un trucco -
+      e il divario che resta coi 300 senza fisica e' in buona parte questo.
+      Rialzarsi e' un'abilita' che si puo' imparare, ma per impararla deve valere qualcosa nel
+      punteggio, e oggi il punteggio guarda solo l'avanzare: chi e' per terra non ha nessun
+      motivo per muoversi in un modo invece che in un altro. Un punteggio che premia il tornare
+      alti SENZA premiare lo stare alti (sarebbe di nuovo UPRIGHT_BONUS, l'errore della voce 22)
+      e' la cosa delicata da progettare: forse "prove che partono da terra", cioe' un secondo
+      compito, invece di un altro termine nello stesso punteggio.
 - [ ] **Terreno vero nel mondo fisico.** Il pavimento del palco e' PIATTO, quindi la fisica dice
       come un corpo cammina, non come affronta un gradino. E gli urti fra entita' (il
       combattimento) e le mele restano nella simulazione a griglia: la fisica muove le gambe, non

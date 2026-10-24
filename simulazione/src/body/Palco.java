@@ -121,6 +121,10 @@ public final class Palco {
         float[] angoli;
         /** Vero se in questo tick si e' mosso davvero. */
         boolean avanzato;
+        /** Cosa l'entita' ha scelto di fare col corpo: vedi {@link Stato}. */
+        Stato stato = Stato.FERMA;
+        /** Se i motori sono spenti adesso: si cambia solo quando cambia, non a ogni passo. */
+        boolean motoriSpenti;
 
         Posto(long id, Automaton body, int corsia) {
             this.id = id;
@@ -129,9 +133,31 @@ public final class Palco {
         }
     }
 
+    /**
+     * L'ISTANTANEA DI UN CORPO: dove stanno i suoi pezzi, alla fine di questo tick.
+     *
+     * Esiste per un motivo di thread, non di modello. La fisica gira nel thread della simulazione
+     * e tiene il lucchetto del palco per tutti i sessanta passi del tick; il disegno gira nel suo
+     * thread e chiede la posa a ogni fotogramma. Se il disegno leggesse la ragdoll vera, si
+     * fermerebbe ad aspettare la fisica di ogni tick - a velocita' normale, centinaia di
+     * millisecondi. Quindi la fisica, quando ha finito, lascia qui quello che ha prodotto, e il
+     * disegno lo prende senza aspettare nessuno.
+     *
+     * NON E' UNA SECONDA IMMAGINE DA TENERE IN SINCRONIA: non c'e' niente da sincronizzare,
+     * perche' qui non si calcola nulla. Sono le trasformate dei corpi rigidi copiate una volta
+     * per tick, e l'oggetto e' immutabile: quando arriva il tick dopo, questo viene sostituito
+     * intero.
+     */
+    private record Istantanea(JoltRagdoll corpo, V3[] posizioni, Rot[] rotazioni, V3 perno,
+                             double imbardata) {
+    }
+
     private static PhysicsWorld mondo;
     private static boolean fisicaRotta = false;
     private static final Map<Long, Posto> posti = new LinkedHashMap<>();
+    /** Le istantanee per il disegno: scritte dalla fisica, lette dal disegno senza lucchetti. */
+    private static final java.util.concurrent.ConcurrentHashMap<Long, Istantanea> istantanee =
+            new java.util.concurrent.ConcurrentHashMap<>();
     private static int capienzaMondo = 0;
     private static int capienzaUltima = 0;
     private static long passiFisica = 0;
@@ -185,8 +211,19 @@ public final class Palco {
                 p.gait = c.gait();
                 smonta(p);
             }
+            p.stato = c.stato();
             if (p.doll == null) {
                 monta(p);
+            }
+            boolean spenti = p.stato == Stato.DORME;
+            if (p.doll != null && spenti != p.motoriSpenti) {
+                try {
+                    p.doll.motoriSpenti(spenti);
+                    p.motoriSpenti = spenti;
+                } catch (Throwable ignored) {
+                    // un corpo che non accetta il cambio di stato resta come sta: non e' un
+                    // motivo per fermare il mondo
+                }
             }
         }
         posti.keySet().removeIf(id -> {
@@ -194,12 +231,37 @@ public final class Palco {
                 return false;
             }
             smonta(posti.get(id));
+            istantanee.remove(id);
             return true;
         });
     }
 
-    /** Quello che serve al palco di un'entita': chi e', con che corpo e con che andatura. */
-    public record Candidato(long id, Automaton body, Gait gait) {
+    /**
+     * In che stato il corpo riceve comandi. Sono tre perche' tre sono le cose diverse che
+     * un'entita' puo' fare col proprio corpo, e appiattirle sarebbe mentire su una di esse.
+     */
+    public enum Stato {
+        /** Ha scelto di muoversi: l'andatura avanza, le gambe si muovono. */
+        CAMMINA,
+        /** Sveglia ma ferma (mangia, si gira, guarda): i motori tengono la posa che hanno. */
+        FERMA,
+        /**
+         * DORME: nessun comando al corpo, motori spenti. Se cade, cade - ed e' giusto che si
+         * veda. Un'entita' che dorme non sta tenendo la posizione, sta dormendo.
+         */
+        DORME
+    }
+
+    /**
+     * Quello che serve al palco di un'entita': chi e', con che corpo, con che andatura e in che
+     * stato.
+     *
+     * Lo stato serve perche' il corpo faccia quello che l'entita' ha DECISO e non quello che gli
+     * viene per inerzia. E' la scelta del tick PRECEDENTE (il palco avanza prima che le entita'
+     * agiscano, altrimenti spenderebbero i metri del tick prima), quindi fra la decisione e il
+     * corpo c'e' un tick di ritardo: mezzo secondo di mondo, meno del tempo che un passo dura.
+     */
+    public record Candidato(long id, Automaton body, Gait gait, Stato stato) {
     }
 
     /**
@@ -305,11 +367,13 @@ public final class Palco {
             smonta(p);
         }
         posti.clear();
+        istantanee.clear();
     }
 
     /** Toglie un'entita' dal palco (e' morta, o non interessa piu'). */
     public static synchronized void esce(long id) {
         Posto p = posti.remove(id);
+        istantanee.remove(id);
         smonta(p);
     }
 
@@ -341,15 +405,27 @@ public final class Palco {
                     if (p.doll == null || p.gait == null) {
                         continue;
                     }
-                    p.fase += PhysicsWorld.TIME_STEP;
+                    /*
+                     * LA FASE SCORRE SOLO SE L'ENTITA' HA SCELTO DI MUOVERSI. Ferma, i motori
+                     * continuano a tenere la posa che avevano - cioe' il corpo prova a stare su
+                     * senza camminare, che e' quello che "riposa" vuol dire per un corpo dentro
+                     * la gravita'. Senza questo le gambe si muoverebbero sempre, per tutti, anche
+                     * per chi sta mangiando, e lo spostamento non sarebbe piu' la conseguenza di
+                     * una decisione.
+                     */
+                    if (p.stato == Stato.CAMMINA) {
+                        p.fase += PhysicsWorld.TIME_STEP;
+                    }
                     // stesso passo di controllo dell'oracolo: cio' che un corpo impara nella
                     // misura deve valere identico qui, altrimenti si allena in un mondo e vive
                     // in un altro
                     if (p.sensi != null && i % ogniQuanti == 0) {
                         p.sensi.read(p.doll, 0, 2 * Math.PI * p.gait.frequency() * p.fase);
                     }
-                    p.angoli = p.gait.targetAngles(p.body, p.fase, p.sensi, p.angoli);
-                    p.doll.setTargetAngles(p.angoli);
+                    if (p.stato != Stato.DORME) {
+                        p.angoli = p.gait.targetAngles(p.body, p.fase, p.sensi, p.angoli);
+                        p.doll.setTargetAngles(p.angoli);
+                    }
                 }
                 mondo.step();
                 passiFisica++;
@@ -359,6 +435,7 @@ public final class Palco {
                     corpi++;
                 }
                 leggi(p);
+                istantanea(p);
             }
         } catch (Throwable t) {
             System.out.println("[palco] la fisica viva si e' fermata (" + t + "): palco spento.");
@@ -383,11 +460,22 @@ public final class Palco {
         if (!Double.isFinite(avanti)) {
             avanti = 0;
         }
-        if (avanti > 0) {
+        /*
+         * SI ACCUMULA SOLO QUELLO CHE SI E' DECISO DI FARE. Trovato da PalcoSelfTest: un corpo
+         * con i motori fermi SI RIBALTA IN AVANTI E SCIVOLA, e contando qualunque spostamento in
+         * avanti un'entita' che riposava copriva piu' strada di una che camminava (1.32 m contro
+         * 1.09 in dieci secondi di mondo). Cioe' metteva da parte credito CADENDO, e lo spendeva
+         * dopo come se avesse camminato.
+         * Non e' un giudizio sulla posa - chi si trascina accumula quanto chiunque altro, ed e'
+         * tutto il punto della nota sul trascinarsi qui sopra - e' che un movimento che non hai
+         * deciso di fare non e' un tuo passo. Nel mondo fisico il corpo cade comunque, e la
+         * caduta si vede; solo non diventa strada percorsa.
+         */
+        if (avanti > 0 && p.stato == Stato.CAMMINA) {
             p.metriDisponibili += avanti;
             metriTotali += avanti;
         }
-        p.avanzato = avanti > PROGRESSO_MINIMO;
+        p.avanzato = p.stato == Stato.CAMMINA && avanti > PROGRESSO_MINIMO;
         p.ultimoCom = com;
 
         boolean basso = p.altezzaIniziale > 1e-6
@@ -397,7 +485,7 @@ public final class Palco {
          * abbassato per tutta la vita e si sta muovendo. E' la stessa correzione fatta nel
          * punteggio di GaitEvaluator (CRAWL_WEIGHT, UPRIGHT_BONUS), qui nel mondo vivo.
          */
-        if (basso && !p.avanzato) {
+        if (basso && !p.avanzato && p.stato != Stato.DORME) {
             if (p.tickATerra < 0) {
                 collassi++;
                 p.tickATerra = 0;
@@ -409,6 +497,21 @@ public final class Palco {
                 ricomincia(p);
             }
         } else {
+            /*
+             * CHI E' SVEGLIO SI RIALZA, CHI DORME RESTA DOV'E' CADUTO.
+             *
+             * Rialzarsi e' una concessione del mondo e non un'abilita' del corpo (vedi la nota
+             * nell'intestazione): dopo TICK_A_TERRA tick abbassato e fermo, la ragdoll viene
+             * rimontata in piedi. Dormendo non succede, perche' tirare su un corpo che dorme ogni
+             * tre secondi sarebbe il mondo che gli rifa' il letto, e nasconderebbe proprio la
+             * cosa che si vuole vedere.
+             *
+             * MISURATO perche' prima la concessione valeva solo per chi stava provando a
+             * camminare: con il controllo di oggi crolla anche chi sta fermo sveglio, quindi chi
+             * cadeva mentre mangiava restava a terra per sempre, e le nascite su tre semi
+             * scendevano da 63/100/107 a 37/40/30. Un'entita' sveglia che e' per terra prova a
+             * tirarsi su: e' il minimo che un animale fa.
+             */
             p.tickATerra = -1;
         }
 
@@ -419,6 +522,24 @@ public final class Palco {
          */
         if (Math.abs(com.z()) > LONTANANZA) {
             ricomincia(p);
+        }
+    }
+
+    /** Lascia al disegno quello che la fisica ha appena prodotto. Vedi {@link Istantanea}. */
+    private static void istantanea(Posto p) {
+        if (p.doll == null) {
+            istantanee.remove(p.id);
+            return;
+        }
+        try {
+            int n = p.doll.clusterCount();
+            V3[] pos = new V3[n];
+            Rot[] rot = new Rot[n];
+            p.doll.leggiTrasformate(pos, rot);
+            istantanee.put(p.id, new Istantanea(p.doll, pos, rot,
+                    p.doll.rootPosition(), p.doll.yawRoot()));
+        } catch (Throwable t) {
+            istantanee.remove(p.id);
         }
     }
 
@@ -487,6 +608,26 @@ public final class Palco {
                 q[i] = (float) Math.max(d.lower, Math.min(d.upper, q[i]));
             }
             return q;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    public static BodyPose posaDi(long id, double facing) {
+        /*
+         * NON E' synchronized, ed e' il punto: la chiama il thread del disegno a ogni fotogramma,
+         * e il thread della fisica tiene il lucchetto di questa classe per tutti i sessanta passi
+         * di un tick. Qui si legge solo l'istantanea, che e' immutabile e arriva da una mappa
+         * concorrente, e si compone la posa - puro calcolo, nessun accesso al mondo fisico.
+         */
+        Istantanea i = istantanee.get(id);
+        if (i == null) {
+            return null;
+        }
+        try {
+            BodyPose posa = i.corpo().posaDa(i.posizioni(), i.rotazioni());
+            return posa.transformed(Rot.yaw(facing - i.imbardata()),
+                    new V3(i.perno().x(), 0, i.perno().z()));
         } catch (Throwable t) {
             return null;
         }

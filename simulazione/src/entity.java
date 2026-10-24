@@ -1188,6 +1188,17 @@ public class entity {
      * continua.
      */
     private void walk(double sign){
+        /*
+         * L'INTENZIONE SI SEGNA SUBITO, prima di sapere se il passo riuscira'. E' quella che fa
+         * muovere le gambe nel mondo fisico (vedi Palco.Candidato.cammina), e deve essere
+         * l'INTENZIONE e non il risultato: legandola a isWalking(), che vuol dire "si e' mosso",
+         * nasce un circolo vizioso misurato il 24/10/2026 - zero metri dalla fisica, quindi non
+         * sta camminando, quindi il palco gli ferma le gambe, quindi zero metri per sempre. Nel
+         * lotto di prova faceva crollare la velocita' vera da 0.2 a 0.008 m/s e le nascite da 84
+         * a 11. Chi prova a camminare e non ce la fa deve continuare a provare: e' esattamente
+         * quello che significa imparare a camminare.
+         */
+        lastWalkWishTick = Simulation.getTick();
         int dim = world.getDim();
         /*
          * SE E' SUL PALCO, IL PASSO LO DECIDE LA FISICA. Non la formula
@@ -1365,12 +1376,35 @@ public class entity {
     /** Metri percorsi in tutta la vita. */
     public double getDistanzaPercorsa(){ return distanzaPercorsa; }
     private volatile long lastMoveTick = Long.MIN_VALUE;
+    /** Ultimo tick in cui ha SCELTO di muoversi, riuscendoci o no (vedi vuoleMuoversi). */
+    private volatile long lastWalkWishTick = Long.MIN_VALUE;
 
     public double getGaitPhase(){ return gaitPhase; }
 
     /** True se si e' mossa negli ultimi tick: la grafica anima gli arti solo mentre cammina. */
     public boolean isWalking(){
         return Simulation.getTick() - lastMoveTick <= 2;
+    }
+
+    /**
+     * Se sta PROVANDO a camminare, che non e' la stessa cosa di {@link #isWalking()} (quello dice
+     * se si e' mosso). Lo usa il palco per decidere se le gambe si muovono: un corpo che ci prova
+     * e non riesce ad avanzare di un centimetro deve continuare a muovere le gambe, altrimenti
+     * non imparera' mai.
+     */
+    public boolean vuoleMuoversi(){
+        return Simulation.getTick() - lastWalkWishTick <= 2;
+    }
+
+    /**
+     * In che stato questa entita' sta tenendo il proprio corpo, per la fisica viva (vedi
+     * src.body.Palco.Stato). Dormire non e' "stare ferma": e' non dare piu' comandi al corpo.
+     */
+    public src.body.Palco.Stato statoDelCorpo(){
+        if(isSleeping()){
+            return src.body.Palco.Stato.DORME;
+        }
+        return vuoleMuoversi() ? src.body.Palco.Stato.CAMMINA : src.body.Palco.Stato.FERMA;
     }
 
     /**
@@ -1383,6 +1417,21 @@ public class entity {
      * interpolare tra due tick e avere un movimento fluido anche a velocita' bassa.
      */
     public src.body.BodyPose poseLocal(double extraSeconds){
+        /*
+         * SE QUESTA ENTITA' E' IN FISICA VIVA, LA POSA E' IL CORPO FISICO. Non gli angoli della
+         * fisica rimessi dentro la cinematica diretta - quella era una ricreazione del movimento,
+         * e si vedeva un corpo in piedi mentre nel mondo fisico strisciava. Qui si prende la
+         * trasformata di ogni pezzo come sta in Jolt: se si trascina con un arto si vede
+         * trascinarsi, se cade in continuazione si vede cadere, se dorme per terra sta per terra.
+         * L'unica cosa che non viene dalla fisica e' l'imbardata, che appartiene alla simulazione
+         * (vedi Palco.posaDi).
+         */
+        if(ActionWeights.fisicaViva > 0){
+            src.body.BodyPose fisica = src.body.Palco.posaDi(EntityID, facing);
+            if(fisica != null){
+                return fisica;
+            }
+        }
         src.body.Automaton b = getBody();
         double[] q = jointAngles(b, extraSeconds);
         src.body.Rot rot = src.body.Rot.yaw(facing);
@@ -1398,24 +1447,12 @@ public class entity {
      * posa disegnata e' la stessa cosa che il cervello percepisce.
      */
     private double[] jointAngles(src.body.Automaton b, double extraSeconds){
-        double[] q = new double[b.dofCount()];
         /*
-         * SE QUESTA ENTITA' E' IN FISICA VIVA, LA POSA DISEGNATA E' QUELLA VERA: gli angoli che i
-         * motori e il pavimento hanno prodotto in questo istante, non il ciclo dell'oscillatore.
-         * E' la differenza fra vedere la fisica e sentirsi dire che c'e': con il ciclo, un corpo
-         * che e' crollato nel mondo fisico sullo schermo continuerebbe a muovere le gambe come se
-         * stesse camminando. Chi non e' sul palco resta disegnato col ciclo, che per lui e' la
-         * verita' - il suo passo e' una formula.
+         * QUESTA E' LA STRADA PER CHI NON E' IN FISICA VIVA: il ciclo dell'andatura, disegnato.
+         * Per chi e' in fisica la posa arriva intera dal mondo fisico e non passa da qui (vedi
+         * poseLocal), proprio per non avere due modi di ottenere la stessa cosa.
          */
-        float[] reali = ActionWeights.fisicaViva > 0
-                ? src.body.Palco.angoliDi(EntityID, null) : null;
-        if(reali != null){
-            for(int i = 0; i < q.length && i < reali.length; i++){
-                q[i] = reali[i];
-            }
-            applyGaze(q);
-            return q;
-        }
+        double[] q = new double[b.dofCount()];
         if(ActionWeights.bodyGaitSpeed > 0 && isWalking()){
             float[] f = getGait().anglesAt(b, gaitPhase + extraSeconds, null);
             for(int i = 0; i < q.length && i < f.length; i++){

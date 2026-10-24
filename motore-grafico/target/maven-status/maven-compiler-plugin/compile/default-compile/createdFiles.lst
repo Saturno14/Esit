@@ -94,6 +94,7 @@ com\saturno14\esit\graphics\world\WaterSurface.class
 src\body\Dof.class
 com\saturno14\esit\graphics\render\MaterialTextures$Noise.class
 src\gui\Tema.class
+src\body\Palco$Stato.class
 com\saturno14\esit\graphics\engine\Shader.class
 com\saturno14\esit\graphics\apple\AppleTexture.class
 main.class
@@ -127,6 +128,7 @@ com\saturno14\esit\graphics\mesh\MeshData.class
 src\Flora$Apple.class
 src\body\GaitEvaluator$1Case.class
 src\body\Gait$Osc.class
+src\body\Palco$Istantanea.class
 src\brain$Layer.class
 src\Entity_manager.class
 src\genetics\EntityStats.class

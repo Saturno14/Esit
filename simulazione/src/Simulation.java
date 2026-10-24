@@ -370,7 +370,8 @@ public class Simulation {
         });
         List<src.body.Palco.Candidato> candidati = new ArrayList<>(ordinate.size());
         for (entity e : ordinate) {
-            candidati.add(new src.body.Palco.Candidato(e.getId(), e.getAdultBody(), e.getGait()));
+            candidati.add(new src.body.Palco.Candidato(e.getId(), e.getAdultBody(), e.getGait(),
+                    e.statoDelCorpo()));
         }
         src.body.Palco.allestisci(candidati, budgetMs);
     }
