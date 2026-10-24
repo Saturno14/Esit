@@ -1,7 +1,6 @@
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\main.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\ActionWeights.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\Automaton.java
-C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\Balance.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\BodyCollision.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\BodyExport.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\BodyParams.java
@@ -20,11 +19,13 @@ C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\si
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\JoltRagdoll.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\Link.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\Locomotion.java
+C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\MotorSense.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\Palco.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\PhysicsBench.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\PhysicsNatives.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\PhysicsSmokeTest.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\PhysicsWorld.java
+C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\Reflex.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\Rot.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\V3.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\brain.java

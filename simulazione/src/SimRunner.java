@@ -38,6 +38,14 @@ public class SimRunner {
                 // di movimento delle sessioni precedenti (vedi src.body.GaitArchive)
                 ActionWeights.gaitArchive = Double.parseDouble(args[i].substring(9));
                 src.body.GaitArchive.enabled = ActionWeights.gaitArchive > 0;
+            } else if (args[i].startsWith("riflesso=")) {
+                // riflesso=0: solo oscillatore a ciclo aperto, il braccio di controllo del
+                // movimento appreso (vedi src.body.Reflex)
+                src.body.Gait.useReflex = Double.parseDouble(args[i].substring(9)) > 0;
+            } else if (args[i].startsWith("oscillatore=")) {
+                // oscillatore=0: l'oscillatore diventa solo un orologio e il movimento lo deve
+                // generare tutto il riflesso (vedi src.body.Gait.oscWeight)
+                src.body.Gait.oscWeight = Double.parseDouble(args[i].substring(12));
             } else if (args[i].startsWith("avvicina=")) {
                 // avvicina=n: peso dell'istinto "qualcuno davanti e' un motivo per camminare"
                 // (vedi ActionWeights.n_moveMate). 0 = spento, come prima.
@@ -61,6 +69,8 @@ public class SimRunner {
                 + " svezzamento=" + ActionWeights.svezzamento
                 + " fisica=" + ActionWeights.fisicaViva
                 + " avvicina=" + ActionWeights.n_moveMate
+                + " riflesso=" + (src.body.Gait.useReflex ? 1 : 0)
+                + " oscillatore=" + src.body.Gait.oscWeight
                 + " riserva=" + entity.getMaxFood());
 
         Simulation.setSeed(seed);

@@ -712,7 +712,38 @@ public final class Commands {
                 t.supportCount(), t.extremityCount(), t.crawls() ? "striscia" : "cammina"));
         var prof = e.getLocomotion();
         sb.append(prof == null ? "  andatura non ancora misurata"
-                : String.format(Locale.ROOT, "  andatura: %.3f m/s misurati", e.getWalkSpeed()));
+                : String.format(Locale.ROOT, "  andatura: %.3f m/s misurati%n", e.getWalkSpeed()));
+        sb.append(String.format(Locale.ROOT, "  percorsi %.1f m in vita%n", e.getDistanzaPercorsa()));
+        /*
+         * COSA HA IMPARATO A SENTIRE. Non "quanto va forte" ma SU COSA si regge: e' qui che si
+         * vede se due morfologie hanno trovato strategie diverse, perche' la velocita' le
+         * confonde (due corpi possono andare uguale facendo cose opposte).
+         */
+        src.body.Reflex r = e.getGait() == null ? null : e.getGait().reflex();
+        if (r == null || r.isZero()) {
+            sb.append("  riflesso: ancora tutto a zero (si muove solo con l'oscillatore)");
+            return sb.toString();
+        }
+        sb.append("  ").append(r.stats()).append(System.lineSeparator());
+        double[] canali = r.pesoPerCanale();
+        double somma = 0;
+        for (double v : canali) {
+            somma += v;
+        }
+        Integer[] ordine = new Integer[canali.length];
+        for (int c = 0; c < ordine.length; c++) {
+            ordine[c] = c;
+        }
+        java.util.Arrays.sort(ordine, (x, y) -> Double.compare(canali[y], canali[x]));
+        sb.append("  si regge su:");
+        for (int k = 0; k < 4 && k < ordine.length; k++) {
+            int c = ordine[k];
+            if (canali[c] <= 0) {
+                break;
+            }
+            sb.append(String.format(Locale.ROOT, "  %s %.0f%%",
+                    src.body.MotorSense.NAMES[c], somma > 0 ? 100.0 * canali[c] / somma : 0));
+        }
         return sb.toString();
     }
 

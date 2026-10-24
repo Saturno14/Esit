@@ -70,4 +70,45 @@ public final class Rot {
     }
 
     public double get(int row, int col) { return m[row * 3 + col]; }
+
+    /**
+     * Questa rotazione come VETTORE asse-angolo: direzione = asse, lunghezza = angolo in
+     * radianti. Serve alla propriocezione: proiettandolo sull'asse di un grado di liberta' si
+     * ottiene di quanto quel grado di liberta' e' ruotato, qualunque sia la forma del giunto.
+     * E' esatto per una rotazione attorno a un asse solo, ed e' la migliore
+     * approssimazione lineare quando gli assi sono piu' di uno - che e' la stessa
+     * approssimazione che fa il vincolo a sei gradi di liberta' in JoltRagdoll.
+     */
+    public V3 rotationVector() {
+        double trace = m[0] + m[4] + m[8];
+        double cos = Math.max(-1, Math.min(1, (trace - 1) / 2.0));
+        double angle = Math.acos(cos);
+        if (angle < 1e-9) {
+            return V3.ZERO;
+        }
+        double sin = Math.sin(angle);
+        if (sin < 1e-9) {
+            // mezzo giro: l'asse si legge dalla parte simmetrica, il segno non e' determinato
+            V3 axis = new V3(Math.sqrt(Math.max(0, (m[0] + 1) / 2)),
+                    Math.sqrt(Math.max(0, (m[4] + 1) / 2)),
+                    Math.sqrt(Math.max(0, (m[8] + 1) / 2))).normalized();
+            return axis.scale(angle);
+        }
+        V3 axis = new V3(m[7] - m[5], m[2] - m[6], m[3] - m[1]).scale(1.0 / (2 * sin));
+        return axis.scale(angle);
+    }
+
+    /**
+     * Di quanto questo orientamento e' fuori piombo: l'asse "su" portato nel mondo dice da che
+     * parte pende. [beccheggio, rollio] in radianti.
+     *
+     * Stava in Balance, che era un controllore scritto a mano e non c'e' piu'. Questa invece e'
+     * geometria: dice COME STA il corpo, non cosa deve fare, quindi e' un SENSO, e vive qui.
+     */
+    public double[] tilt() {
+        V3 up = apply(new V3(0, 1, 0));
+        double pitch = Math.atan2(up.z(), Math.max(1e-6, up.y()));
+        double roll = Math.atan2(up.x(), Math.max(1e-6, up.y()));
+        return new double[]{pitch, roll};
+    }
 }

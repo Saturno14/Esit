@@ -27,7 +27,7 @@ import java.util.Random;
  * davvero, e raggruppa i risultati per FORMA (quanti arti toccano terra), perche' e' quella che
  * decide come si cammina.
  *
- *   java -cp "classpath" src.body.EvolvedBodies [generazioni=12] [stirpi=6] [prove=4] [secondi=1.5] [seme=1]
+ *   java -cp "classpath" src.body.EvolvedBodies [generazioni=12] [stirpi=6] [prove=4] [secondi=1.5] [seme=1] [seme-andatura] [riflesso] [peso-oscillatore]
  */
 public final class EvolvedBodies {
 
@@ -37,6 +37,11 @@ public final class EvolvedBodies {
     private static final int FOUNDER_SEGMENTS = 18;
 
     private EvolvedBodies() {
+    }
+
+    private static double prop(String nome, double seDefault) {
+        String v = System.getProperty(nome);
+        return v == null || v.isBlank() ? seDefault : Double.parseDouble(v);
     }
 
     private record Sample(int generation, int segments, int dofs, BodyTraits traits,
@@ -52,7 +57,27 @@ public final class EvolvedBodies {
         // l'ultimo argomento "vecchio" rimette il seme dell'andatura di prima del 23/10/2026:
         // serve a confrontare i due controllori SUGLI STESSI CORPI
         Gait.useLegacySeed = args.length > 5 && args[5].equalsIgnoreCase("vecchio");
-        GaitEvaluator.useBalance = !(args.length > 6 && args[6].equalsIgnoreCase("aperto"));
+        // "aperto" adesso vuol dire SENZA RIFLESSO: il solo oscillatore a ciclo aperto, che e'
+        // il braccio di controllo del movimento appreso (vedi Reflex)
+        Gait.useReflex = !(args.length > 6 && args[6].equalsIgnoreCase("aperto"));
+        /*
+         * Il settimo argomento e' il PESO DELL'OSCILLATORE, e serve a misurare il caso limite:
+         * con 0 l'oscillatore resta solo un orologio (i canali orologio.sin/cos di MotorSense) e
+         * tutto il movimento deve uscire dai pesi del riflesso. E' il braccio "totalmente
+         * autonomo": nessuna forma d'onda data da fuori, nemmeno una sinusoide.
+         */
+        if (args.length > 7) {
+            Gait.oscWeight = Double.parseDouble(args[7]);
+        }
+        /*
+         * Le manopole del riflesso si passano come proprieta' di sistema, non come argomenti:
+         * sono parametri di RICERCA, non di esperimento, e tenerle fuori dalla lista posizionale
+         * evita che un confronto appaiato cambi significato perche' si e' aggiunto un argomento.
+         */
+        Gait.REFLEX_SIGMA = prop("riflesso.sigma", Gait.REFLEX_SIGMA);
+        Gait.REFLEX_FRACTION = prop("riflesso.frazione", Gait.REFLEX_FRACTION);
+        Gait.REFLEX_SHARE = prop("riflesso.quota", Gait.REFLEX_SHARE);
+        Reflex.MAX_CORRECTION = prop("riflesso.tetto", Reflex.MAX_CORRECTION);
 
         PhysicsNatives.require();
         GenomeSchema schema = GenomeSchema.loadFromClasspath("/gene_schema.json");
@@ -61,7 +86,9 @@ public final class EvolvedBodies {
                         + "mutazione del corpo %s%n%n",
                 lineages, generations, trials, seconds,
                 (Gait.useLegacySeed ? "VECCHIO" : "nuovo")
-                        + (GaitEvaluator.useBalance ? ", con riflesso di equilibrio" : ", CICLO APERTO"),
+                        + (Gait.useReflex ? ", con riflesso appreso" : ", CICLO APERTO")
+                        + (Gait.oscWeight == 1.0 ? "" : String.format(Locale.ROOT,
+                                ", oscillatore x%.2f", Gait.oscWeight)),
                 Genome.BODY_MUTATION);
 
         List<Sample> samples = new ArrayList<>();
@@ -160,6 +187,57 @@ public final class EvolvedBodies {
                             (int) group.stream().filter(s -> s.result().fellAtEnd()).count());
                 });
 
+        /*
+         * SU COSA SI SONO BASATI, FORMA PER FORMA.
+         *
+         * E' la domanda vera di tutto il lavoro sul movimento appreso: non "cadono meno?" ma "i
+         * rami divergono?". Se i bipedi finiscono a reggersi sul beccheggio e i quadrupedi sul
+         * contatto dell'arto opposto, allora ogni morfologia ha trovato la SUA strategia e non
+         * gliel'ha data nessuno. Se trovano tutti la stessa cosa, e' una scoperta altrettanto
+         * interessante, ma di segno opposto.
+         *
+         * Si somma il valore assoluto dei pesi per canale su tutto il corpo (vedi
+         * Reflex.pesoPerCanale) e si stampano i tre canali piu' carichi di ogni forma.
+         */
+        if (Gait.useReflex) {
+            System.out.println();
+            System.out.println("Su cosa si e' basato il riflesso, per forma (i tre canali piu' carichi):");
+            byShape.entrySet().stream().sorted(Map.Entry.comparingByKey()).forEach(e -> {
+                double[] tot = new double[MotorSense.CHANNELS];
+                int conRiflesso = 0;
+                for (Sample s : e.getValue()) {
+                    Reflex r = s.result().gait() == null ? null : s.result().gait().reflex();
+                    if (r == null) {
+                        continue;
+                    }
+                    conRiflesso++;
+                    double[] p = r.pesoPerCanale();
+                    for (int c = 0; c < tot.length; c++) {
+                        tot[c] += p[c];
+                    }
+                }
+                if (conRiflesso == 0) {
+                    return;
+                }
+                Integer[] ordine = new Integer[MotorSense.CHANNELS];
+                for (int c = 0; c < ordine.length; c++) {
+                    ordine[c] = c;
+                }
+                java.util.Arrays.sort(ordine, (x, y) -> Double.compare(tot[y], tot[x]));
+                StringBuilder sb = new StringBuilder();
+                double somma = 0;
+                for (double v : tot) {
+                    somma += v;
+                }
+                for (int k = 0; k < 3; k++) {
+                    int c = ordine[k];
+                    sb.append(String.format(Locale.ROOT, "  %s %.0f%%",
+                            MotorSense.NAMES[c], somma > 0 ? 100.0 * tot[c] / somma : 0));
+                }
+                System.out.printf(Locale.ROOT, "  %-22s %s%n", e.getKey(), sb);
+            });
+        }
+
         long changed = samples.stream().filter(s -> s.segments() != FOUNDER_SEGMENTS).count();
         System.out.println();
         System.out.printf(Locale.ROOT,
@@ -176,6 +254,38 @@ public final class EvolvedBodies {
                 (int) samples.stream().filter(s -> s.result().fell()).count(), samples.size(),
                 (int) samples.stream().filter(s -> s.result().fellAtEnd()).count());
         System.out.printf(Locale.ROOT, "Tempo totale %.1f s per %d corpi misurati.%n", elapsed, samples.size());
+        scriviCsv(samples);
+    }
+
+    /**
+     * Una riga per corpo, se si passa -Dcsv=&lt;file&gt;. Serve al CONFRONTO APPAIATO.
+     *
+     * I corpi nascono da un generatore separato da quello dell'andatura (bodyRng), quindi due
+     * bracci lanciati con lo stesso seme misurano GLI STESSI CORPI NELLO STESSO ORDINE: la riga n
+     * di un file e' lo stesso corpo della riga n dell'altro. Serve perche' la differenza fra due
+     * mediane, su settantotto corpi che vanno da otto a ventidue segmenti, e' dentro la varianza
+     * fra i corpi: a dire se un braccio e' meglio puo' rispondere solo il confronto corpo per
+     * corpo.
+     */
+    private static void scriviCsv(List<Sample> samples) {
+        String csv = System.getProperty("csv");
+        if (csv == null || csv.isBlank()) {
+            return;
+        }
+        StringBuilder sb = new StringBuilder("i;gen;forma;segmenti;gdl;appoggi;avanti;cade\n");
+        for (int i = 0; i < samples.size(); i++) {
+            Sample s = samples.get(i);
+            sb.append(String.format(Locale.ROOT, "%d;%d;%s;%d;%d;%d;%.4f;%d%n",
+                    i, s.generation(), shapeOf(s), s.segments(), s.dofs(),
+                    s.traits().supportCount(), s.result().forwardSpeed(),
+                    s.result().fell() ? 1 : 0));
+        }
+        try {
+            java.nio.file.Files.writeString(java.nio.file.Path.of(csv), sb.toString());
+            System.out.println("Righe per corpo scritte in " + csv);
+        } catch (java.io.IOException e) {
+            System.out.println("Non ho potuto scrivere " + csv + ": " + e.getMessage());
+        }
     }
 
     /**

@@ -1746,3 +1746,153 @@ src.body.BodyPlanTest falliva 10 verifiche su 2421 ("JSON stabile gen N") GIA' P
 sessione: verificato rilanciandolo sui binari di HEAD, stesse dieci. Non e' di questo lavoro, ma
 e' un test rosso che nessuno stava guardando.
 VisionSelfTest 632/632 e BodySelfTest 335/335 passano.
+
+
+==========================================================================================
+21. IL MOVIMENTO SMETTE DI ESSERE IMPOSTO (24/10/2026)
+==========================================================================================
+
+Rifacimento completo del controllo del movimento, su richiesta dell'utente: niente piu'
+controllori scritti a mano e validi per tutti i corpi, il controllo lo deve SCOPRIRE ogni corpo.
+La classe Balance e' stata cancellata. Al suo posto non c'e' un'altra strategia: ci sono gli
+INGRESSI, e dei pesi che li usano, ereditati e allenati come tutto il resto.
+
+Il lavoro e' finito, compila, i test passano - e la misura dice che per adesso NON PAGA. I numeri
+sono tutti qui sotto, compreso quello che mi ha tolto la conclusione che credevo di avere.
+
+------------------------------------------------------------------------------------------
+1. PERCHE' BALANCE DOVEVA SPARIRE
+------------------------------------------------------------------------------------------
+L'obiezione dell'utente al controllore di passo che avevo proposto: "se una entita' riesce a
+mangiare muovendosi a 4 zampe da questa si diramera' un ramo di entita' che cammineranno cosi',
+stessa cosa per i bipedi; il controllore di passo me li farebbe camminare tutti obbligatoriamente
+nello stesso modo". L'obiezione e' piu' forte di come l'ha detta: un controllore di equilibrio
+scritto a mano presuppone PIEDI e un POLIGONO DI APPOGGIO, quindi su un bipede funziona, su un
+quadrupede meno e su chi striscia non vuol dire niente. Non appiattisce soltanto le andature:
+SPOSTA LA SELEZIONE verso le morfologie che il controllore sa gestire. E' lo stesso errore
+dell'oracolo di ricompensa che il progetto aveva gia' riconosciuto e tolto.
+
+E Balance era esattamente quello: guadagni fissi, uguali per tutti i corpi, e una sola idea
+("rimetti il piede sotto il tronco").
+
+CHE COSA CI FACEVA GUADAGNARE, misurato sui binari di HEAD, 78 corpi evoluti, 24 prove:
+    con Balance        +0.638 m/s    57 cadute su 78
+    ciclo aperto       +0.717 m/s    59 cadute su 78
+NIENTE. Andava anzi PEGGIO del solo oscillatore sulla velocita', e sulle cadute erano pari.
+Cancellarlo non e' costato nulla: e' un pezzo di strategia imposta che non pagava nemmeno.
+
+------------------------------------------------------------------------------------------
+2. L'ARCHITETTURA CHE L'HA SOSTITUITO
+------------------------------------------------------------------------------------------
+E' quella proposta dall'utente: dare al corpo ogni giunto come ingresso, il baricentro, e il
+contatto segmento per segmento, e lasciare che la ricerca trovi da se' come usarli.
+
+src.body.MotorSense - I SENSI. Quattordici canali per ogni grado di liberta': bias, angolo
+proprio, velocita' propria, contatto del proprio arto, contatto dell'ARTO OPPOSTO, beccheggio,
+rollio, le loro velocita', velocita' del baricentro avanti e di lato, altezza, e seno e coseno
+dell'orologio. I canali sono LOCALI, e non e' una scorciatoia di prestazioni: con una rete tutta
+connessa un corpo da 25 gradi di liberta' avrebbe ~1800 pesi, impossibili da cercare con una prova
+di fisica per volta. L'arto opposto c'e' perche' senza di esso l'ALTERNANZA (questa zampa tocca,
+quella si alza) non e' nemmeno esprimibile, e senza alternanza un passo non esiste.
+Le velocita' sono ruotate negli ASSI DEL CORPO: un riflesso che leggesse "sto andando verso +Z del
+mondo" dovrebbe imparare una cosa diversa per ogni direzione in cui il corpo e' girato.
+
+src.body.Reflex - I PESI. Un peso per giunto e per canale; la correzione dell'angolo obiettivo e'
+la somma pesata dei canali, con un tetto (MAX_CORRECTION) che non dice COSA fare ma solo di non
+strappare - chiedere a un motore un angolo lontanissimo spara la ragdoll via a decine di m/s.
+PARTONO TUTTI A ZERO: con i pesi a zero il comportamento e' esattamente l'oscillatore di prima,
+quindi non c'e' nessuna partenza a freddo e il braccio di controllo e' dentro come caso
+particolare, non come esperimento separato.
+
+NON E' STATO SCRITTO NESSUN ALGORITMO DI APPRENDIMENTO NUOVO, ed e' il punto. Il riflesso sta
+DENTRO Gait, cioe' dentro il genoma del movimento: quindi lo ereditano i figli, lo incrocia
+Gait.cross (per giunto intero, non peso per peso: i pesi di un'anca sono una cosa sola), lo muta
+perturb, lo allena Locomotion.practice durante la vita e lo conserva GaitArchive tra le sessioni.
+E' cambiato il vettore di parametri su cui gira la macchina che c'era gia'.
+
+PER ARRIVARCI serviva leggere davvero il corpo, e mancava:
+ - JoltRagdoll.jointAngles legge l'angolo di TUTTI i giunti, anche quelli a due e tre gradi di
+   liberta' (rotazione relativa proiettata sull'asse). Era un TODO aperto: currentAngles lasciava
+   a zero tutto quello che non era una cerniera, cioe' il riflesso avrebbe avuto i sensi ciechi
+   proprio sui giunti piu' importanti;
+ - jointRates, comVelocity, rootAngularVelocity, e readContacts (contatto per segmento, calcolato
+   dalla geometria: niente ascoltatore di contatti da tenere vivo);
+ - Rot.rotationVector e Rot.tilt: tilt era in Balance, ma e' GEOMETRIA - dice come STA il corpo,
+   non cosa deve fare - quindi e' un senso e sta con gli altri.
+I sensi si rileggono ogni 3 passi di fisica (40 Hz su 120): un riflesso vero non gira a 120 Hz, e
+leggere la propriocezione di tutti i giunti costa quanto un pezzo del passo di fisica.
+
+UN BLOCCO PER VOLTA (Gait.perturb). Una prova sposta O l'oscillatore O il riflesso, mai entrambi:
+il punteggio di una prova e' UN NUMERO SOLO, e se si sono mossi insieme ampiezze, fasi e trecento
+pesi quel numero non dice quale dei due ha fatto la differenza. REFLEX_SHARE e' la quota di prove
+che va al riflesso: un budget diviso, non una preferenza.
+
+------------------------------------------------------------------------------------------
+3. LA MISURA, E IL CONTROLLO CHE MI HA SMONTATO LA CONCLUSIONE
+------------------------------------------------------------------------------------------
+78 corpi evoluti (6 stirpi x 13 generazioni), confronto APPAIATO corpo per corpo - i corpi nascono
+da un generatore separato da quello dell'andatura, quindi tutti i bracci misurano gli stessi corpi
+nello stesso ordine. Test dei segni sulla velocita', McNemar sulle cadute.
+
+    braccio                        mediana      cadute/78
+    oscillatore 24 prove           +0.717           59      <- il controllo
+    riflesso    24 prove           +0.567           56
+    oscillatore 12 prove           +0.426           68
+    oscillatore 48 prove           +0.903           45
+    riflesso    48 prove           +0.851           55
+    autonomo (oscillatore a 0)     +0.331           61
+
+ - riflesso 24 contro oscillatore 24: 28 corpi su 78 a favore, p = 0.017 CONTRO il riflesso.
+ - riflesso 48 contro oscillatore 24: 49 su 78, p = 0.031 A FAVORE. Qui mi ero fermato, ed era
+   sbagliato: quel braccio ha il doppio delle prove.
+ - IL CONTROLLO CHE SERVIVA, oscillatore 48 contro oscillatore 24: 57 su 78, p = 0.0001. E'
+   IL BUDGET DI PROVE a fare la differenza, non il riflesso.
+ - a pari prove, riflesso 48 contro oscillatore 48: 37 su 78, p = 0.73 sulla velocita' (pari) e
+   sulle cadute 12 contro 2 coppie discordi, p = 0.013 CONTRO il riflesso.
+
+Quindi: A PARI CALCOLO il riflesso non guadagna velocita' e PERDE sulle cadute. Tutto quello che
+sembrava suo era il doppio delle prove. Per questo Gait.useReflex resta PREDEFINITO SPENTO, come
+il palco: l'apparato c'e', e' completo e misurabile, e si accende quando un numero lo dira'.
+Spento, perturb non tocca i pesi e il percorso e' identico a prima: verificato contro i binari di
+HEAD, +0.717 m/s e 59 cadute, LE STESSE CIFRE.
+
+------------------------------------------------------------------------------------------
+4. LA COSA CHE FUNZIONA, E DOVE E' IL COLLO DI BOTTIGLIA
+------------------------------------------------------------------------------------------
+IL BRACCIO AUTONOMO. Con oscWeight a 0 l'oscillatore non e' piu' una forma d'onda: resta solo un
+orologio (due canali di ingresso, seno e coseno). Tutto il movimento deve uscire dai pesi. Risultato
++0.331 m/s con 61 cadute: contro l'oscillatore con mezzo budget (+0.426, 68 cadute) e' pari
+(40/78, p = 0.91). Cioe': SENZA NESSUNA FORMA D'ONDA DATA DA FUORI, solo sensi e orologio, i corpi
+si muovono - non quanto con la sinusoide, ma si muovono davvero e cadono non piu' di prima. E'
+la prima prova che quello che l'utente ha chiesto e' possibile; non e' ancora una vittoria.
+
+DOVE E' IL PROBLEMA, e non sono i sensi: e' LA RICERCA. L'oscillatore ha ~75 parametri, il
+riflesso ~350. Muovere un sottoinsieme casuale di 350 pesi, una prova di fisica per volta, con
+ventiquattro prove, non e' una ricerca: si vede nel resoconto per forma, dove il carico sui
+quattordici canali resta quasi UNIFORME (7-10% ciascuno, contro 7.1% della distribuzione piatta)
+invece di concentrarsi su qualcuno. Un riflesso che ha imparato qualcosa ha pochi pesi grossi;
+questi sono una passeggiata casuale.
+La divergenza per morfologia che si intravede (i quadrupedi carichi su "contatto opposto" e
+"vel.avanti", i bipedi sul beccheggio) e' dentro il rumore: quattro quadrupedi su 78 corpi, e
+l'ordine dei canali cambia da un braccio all'altro. NON E' ANCORA UNA RISPOSTA alla domanda vera,
+che resta "i rami divergono?".
+
+IL PROSSIMO PASSO e' quindi la ricerca, non il controllo: una salita della collina che sappia
+muoversi in 350 dimensioni (CMA-ES, o un passo adattivo per peso, o l'allenamento lungo la vita
+con molte piu' prove dato che costa calcolo e non cibo - e per quello lo svezzamento della voce 20
+e' gia' al suo posto). Tre tarature del riflesso (sigma e tetto piu' piccoli, mutazione piu' rada,
+quota di prove piu' bassa) erano in corsa quando sono state fermate per memoria: restano da fare.
+
+------------------------------------------------------------------------------------------
+5. STRUMENTI NUOVI PER MISURARE
+------------------------------------------------------------------------------------------
+ - EvolvedBodies scrive una riga per corpo con -Dcsv=<file>: serve al confronto APPAIATO, perche'
+   la differenza fra due mediane su corpi che vanno da 8 a 22 segmenti e' dentro la varianza fra i
+   corpi. E' cosi' che il controllo del punto 3 e' venuto fuori.
+ - Settimo argomento = peso dell'oscillatore (0 = braccio autonomo). Le manopole del riflesso
+   (sigma, frazione, quota, tetto) sono proprieta' di sistema -Driflesso.*, fuori dalla lista
+   posizionale, cosi' aggiungerne una non cambia il significato di un confronto vecchio.
+ - EvolvedBodies stampa, per forma, i tre canali piu' carichi; "corpo <id>" dice su cosa si regge
+   quella entita'.
+ - BodySelfTest 335/335, VisionSelfTest 632/632, PhysicsSmokeTest OK. BodyPlanTest resta rosso
+   da prima (10 su 2421, voce 20).

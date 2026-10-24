@@ -4,17 +4,38 @@ Aggiornato il 24/10/2026. Le voci chiuse stanno in STATO_LAVORO.txt, non qui.
 
 ## Corpo e locomozione
 
-- [ ] **Equilibrio laterale dei bipedi.** E' quello che resta aperto dopo il lavoro del
-      23/10/2026 (voce 9 del diario): con i motori sistemati un corpo tiene la posa eretta per
-      circa un secondo e poi cede DI LATO. Il riflesso di Balance corregge beccheggio e rollio ma
-      non basta: per stare su davvero serve un controllore di PASSO (capture point - si cade e si
-      mette un piede avanti), che e' un progetto a se'. Con 40 prove per corpo le cadute sono
-      scese da 75/78 a 42/78, quindi la strada e' aperta anche solo dando piu' tempo alla ricerca.
+- [ ] **LA RICERCA, NON IL CONTROLLO: il riflesso ha 350 pesi e la salita della collina non li
+      sa cercare.** E' quello che resta aperto dopo il rifacimento del movimento (voce 21).
+      L'apparato c'e' tutto - sensi per giunto, contatto per segmento, pesi ereditati e allenati -
+      e A PARI PROVE non paga: 78 corpi appaiati, riflesso contro solo oscillatore a 48 prove,
+      velocita' pari (p = 0.73) e cadute peggiori (12 contro 2, p = 0.013). Quello che sembrava
+      un guadagno era il budget: l'oscillatore da solo, da 24 a 48 prove, va da +0.717 a +0.903
+      con p = 0.0001. Il segno che e' la ricerca e non i sensi: il carico sui quattordici canali
+      resta quasi uniforme (7-10%) invece di concentrarsi. Da provare, in ordine: le tre tarature
+      gia' pronte (`-Driflesso.sigma`, `.tetto`, `.frazione`, `.quota`), poi un passo adattivo per
+      peso o CMA-ES, poi molte piu' prove durante la vita (costa calcolo, non cibo - e lo
+      svezzamento della voce 20 e' gia' lì per questo).
+      NIENTE CONTROLLORI DI PASSO scritti a mano: vietato dall'utente il 24/10/2026, e con ragione
+      (presuppongono piedi e poligono di appoggio, quindi spostano la selezione verso le
+      morfologie che il controllore sa gestire). `Balance` e' stato cancellato e non e' costato
+      niente: con Balance +0.638 m/s e 57 cadute, a ciclo aperto +0.717 e 59.
+- [ ] **Il braccio autonomo e' la cosa da far crescere.** Con `oscillatore=0` l'oscillatore e'
+      solo un orologio e il movimento lo generano i pesi: +0.331 m/s, 61 cadute, pari
+      all'oscillatore con mezzo budget (p = 0.91). Senza nessuna forma d'onda data da fuori i
+      corpi si muovono davvero. Da misurare di nuovo appena la ricerca migliora.
+- [ ] **"I rami divergono?" e' ancora senza risposta.** L'intravisto (quadrupedi carichi su
+      "contatto opposto" e "vel.avanti", bipedi sul beccheggio) e' dentro il rumore: 4 quadrupedi
+      su 78 corpi e l'ordine dei canali cambia da un braccio all'altro. Serve piu' campione per
+      forma - e un riflesso che abbia davvero imparato qualcosa.
 - [ ] **Quanto costa il budget di prove.** 24 prove per fondatrice e 8 per figlio portano una
       corsa di Experiment da 30 a 74 secondi. Con 40 prove i corpi camminano molto meglio
       (+0.758 contro +0.308 m/s di mediana) ma il costo raddoppia ancora. Non e' stato cercato
       l'optimum, ne' provata una ricerca piu' furba (CMA-ES, o riusare l'andatura di un parente
-      con corpo simile).
+      con corpo simile). CONFERMATO E QUANTIFICATO il 24/10/2026 (voce 21): sugli stessi 78 corpi
+      appaiati, da 24 a 48 prove la mediana va da +0.717 a +0.903 m/s e le cadute da 59 a 45, con
+      57 corpi su 78 a favore, p = 0.0001. Il budget di prove e' oggi la leva piu' forte che
+      questo progetto abbia sul movimento - piu' forte di qualunque cambio di controllore
+      provato finora. Riusare l'andatura di un parente e' in parte fatto (GaitArchive, voce 20).
 - [x] ~~Serpente che non avanza~~ - ERA UNA FALSA PISTA. Quel serpente era scritto a mano
       (BodyPlan.snake). I corpi che strisciano davvero, quando l'evoluzione li produce (5.3% dopo
       60 generazioni, ZERO dopo 12), AVANZANO: mediana +0.110 m/s, massima +0.585, non -0.039. Il
@@ -23,10 +44,10 @@ Aggiornato il 24/10/2026. Le voci chiuse stanno in STATO_LAVORO.txt, non qui.
 - [ ] **Quadrupedi: non cadono e vanno molto piu' veloci** della mediana dei bipedi, ma sono il
       2.6% dei corpi. Da guardare se la selezione nella simulazione li favorisce, e perche' sono
       cosi' rari.
-- [ ] **currentAngles() legge solo le cerniere** e lascia zero i giunti a due o tre gradi di
-      liberta' (Jolt non espone l'angolo per asse). Ora e' documentato nel codice, ma un modo
-      vero di leggerli manca, e la mancanza mi e' costata mezza giornata di caccia al difetto
-      sbagliato.
+- [x] ~~currentAngles() legge solo le cerniere~~ - RISOLTO nella voce 21:
+      `JoltRagdoll.jointAngles` legge l'angolo di tutti i giunti, anche quelli a due e tre gradi
+      di liberta', dalla rotazione relativa proiettata sull'asse. Serviva per dare i sensi al
+      riflesso, e senza di esso erano ciechi proprio sui giunti piu' importanti.
 - [ ] **Giunti a 2-3 gradi di liberta' nella fisica.** In Jolt diventano un solo
       SixDofConstraint con assi ortogonalizzati (Gram-Schmidt): e' un'approssimazione, la catena
       di cerniere esatta resta solo nell'esportazione URDF. Da verificare se sposta le misure.
@@ -72,8 +93,10 @@ Aggiornato il 24/10/2026. Le voci chiuse stanno in STATO_LAVORO.txt, non qui.
       (popolazione piu' grande = consumo piu' grande) va guardato.
 - [ ] **Il palco (fisica viva) resta spento**: con il controllore di oggi quattro entita' in
       fisica vera camminano a ~0.05 m/s contro 0.27 di riferimento, con 339 cadute in 600 tick.
-      Serve prima il controllore di passo (prima voce di questo file). Poi: terreno vero nel
-      mondo fisico invece del pavimento piatto, e rialzarsi da soli.
+      Da rimisurare quando la ricerca del riflesso funziona (prima voce di questo file): e' il
+      banco di prova vero, perche' nel palco il passo non e' una formula ma la distanza coperta
+      davvero. Poi: terreno vero nel mondo fisico invece del pavimento piatto, e rialzarsi da
+      soli.
 
 ## Pulizia
 

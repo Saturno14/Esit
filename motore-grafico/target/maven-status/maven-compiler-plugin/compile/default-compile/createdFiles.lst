@@ -46,6 +46,7 @@ src\body\BodyCollision.class
 src\Saving.class
 src\gui\SchedaEntita$1.class
 src\body\BodySelfTest.class
+src\body\MotorSense.class
 src\Vision.class
 com\saturno14\esit\graphics\engine\Camera.class
 com\saturno14\esit\graphics\render\MaterialTextures$Shade.class
@@ -114,7 +115,6 @@ src\DayNight.class
 src\genetics\DietType.class
 src\body\Gaze.class
 src\BrainIO.class
-src\body\Balance.class
 src\genetics\BodyPlan$Seg.class
 src\gui\PannelloComandi$1.class
 src\gui\ControlFrame$1.class
@@ -140,6 +140,7 @@ src\gui\Gui.class
 src\body\EvolvedBodies.class
 src\genetics\DominanceResolver$1.class
 src\gui\PannelloEntita$Celle.class
+src\body\Reflex.class
 src\genetics\BodyPlan$MutationRates.class
 src\History.class
 src\gui\ControlFrame$2.class

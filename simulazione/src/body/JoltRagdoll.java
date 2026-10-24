@@ -88,7 +88,8 @@ public final class JoltRagdoll {
     private static final V3 UNIT_Y = new V3(0, 1, 0);
 
     /** Un giunto motorizzato: una cerniera oppure un vincolo a tre assi di rotazione. */
-    private record JointCtl(int firstDof, int dofCount, HingeConstraint hinge, SixDofConstraint six) {
+    private record JointCtl(int firstDof, int dofCount, HingeConstraint hinge, SixDofConstraint six,
+                            int parentId, int childId) {
     }
 
     public final Automaton automaton;
@@ -266,10 +267,12 @@ public final class JoltRagdoll {
 
             if (dofs.size() == 1) {
                 controls.add(new JointCtl(firstDof, 1,
-                        hinge(parentBody, childBody, pivot, rootRot.apply(dofs.get(0).axis), dofs.get(0)), null));
+                        hinge(parentBody, childBody, pivot, rootRot.apply(dofs.get(0).axis), dofs.get(0)),
+                        null, parentBody.getId(), childBody.getId()));
             } else {
                 controls.add(new JointCtl(firstDof, dofs.size(), null,
-                        sixDof(parentBody, childBody, pivot, rootRot, dofs)));
+                        sixDof(parentBody, childBody, pivot, rootRot, dofs),
+                        parentBody.getId(), childBody.getId()));
             }
         }
         applyTargets();
@@ -483,6 +486,134 @@ public final class JoltRagdoll {
             }
         }
         return new BodyPose(poses);
+    }
+
+    // ------------------------------------------------------------------ propriocezione
+
+    /**
+     * ANGOLO VERO DI OGNI GRADO DI LIBERTA', giunti a due e tre assi compresi.
+     *
+     * Prima si leggeva solo la cerniera ({@link #currentAngles()}) e i giunti a piu' assi
+     * restavano a zero, perche' Jolt non espone l'angolo per asse: era documentato come limite e
+     * costava mezza giornata di caccia al difetto sbagliato (vedi il TODO). Adesso serve per
+     * davvero, perche' la propriocezione e' un INGRESSO del controllore: un riflesso che non sa
+     * dov'e' l'anca non puo' correggere l'anca.
+     *
+     * COME. Si prende la rotazione del figlio rispetto al genitore, la si porta negli assi del
+     * genitore (che a riposo sono gli assi del corpo, cioe' quelli in cui sono scritti gli assi
+     * dei gradi di liberta') e si proietta il suo vettore asse-angolo sull'asse di ogni grado di
+     * liberta'. Per una cerniera resta esatto - e per quelle si usa comunque il valore di Jolt,
+     * che e' esatto per definizione.
+     */
+    public float[] jointAngles(float[] out) {
+        float[] q = out != null && out.length == target.length ? out : new float[target.length];
+        java.util.Arrays.fill(q, 0f);
+        List<Dof> dofs = automaton.dofs();
+        BodyInterface bi = world.bodies();
+        for (JointCtl ctl : controls) {
+            if (ctl.hinge() != null) {
+                q[ctl.firstDof()] = ctl.hinge().getCurrentAngle();
+                continue;
+            }
+            Rot parent = rotationOf(bi, ctl.parentId());
+            Rot child = rotationOf(bi, ctl.childId());
+            V3 rel = parent.inverse().mul(child).rotationVector();
+            for (int k = 0; k < ctl.dofCount(); k++) {
+                int i = ctl.firstDof() + k;
+                if (i < q.length) {
+                    q[i] = (float) rel.dot(dofs.get(i).axis.normalized());
+                }
+            }
+        }
+        return q;
+    }
+
+    /**
+     * VELOCITA' ANGOLARE DI OGNI GRADO DI LIBERTA' (rad/s): la velocita' angolare relativa tra i
+     * due corpi del giunto, proiettata sull'asse. E' l'altra meta' della propriocezione - un
+     * riflesso che sa solo dove sta l'arto e non quanto velocemente si muove arriva sempre tardi.
+     */
+    public float[] jointRates(float[] out) {
+        float[] v = out != null && out.length == target.length ? out : new float[target.length];
+        java.util.Arrays.fill(v, 0f);
+        List<Dof> dofs = automaton.dofs();
+        BodyInterface bi = world.bodies();
+        for (JointCtl ctl : controls) {
+            Vec3 wp = bi.getAngularVelocity(ctl.parentId());
+            Vec3 wc = bi.getAngularVelocity(ctl.childId());
+            V3 rel = new V3(wc.getX() - wp.getX(), wc.getY() - wp.getY(), wc.getZ() - wp.getZ());
+            V3 local = rotationOf(bi, ctl.parentId()).inverse().apply(rel);
+            for (int k = 0; k < ctl.dofCount(); k++) {
+                int i = ctl.firstDof() + k;
+                if (i < v.length) {
+                    v[i] = (float) local.dot(dofs.get(i).axis.normalized());
+                }
+            }
+        }
+        return v;
+    }
+
+    private static Rot rotationOf(BodyInterface bi, int bodyId) {
+        Quat q = bi.getRotation(bodyId);
+        return Rot.quaternion(q.getX(), q.getY(), q.getZ(), q.getW());
+    }
+
+    /** Velocita' del baricentro (m/s), pesata sulle masse come {@link #centerOfMass()}. */
+    public V3 comVelocity() {
+        double m = 0;
+        V3 sum = V3.ZERO;
+        BodyInterface bi = world.bodies();
+        for (int c = 0; c < clusterBodyIds.size(); c++) {
+            Vec3 v = bi.getLinearVelocity(clusterBodyIds.get(c));
+            double mass = clusterMass.get(c);
+            sum = sum.add(new V3(v.getX(), v.getY(), v.getZ()).scale(mass));
+            m += mass;
+        }
+        return m > 0 ? sum.scale(1.0 / m) : sum;
+    }
+
+    /** Velocita' angolare del tronco (rad/s): da qui vengono beccheggio e rollio in velocita'. */
+    public V3 rootAngularVelocity() {
+        Vec3 w = world.bodies().getAngularVelocity(clusterBodyIds.get(0));
+        return new V3(w.getX(), w.getY(), w.getZ());
+    }
+
+    /**
+     * QUALE SEGMENTO STA TOCCANDO TERRA, nell'ordine di {@link Automaton#links()}.
+     *
+     * Non passa dal motore di collisione: guarda se il punto piu' basso della capsula di quel
+     * segmento e' entro {@code margine} dal pavimento. Nel mondo del palco e dell'oracolo l'unica
+     * cosa che si puo' toccare E' il pavimento, quindi la risposta e' la stessa e non costa un
+     * ascoltatore di contatti; il giorno in cui nel mondo fisico ci sara' anche il terreno vero,
+     * questa e' la riga da cambiare.
+     *
+     * Scritto su un vettore fornito da chi chiama: viene letto decine di volte al secondo per
+     * ogni corpo sul palco, e allocare qui sarebbe lavoro per il garbage collector a ogni passo.
+     */
+    public void readContacts(double groundY, double margine, boolean[] out) {
+        BodyInterface bi = world.bodies();
+        List<Link> links = automaton.links();
+        int n = Math.min(out.length, links.size());
+        java.util.Arrays.fill(out, 0, n, false);
+        for (int c = 0; c < clusterBodyIds.size(); c++) {
+            int id = clusterBodyIds.get(c);
+            RVec3 pos = bi.getPosition(id);
+            Rot rot = rotationOf(bi, id);
+            V3 origin = new V3(pos.x(), pos.y(), pos.z());
+            V3 clusterOrigin = restOrigin.get(clusterRoots.get(c));
+            for (Link l : clusterMembers.get(c)) {
+                int idx = links.indexOf(l);
+                if (idx < 0 || idx >= n) {
+                    continue;
+                }
+                V3 local = restOrigin.get(l.name).sub(clusterOrigin);
+                V3 linkOrigin = origin.add(rot.apply(local));
+                V3 a = linkOrigin.add(rot.apply(l.coreA()));
+                V3 b = linkOrigin.add(rot.apply(l.coreB()));
+                double piuBasso = Math.min(a.y(), b.y()) - l.radius;
+                out[idx] = piuBasso <= groundY + margine;
+            }
+        }
     }
 
     /** Numero di corpi rigidi usati da questo corpo articolato (cluster). */

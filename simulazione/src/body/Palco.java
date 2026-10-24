@@ -57,7 +57,8 @@ public final class Palco {
         final int corsia;
         JoltRagdoll doll;
         Gait gait;
-        Balance balance;
+        /** I sensi di questo corpo: si costruiscono una volta, si rileggono a ogni passo. */
+        MotorSense sensi;
         double fase;
         double altezzaIniziale;
         /** Metri percorsi e non ancora consumati da un'azione di movimento. */
@@ -122,7 +123,6 @@ public final class Palco {
             // quella che l'entita' sta usando adesso
             if (p.gait != c.gait()) {
                 p.gait = c.gait();
-                p.balance = null;
                 smonta(p);
             }
             if (p.doll == null) {
@@ -194,7 +194,7 @@ public final class Palco {
             }
             p.altezzaIniziale = p.doll.rootPosition().y();
             p.ultimoCom = p.doll.centerOfMass();
-            p.balance = p.gait == null ? null : Balance.of(p.body);
+            p.sensi = new MotorSense(p.body);
             p.tickATerra = -1;
         } catch (Throwable t) {
             // un corpo che la fisica non regge non deve fermare il mondo: scende dal palco
@@ -246,17 +246,20 @@ public final class Palco {
             return;
         }
         try {
+            int ogniQuanti = Math.max(1, GaitEvaluator.CONTROL_EVERY);
             for (int i = 0; i < passi; i++) {
                 for (Posto p : posti.values()) {
                     if (p.doll == null || p.gait == null) {
                         continue;
                     }
                     p.fase += PhysicsWorld.TIME_STEP;
-                    p.angoli = p.gait.anglesAt(p.body, p.fase, p.angoli);
-                    if (p.balance != null) {
-                        double[] tilt = Balance.tilt(p.doll.rootRotation());
-                        p.balance.apply(p.body, p.angoli, tilt[0], tilt[1], 0, 0);
+                    // stesso passo di controllo dell'oracolo: cio' che un corpo impara nella
+                    // misura deve valere identico qui, altrimenti si allena in un mondo e vive
+                    // in un altro
+                    if (p.sensi != null && i % ogniQuanti == 0) {
+                        p.sensi.read(p.doll, 0, 2 * Math.PI * p.gait.frequency() * p.fase);
                     }
+                    p.angoli = p.gait.targetAngles(p.body, p.fase, p.sensi, p.angoli);
                     p.doll.setTargetAngles(p.angoli);
                 }
                 mondo.step();

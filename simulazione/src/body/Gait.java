@@ -38,10 +38,69 @@ public final class Gait {
 
     private final double frequency;
     private final Map<String, Osc> oscByDof;
+    /**
+     * IL RIFLESSO, cioe' la parte di controllo che REAGISCE a come sta il corpo (vedi
+     * {@link Reflex}). Sta dentro l'andatura e non a fianco perche' l'andatura e' il genoma del
+     * movimento: quello che e' qui dentro si eredita, si incrocia, si muta, si allena durante la
+     * vita e finisce nell'archivio, e non e' stato necessario scrivere niente di nuovo per
+     * ottenerlo. Null vale come "tutti i pesi a zero", cioe' solo oscillatore.
+     */
+    private final Reflex reflex;
 
     private Gait(double frequency, Map<String, Osc> oscByDof) {
+        this(frequency, oscByDof, null);
+    }
+
+    private Gait(double frequency, Map<String, Osc> oscByDof, Reflex reflex) {
         this.frequency = Math.max(FREQ_MIN, Math.min(FREQ_MAX, frequency));
         this.oscByDof = oscByDof;
+        this.reflex = reflex;
+    }
+
+    /**
+     * 1 = l'oscillatore contribuisce come sempre. 0 = L'OSCILLATORE E' SOLO UN OROLOGIO: gli
+     * angoli li decide il riflesso, e il ciclo resta disponibile come due canali di ingresso
+     * (seno e coseno della fase). E' la forma completamente autonoma, dove il movimento non e'
+     * ricevuto ma generato - da misurare contro 1, non da dare per buona.
+     */
+    public static volatile double oscWeight = 1.0;
+
+    /**
+     * Se il riflesso viene applicato. PREDEFINITO SPENTO, e il motivo e' una misura, non una
+     * preferenza.
+     *
+     * Misurato il 24/10/2026 su 78 corpi evoluti appaiati (stessi corpi, stessi semi,
+     * src.body.EvolvedBodies, 1.5 s per prova; il confronto corpo per corpo sta in
+     * STATO_LAVORO.txt voce 21):
+     *
+     *   oscillatore 24 prove      +0.717 m/s   59 cadute   <- il braccio di controllo
+     *   riflesso    24 prove      +0.567 m/s   56 cadute   28/78, p = 0.017 CONTRO il riflesso
+     *   oscillatore 48 prove      +0.903 m/s   45 cadute
+     *   riflesso    48 prove      +0.851 m/s   55 cadute   cadute: 12 contro 2, p = 0.013 contro
+     *
+     * A PARI PROVE il riflesso non guadagna velocita' e PERDE sulle cadute. Quello che a prima
+     * vista sembrava un guadagno (48 prove con riflesso contro 24 senza, p = 0.031 a favore) era
+     * il budget di prove, non il riflesso: l'oscillatore da solo, passando da 24 a 48 prove, va
+     * da +0.717 a +0.903 con p = 0.0001.
+     *
+     * La diagnosi non e' che i sensi siano sbagliati: e' che la SALITA DELLA COLLINA non sa
+     * cercare in questo spazio. L'oscillatore ha ~75 parametri, il riflesso ~350, e muoverne un
+     * sottoinsieme a caso una prova per volta non basta - si vede nei pesi, che restano quasi
+     * uniformi sui quattordici canali (7-10% ciascuno) invece di concentrarsi su qualcuno.
+     * Quindi: l'apparato resta, completo e misurabile, e si accende quando c'e' una ricerca
+     * capace di reggerlo. Spento, {@link #perturb} non tocca i pesi e il percorso e'
+     * IDENTICO CIFRA PER CIFRA a quello di prima del rifacimento (verificato sui binari di HEAD:
+     * +0.717 m/s e 59 cadute, gli stessi numeri).
+     */
+    public static volatile boolean useReflex = false;
+
+    public Reflex reflex() {
+        return reflex;
+    }
+
+    /** La stessa andatura con un altro riflesso (l'oscillatore non si tocca). */
+    public Gait withReflex(Reflex r) {
+        return new Gait(frequency, oscByDof, r);
     }
 
     public double frequency() {
@@ -188,13 +247,24 @@ public final class Gait {
      * pochissime prove va molto piu' lontano.
      */
     public Gait perturb(Automaton body, Random rng, double sigma, double fraction) {
+        /*
+         * UN BLOCCO PER VOLTA: una prova di fisica sposta O l'oscillatore O il riflesso, mai tutti
+         * e due insieme. Il motivo e' che il punteggio di una prova e' UN NUMERO SOLO: se in quella
+         * prova si sono mossi insieme ampiezze, fasi, frequenza e qualche decina di pesi, quel
+         * numero non dice quale dei due ha fatto la differenza, e la salita della collina si
+         * ritrova a cercare in uno spazio due volte piu' grande con la stessa informazione di
+         * prima. Alternando, ogni prova e' una domanda su una cosa sola.
+         * REFLEX_SHARE e' quante prove vanno al riflesso: e' un budget diviso, non una preferenza.
+         */
+        boolean tastaRiflesso = useReflex && rng.nextDouble() < REFLEX_SHARE;
+        double fracOsc = tastaRiflesso ? 0.0 : fraction;
         Map<String, Osc> map = new LinkedHashMap<>(oscByDof);
         for (Dof d : body.dofs()) {
             Osc o = map.get(d.name);
             if (o == null) {
                 o = new Osc(0, rng.nextDouble() * 2 * Math.PI, 0);
             }
-            if (fraction < 1.0 && rng.nextDouble() > fraction) {
+            if (fracOsc <= 0.0 || (fracOsc < 1.0 && rng.nextDouble() > fracOsc)) {
                 map.put(d.name, clampOsc(o, d));
                 continue;
             }
@@ -205,9 +275,27 @@ public final class Gait {
                     o.center() + rng.nextGaussian() * sigma * span);
             map.put(d.name, clampOsc(moved, d));
         }
-        double f = frequency * Math.exp(rng.nextGaussian() * sigma * 0.5);
-        return new Gait(f, map);
+        double f = tastaRiflesso ? frequency : frequency * Math.exp(rng.nextGaussian() * sigma * 0.5);
+        /*
+         * IL RIFLESSO SI MUTA INSIEME ALL'OSCILLATORE, ma con un passo suo: i pesi sono in
+         * radianti per unita' di canale (i canali sono normalizzati a un intorno di 1), quindi
+         * REFLEX_SIGMA e' quanta correzione in piu' o in meno un peso puo' prendere in un colpo.
+         * E con una frazione piu' piccola, perche' i pesi sono molti piu' dei parametri
+         * dell'oscillatore e spostarne tanti insieme e' rumore.
+         */
+        Reflex r = reflex != null ? reflex : Reflex.zero(body);
+        if (tastaRiflesso) {
+            r = r.perturb(body, rng, sigma * REFLEX_SIGMA, Math.min(1.0, fraction * REFLEX_FRACTION));
+        }
+        return new Gait(f, map, r);
     }
+
+    /** Quanto si sposta un peso del riflesso, in rapporto alla sigma dell'oscillatore. */
+    public static volatile double REFLEX_SIGMA = 0.8;
+    /** Quanta parte dei pesi si muove, in rapporto alla frazione dell'oscillatore. */
+    public static volatile double REFLEX_FRACTION = 0.35;
+    /** Quante prove di fisica vanno a tastare il riflesso invece dell'oscillatore. */
+    public static volatile double REFLEX_SHARE = 0.5;
 
     /**
      * La stessa andatura con l'onda che scorre al contrario: tutte le fasi cambiate di segno.
@@ -225,7 +313,7 @@ public final class Gait {
             Osc o = e.getValue();
             map.put(e.getKey(), new Osc(o.amplitude(), -o.phase(), o.center()));
         }
-        return new Gait(frequency, map);
+        return new Gait(frequency, map, reflex);
     }
 
     /**
@@ -239,7 +327,7 @@ public final class Gait {
             Osc mine = oscByDof.get(d.name);
             map.put(d.name, clampOsc(mine != null ? mine : fallback.osc(d.name), d));
         }
-        return new Gait(frequency, map);
+        return new Gait(frequency, map, reflex == null ? null : reflex.adaptTo(body));
     }
 
     /** Incrocio di due andature: per ogni giunto si prende da uno dei due genitori. */
@@ -255,7 +343,7 @@ public final class Gait {
             map.put(d.name, clampOsc(pick, d));
         }
         double f = rng.nextBoolean() ? a.frequency : b.frequency;
-        return new Gait(f, map);
+        return new Gait(f, map, Reflex.cross(a.reflex, b.reflex, body, rng));
     }
 
     private static Osc clampOsc(Osc o, Dof d) {
@@ -290,6 +378,34 @@ public final class Gait {
         return q;
     }
 
+    /**
+     * GLI ANGOLI OBIETTIVO VERI: oscillatore piu' riflesso.
+     *
+     * E' questo che va dato ai motori quando il corpo e' dentro la fisica. {@link #anglesAt} resta
+     * per il disegno (il motore grafico non ha un corpo fisico da interrogare, quindi vede solo il
+     * ciclo); qui c'e' anche la parte che reagisce, e con {@link #oscWeight} a 0 c'e' SOLO quella.
+     *
+     * @param sensi stato del corpo, gia' letto per questo passo di controllo (vedi
+     *              {@link MotorSense#read}); null = non disponibile, vale il solo oscillatore
+     */
+    public float[] targetAngles(Automaton body, double t, MotorSense sensi, float[] out) {
+        List<Dof> dofs = body.dofs();
+        float[] q = out != null && out.length == dofs.size() ? out : new float[dofs.size()];
+        double w = 2 * Math.PI * frequency * t;
+        double peso = Math.max(0, oscWeight);
+        for (int i = 0; i < dofs.size(); i++) {
+            Dof d = dofs.get(i);
+            Osc o = oscByDof.get(d.name);
+            double value = o == null ? 0
+                    : o.center() + peso * o.amplitude() * Math.sin(w + o.phase());
+            q[i] = (float) Math.max(d.lower, Math.min(d.upper, value));
+        }
+        if (useReflex && reflex != null && sensi != null) {
+            reflex.apply(body, sensi, q);
+        }
+        return q;
+    }
+
     /** Durata di un ciclo di passo (secondi): serve all'animazione. */
     public double cycleSeconds() {
         return 1.0 / frequency;
@@ -310,6 +426,9 @@ public final class Gait {
             arr.put(o);
         }
         root.put("oscillators", arr);
+        if (reflex != null && !reflex.isZero()) {
+            root.put("riflesso", reflex.toJson());
+        }
         return root;
     }
 
@@ -323,7 +442,8 @@ public final class Gait {
                         new Osc(o.getDouble("amp"), o.getDouble("phase"), o.getDouble("center")));
             }
         }
-        return new Gait(obj.optDouble("frequency", 1.0), map);
+        Reflex r = obj.has("riflesso") ? Reflex.fromJson(obj.getJSONObject("riflesso")) : null;
+        return new Gait(obj.optDouble("frequency", 1.0), map, r);
     }
 
     /** Nomi dei gradi di liberta' coperti da questa andatura (per diagnostica). */

@@ -451,6 +451,19 @@ public final class Locomotion {
                 sb.append(e.getKey()).append(round(e.getValue().amplitude()))
                         .append(round(e.getValue().phase())).append(round(e.getValue().center()));
             }
+            // DUE RIFLESSI DIVERSI SONO DUE LOCOMOZIONI DIVERSE: senza i pesi nella firma, la
+            // misura di un corpo che ha imparato a reagire verrebbe riusata per uno che non ha
+            // imparato niente, e l'allenamento non si vedrebbe mai
+            Reflex r = gait.reflex();
+            if (r != null) {
+                for (Map.Entry<String, double[]> e : r.all().entrySet()) {
+                    for (double v : e.getValue()) {
+                        if (v != 0) {
+                            sb.append(e.getKey()).append(round(v));
+                        }
+                    }
+                }
+            }
         }
         return Long.toHexString(hash(sb)) + "-" + body.links().size() + "-" + body.dofCount();
     }

@@ -103,7 +103,13 @@ public final class GaitEvaluator implements AutoCloseable {
             int steps = (int) Math.round(seconds / PhysicsWorld.TIME_STEP);
             int half = steps / 2;
 
-            Balance balance = useBalance ? Balance.of(body) : null;
+            /*
+              * I SENSI DEL CORPO, non un controllore. Qui prima si costruiva un Balance - un
+              * riflesso scritto a mano, con guadagni uguali per ogni morfologia. Adesso si
+              * costruiscono solo gli INGRESSI (MotorSense) e ad usarli ci pensa il riflesso che
+              * il corpo si porta dietro nell'andatura, con i pesi che ha ereditato e allenato.
+              */
+            MotorSense sensi = new MotorSense(body);
             q = gait.anglesAt(body, 0, q);
             doll.setTargetAngles(q);
             for (int i = 0; i < settleSteps; i++) {
@@ -115,21 +121,19 @@ public final class GaitEvaluator implements AutoCloseable {
             V3 comStart = doll.centerOfMass();
             double heightSum = 0;
             double lowestRatio = Double.MAX_VALUE;
-            double lastPitch = 0, lastRoll = 0;
-            boolean haveTilt = false;
+            int ogniQuanti = Math.max(1, CONTROL_EVERY);
             for (int i = 0; i < steps; i++) {
                 double t = i * PhysicsWorld.TIME_STEP;
-                q = gait.anglesAt(body, t, q);
-                if (balance != null) {
-                    // anello chiuso: si guarda come sta cadendo il corpo e si corregge
-                    double[] tilt = Balance.tilt(doll.rootRotation());
-                    double pitchRate = haveTilt ? (tilt[0] - lastPitch) / PhysicsWorld.TIME_STEP : 0;
-                    double rollRate = haveTilt ? (tilt[1] - lastRoll) / PhysicsWorld.TIME_STEP : 0;
-                    balance.apply(body, q, tilt[0], tilt[1], pitchRate, rollRate);
-                    lastPitch = tilt[0];
-                    lastRoll = tilt[1];
-                    haveTilt = true;
+                /*
+                 * I SENSI SI RILEGGONO OGNI ogniQuanti PASSI, non a ogni passo. Leggere la
+                 * propriocezione di tutti i giunti costa quanto un pezzo del passo di fisica, e
+                 * un riflesso vero non gira a 120 Hz; a 40 Hz c'e' tutto quello che serve per
+                 * reagire a una caduta, che dura decimi di secondo.
+                 */
+                if (i % ogniQuanti == 0) {
+                    sensi.read(doll, 0, 2 * Math.PI * gait.frequency() * t);
                 }
+                q = gait.targetAngles(body, t, sensi, q);
                 doll.setTargetAngles(q);
                 world.step();
                 // l'equilibrio si guarda a ogni passo: un corpo che si tuffa e poi rimbalza in
@@ -197,8 +201,11 @@ public final class GaitEvaluator implements AutoCloseable {
         return bestResult;
     }
 
-    /** Con false si torna al ciclo aperto, per rifare il confronto. Vedi {@link Balance}. */
-    public static volatile boolean useBalance = true;
+    /**
+      * Ogni quanti passi di fisica il riflesso rilegge i sensi e ricalcola gli angoli. A 120 Hz
+      * di fisica, 3 vuol dire un passo di controllo a 40 Hz.
+      */
+    public static volatile int CONTROL_EVERY = 3;
 
     /**
      * Quanti giunti si spostano a ogni prova. Con 75 parametri e 4 prove, muoverli tutti insieme
