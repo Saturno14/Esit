@@ -115,7 +115,7 @@ public class Simulation {
             }
         }
         src.body.GaitArchive.salva();
-        src.body.Palco.chiudi();
+        src.body.MondoFisico.chiudi();
         running = false;
         generation++; // invalida un eventuale thread ancora in uscita
         if (thread != null) {
@@ -188,7 +188,7 @@ public class Simulation {
         // il solo momento in cui si sa quanta strada ha fatto davvero (src.body.GaitArchive)
         e.registraMovimento();
         // e scende dal palco, se ci stava: una ragdoll senza entita' e' solo calcolo
-        src.body.Palco.esce(e.getId());
+        src.body.MondoFisico.esce(e.getId());
         // nessuno verra' piu' a ritirare le prove di allenamento di questa entita'
         src.body.Locomotion.forget(e.getId());
 
@@ -290,13 +290,20 @@ public class Simulation {
 
         List<entity> alive = Entity_manager.snapshotAlive();
         /*
-         * LA FISICA VIVA, PRIMA DELLE AZIONI. Il palco avanza di un tick di mondo e mette da
-         * parte quanti metri ha camminato davvero chi ci sta sopra; poi le entita' agiscono, e
-         * chi e' sul palco spende quei metri invece della falcata geometrica (vedi entity.walk).
-         * In quest'ordine perche' altrimenti un'entita' spenderebbe i metri del tick precedente.
+         * IL MONDO FISICO AVANZA, POI SI LEGGE, POI LE ENTITA' AGISCONO. Tre righe in quest'ordine
+         * e non in un altro:
+         *  - il mondo avanza di un tick (mezzo secondo), con i corpi che fanno quello che
+         *    l'entita' aveva chiesto il tick prima;
+         *  - ogni entita' LEGGE dal proprio corpo dove e' finita e da che parte guarda: e' qui che
+         *    il mondo e' unico, perche' nessun altro scrive piu' la posizione;
+         *  - solo adesso le entita' guardano, pensano e scelgono - cioe' decidono guardando il
+         *    mondo da dove il loro corpo le ha portate, non da dove credevano di essere.
          */
-        allestisciPalco(alive);
-        src.body.Palco.avanza(TICK_MS / 1000.0);
+        allestisciMondo(alive);
+        src.body.MondoFisico.avanza(TICK_MS / 1000.0);
+        for (entity e : alive) {
+            e.leggiDalCorpo();
+        }
         Collections.shuffle(alive, rng); // ordine casuale: nessuna entita' e' sempre "prima"
         for (entity e : alive) {
             if (e.isAlive()) {
@@ -341,48 +348,36 @@ public class Simulation {
     }
 
     /**
-     * Chi sale sul palco: prima l'entita' selezionata nella finestra 3D (si guarda camminare per
-     * davvero), poi le piu' GIOVANI - sono quelle che stanno ancora imparando, cioe' quelle per
-     * cui la differenza tra una formula e la fisica vera conta di piu'.
+     * Mette nel mondo fisico TUTTE le entita' vive, senza budget e senza capienza.
+     *
+     * Qui c'era la scelta di chi "saliva sul palco": un budget di tempo per tick decideva quante
+     * ragdoll stavano in fisica, e le altre camminavano con una formula. Era necessario finche' la
+     * fisica era un distributore di metri; in un mondo unico e' una contraddizione - due entita'
+     * nella stessa radura, una che inciampa nelle buche e l'altra che le attraversa, non vivono
+     * nello stesso mondo e non si possono confrontare. Quindi o ci sono tutte o la fisica e'
+     * spenta per tutte (ActionWeights.fisicaViva).
+     *
+     * IL PREZZO E' DICHIARATO: a velocita' alte il tick dura meno del tempo che la fisica chiede,
+     * e la simulazione va piu' lenta della velocita' richiesta. Rallentare e' la cosa onesta;
+     * togliere corpi dalla fisica no.
+     *
+     * La posizione serve solo alla prima messa in campo (vedi MondoFisico.Candidato): a ogni tick
+     * la si passa di nuovo perche' le entita' nuove arrivano in ogni momento, ma per chi e' gia'
+     * nel mondo viene ignorata.
      */
-    private static void allestisciPalco(List<entity> alive) {
+    private static void allestisciMondo(List<entity> alive) {
         if (ActionWeights.fisicaViva <= 0) {
-            // spenta: il palco si svuota da solo quando il budget e' zero
-            src.body.Palco.allestisci(java.util.List.of(), 0);
+            src.body.MondoFisico.allestisci(java.util.List.of());
             return;
         }
-        /*
-         * IL BUDGET, non una capienza scritta a mano. Un tick vale mezzo secondo di mondo, quindi
-         * a velocita' normale ha 500 ms di tempo vero e la fisica di tutta la popolazione (~116 ms
-         * per 380 corpi) ci sta dentro. A x50 il tick ha 10 ms e ci sta solo qualcuno: ci salgono
-         * la selezionata e le piu' giovani, e le altre continuano col passo geometrico. La
-         * capienza la calcola il palco dal costo che MISURA, non da una costante.
-         */
-        double budgetMs = TICK_MS / timeScale * QUOTA_FISICA;
-        List<entity> ordinate = new ArrayList<>(alive);
-        int selezionata = src.gui.Gui.entitaSelezionata();
-        ordinate.sort((a, b) -> {
-            boolean sa = a.getId() == selezionata, sb = b.getId() == selezionata;
-            if (sa != sb) {
-                return sa ? -1 : 1;
-            }
-            return Integer.compare(a.getAge(), b.getAge());
-        });
-        List<src.body.Palco.Candidato> candidati = new ArrayList<>(ordinate.size());
-        for (entity e : ordinate) {
-            candidati.add(new src.body.Palco.Candidato(e.getId(), e.getAdultBody(), e.getGait(),
-                    e.statoDelCorpo(), e.sterzoDelCorpo()));
+        List<src.body.MondoFisico.Candidato> candidati = new ArrayList<>(alive.size());
+        for (entity e : alive) {
+            candidati.add(new src.body.MondoFisico.Candidato(e.getId(), e.getAdultBody(),
+                    e.getGait(), e.statoDelCorpo(), e.sterzoDelCorpo(),
+                    e.getExactX(), e.getExactZ(), e.getFacing()));
         }
-        src.body.Palco.allestisci(candidati, budgetMs);
+        src.body.MondoFisico.allestisci(candidati);
     }
-
-    /**
-     * Quanta parte del tempo di un tick puo' prendersi la fisica viva. Il resto serve alle azioni
-     * delle entita', alla flora e al campionamento: se la fisica si prendesse tutto, la
-     * simulazione andrebbe piu' lenta della velocita' richiesta e il mondo rallenterebbe invece
-     * di mettere meno corpi in fisica.
-     */
-    public static volatile double QUOTA_FISICA = 0.6;
 
     private static void flushBirths() {
         List<entity> born;

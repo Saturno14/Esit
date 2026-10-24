@@ -1,6 +1,5 @@
 com\saturno14\esit\graphics\world\VoxelMaterial.class
 src\gui\SchedaEntita$Parente.class
-src\body\PalcoSelfTest.class
 src\Commands$1.class
 src\gui\PannelloComandi$6.class
 com\saturno14\esit\graphics\flora\FloraField.class
@@ -9,7 +8,7 @@ src\Experiment.class
 src\world$cell.class
 src\body\Gaze$YawDof.class
 src\body\Locomotion$Profile.class
-src\body\Palco.class
+src\body\MondoFisicoSelfTest.class
 src\genetics\GeneDefinition.class
 src\gui\PannelloEntita.class
 src\body\PhysicsNatives.class
@@ -60,7 +59,6 @@ src\body\BodyTool.class
 com\saturno14\esit\graphics\flora\FloraField$Tree.class
 com\saturno14\esit\graphics\render\Renderer.class
 src\entity.class
-src\body\Palco$Posto.class
 src\gui\PannelloComandi$3.class
 src\gui\PannelloEntita$Modello.class
 com\saturno14\esit\graphics\mesh\VoxelMesher.class
@@ -96,7 +94,6 @@ com\saturno14\esit\graphics\world\WaterSurface.class
 src\body\Dof.class
 com\saturno14\esit\graphics\render\MaterialTextures$Noise.class
 src\gui\Tema.class
-src\body\Palco$Stato.class
 com\saturno14\esit\graphics\engine\Shader.class
 com\saturno14\esit\graphics\apple\AppleTexture.class
 src\body\MondoFisico$Posizione.class
@@ -126,6 +123,7 @@ src\genetics\BodyPlan$Seg.class
 src\gui\PannelloComandi$1.class
 src\gui\ControlFrame$1.class
 src\genetics\DominanceResolver.class
+src\body\MondoFisicoSelfTest$Esito.class
 src\TerrainGenerator.class
 src\brain$Neuron.class
 src\body\Locomotion.class
@@ -134,7 +132,6 @@ src\Flora$Apple.class
 src\body\GaitEvaluator$1Case.class
 src\body\MondoFisico$Posto.class
 src\body\Gait$Osc.class
-src\body\Palco$Istantanea.class
 src\brain$Layer.class
 src\Entity_manager.class
 src\genetics\EntityStats.class
@@ -160,7 +157,6 @@ src\genetics\Genome.class
 src\body\Automaton.class
 src\brain.class
 com\saturno14\esit\graphics\flora\FloraField$Apple.class
-src\body\Palco$Candidato.class
 src\Commands$Command.class
 src\genetics\LineageInfo.class
 src\gui\SchedaEntita$Barre.class

@@ -1054,12 +1054,25 @@ public class entity {
         ok[ACT_SLEEP] = true;
         // avanti e indietro: si guarda dove si finirebbe davvero, con il passo di questo corpo
         double cost = moveCost();
+        /*
+         * CON LA FISICA VIVA CAMMINARE E' SEMPRE POSSIBILE, basta il fiato. Qui c'erano tre
+         * rifiuti scritti a mano - fuori dalla mappa, in acqua, dentro un tronco - che dicevano
+         * all'entita' dove NON si va. Nel mondo unico quei tre sono fatti fisici: il bordo e' un
+         * muro, il tronco e' un cilindro solido e l'acqua ha la sua spinta. Lasciare anche il
+         * rifiuto vorrebbe dire dire due volte la stessa cosa, e la seconda volta e' un oracolo:
+         * un'entita' saprebbe che l'acqua non si attraversa senza averci mai provato.
+         */
         for(int sign = -1; sign <= 1; sign += 2){
-            double step = stepLength() * sign;
-            int nx = cellOf(exactX + Math.sin(facing) * step);
-            int nz = cellOf(exactZ + Math.cos(facing) * step);
-            boolean can = stamina >= cost && nx >= 0 && nx < dim && nz >= 0 && nz < dim
-                    && !world.isWaterColumn(nx, nz);
+            boolean can;
+            if(ActionWeights.fisicaViva > 0){
+                can = stamina >= cost;
+            }else{
+                double step = stepLength() * sign;
+                int nx = cellOf(exactX + Math.sin(facing) * step);
+                int nz = cellOf(exactZ + Math.cos(facing) * step);
+                can = stamina >= cost && nx >= 0 && nx < dim && nz >= 0 && nz < dim
+                        && !world.isWaterColumn(nx, nz);
+            }
             ok[sign > 0 ? ACT_FORWARD : ACT_BACK] = can;
         }
         ok[ACT_TURN_RIGHT] = stamina >= TURN_COST;
@@ -1181,16 +1194,26 @@ public class entity {
     }
 
     /**
-     * Un passo nel verso del muso (sign = +1 avanti, -1 indietro). La DISTANZA non e' piu' una cella fissa: e' quanta
-     * strada il corpo riesce a fare in un'azione con la sua andatura (vedi stepLength), quindi
-     * gambe lunghe e andatura efficace portano piu' lontano a parita' di azioni. La cella resta
-     * il riferimento del mondo (terreno, acqua, mele) ed e' sempre il pavimento della posizione
-     * continua.
+     * Chiede al corpo di camminare (sign = +1 avanti, -1 indietro).
+     *
+     * CON LA FISICA VIVA QUESTA RIGA NON SPOSTA NIENTE. L'entita' segna l'intenzione e paga il
+     * fiato; muovere le gambe lo fa il mondo fisico, e dove l'entita' e' finita si LEGGE dal suo
+     * corpo alla fine del tick (vedi leggiDalCorpo). E' la differenza fra un mondo e un palco: qui
+     * nessuno distribuisce metri, c'e' un corpo su un terreno.
+     *
+     * INDIETRO VALE COME AVANTI, ed e' una conseguenza dichiarata e non una scelta: l'andatura e'
+     * un oscillatore che manda il corpo in una sola direzione, e un corpo che sa anche tornare
+     * indietro non esiste. Quindi ACT_BACK e' la stessa richiesta di ACT_FORWARD - "muovi le
+     * gambe" - e il corpo va dove il suo passo lo porta. Il giorno in cui un'andatura trovera' il
+     * passo a ritroso, la differenza comparira' da se'.
+     *
+     * Senza la fisica viva resta la vecchia strada geometrica: un passo di stepLength metri, con i
+     * rifiuti scritti a mano (bordo, acqua, tronco) che nel mondo fisico sono ostacoli veri.
      */
     private void walk(double sign){
         /*
          * L'INTENZIONE SI SEGNA SUBITO, prima di sapere se il passo riuscira'. E' quella che fa
-         * muovere le gambe nel mondo fisico (vedi Palco.Candidato.cammina), e deve essere
+         * muovere le gambe nel mondo fisico (vedi MondoFisico.Candidato), e deve essere
          * l'INTENZIONE e non il risultato: legandola a isWalking(), che vuol dire "si e' mosso",
          * nasce un circolo vizioso misurato il 24/10/2026 - zero metri dalla fisica, quindi non
          * sta camminando, quindi il palco gli ferma le gambe, quindi zero metri per sempre. Nel
@@ -1199,31 +1222,13 @@ public class entity {
          * quello che significa imparare a camminare.
          */
         lastWalkWishTick = Simulation.getTick();
-        int dim = world.getDim();
-        /*
-         * SE E' SUL PALCO, IL PASSO LO DECIDE LA FISICA. Non la formula
-         * (velocita' misurata / velocita' di riferimento) ma i metri che la sua ragdoll ha
-         * davvero coperto in questo tick di mondo: se e' caduta, il passo e' zero e l'entita'
-         * resta dov'e'. Il tetto e' la falcata geometrica, cosi' il credito dei tick in cui non
-         * si e' mossa non diventa un salto (vedi src.body.Palco.consuma).
-         *
-         * Indietro vale quanto avanti: la ragdoll cammina in una sola direzione, e un controllore
-         * che sa anche tornare indietro non c'e'. E' una approssimazione dichiarata, non una
-         * misura.
-         */
-        double passo = stepLength();
         if(ActionWeights.fisicaViva > 0){
-            double reale = src.body.Palco.consuma(EntityID, passo);
-            if(reale >= 0){
-                passo = reale;
-            }
-        }
-        double step = passo * sign;
-        if(step == 0){
-            // non si e' mosso di un centimetro: il tentativo e' comunque costato fiato
+            // il passo lo fa il corpo: qui si paga soltanto il fiato di provarci
             spend(moveCost());
             return;
         }
+        int dim = world.getDim();
+        double step = stepLength() * sign;
         double tx = exactX + Math.sin(facing) * step;
         double tz = exactZ + Math.cos(facing) * step;
         int nx = cellOf(tx);
@@ -1263,6 +1268,40 @@ public class entity {
         // guardare da una parte e camminare verso un'altra.
         gaitPhase += secondsPerAction();   // il ciclo dell'andatura avanza solo quando cammina
         lastMoveTick = Simulation.getTick();
+        syncCell();
+    }
+
+    /**
+     * DOVE IL CORPO E' ARRIVATO. La riga che rende il mondo unico: con la fisica viva la
+     * simulazione non sposta l'entita', la legge dal suo corpo - posizione E direzione.
+     *
+     * Si chiama una volta per tick, dopo che il mondo fisico e' avanzato e prima che le entita'
+     * agiscano (vedi Simulation.tick). Non fa niente per chi non e' nel mondo fisico.
+     *
+     * IL BORDO DEL MONDO E' UN MURO, e lo si fa qui con due minimi e due massimi: la mappa delle
+     * altezze finisce, e fuori non c'e' terreno da cui prendere la quota ne' celle da guardare.
+     * E' l'unico limite che la simulazione impone al corpo, e non e' un aiuto: chi spinge contro
+     * il bordo non avanza.
+     *
+     * I METRI SI CONTANO DA QUI, cioe' da QUANTO IL CORPO SI E' SPOSTATO - anche se si e' spostato
+     * cadendo o scivolando giu' da un pendio. Prima si contavano i passi riusciti, che e' una cosa
+     * diversa e piu' gentile: lo spostamento e' quello che il mondo ha visto.
+     */
+    void leggiDalCorpo(){
+        if(ActionWeights.fisicaViva <= 0){ return; }
+        src.body.MondoFisico.Posizione p = src.body.MondoFisico.posizioneDi(EntityID);
+        if(p == null){ return; }
+        double limite = world.getDim() * CELL_METERS - 1e-6;
+        double nx = Math.max(0, Math.min(limite, p.x()));
+        double nz = Math.max(0, Math.min(limite, p.z()));
+        double spostamento = Math.hypot(nx - exactX, nz - exactZ);
+        if(spostamento > 1e-4){
+            distanzaPercorsa += spostamento;
+            lastMoveTick = Simulation.getTick();
+        }
+        exactX = nx;
+        exactZ = nz;
+        facing = Vision.wrap(p.facing());
         syncCell();
     }
 
@@ -1357,14 +1396,11 @@ public class entity {
         lastTurnWishTick = Simulation.getTick();
         lastTurnSign = Math.signum(delta);
         if(!spend(TURN_COST)){ return; }
-        double giro = delta;
         if(ActionWeights.fisicaViva > 0){
-            double reale = src.body.Palco.consumaImbardata(EntityID, Math.abs(delta));
-            if(reale >= 0){
-                giro = Math.signum(delta) * reale;
-            }
+            // come il passo: la direzione non si scrive, si legge dal corpo (leggiDalCorpo)
+            return;
         }
-        facing = Vision.wrap(facing + giro);
+        facing = Vision.wrap(facing + delta);
     }
 
     /** Ultimo tick in cui ha SCELTO di girare, riuscendoci o no. Vedi turn(). */
@@ -1372,7 +1408,7 @@ public class entity {
     /** Da che parte ha chiesto di girare: -1 a sinistra, +1 a destra. */
     private volatile double lastTurnSign = 0;
 
-    /** Se sta PROVANDO a girare: lo usa il palco per sapere che sterzo dare al corpo. */
+    /** Se sta PROVANDO a girare: lo usa il mondo fisico per sapere che sterzo dare al corpo. */
     public boolean vuoleGirare(){
         return Simulation.getTick() - lastTurnWishTick <= 2;
     }
@@ -1411,7 +1447,8 @@ public class entity {
     /**
      * I METRI DAVVERO PERCORSI IN VITA. Non la velocita' misurata dalla fisica su un pavimento
      * piatto: quanto terreno questo corpo ha coperto in questo mondo, con gli alberi in mezzo e
-     * con il suo cervello a decidere dove andare. E' la prova che il registratore di movimento
+     * con il suo cervello a decidere dove andare. Con la fisica viva li conta leggiDalCorpo, cioe'
+     * sono spostamento vero e non passi riusciti. E' la prova che il registratore di movimento
      * conserva (vedi src.body.GaitArchive).
      */
     private volatile double distanzaPercorsa;
@@ -1431,7 +1468,7 @@ public class entity {
 
     /**
      * Se sta PROVANDO a camminare, che non e' la stessa cosa di {@link #isWalking()} (quello dice
-     * se si e' mosso). Lo usa il palco per decidere se le gambe si muovono: un corpo che ci prova
+     * se si e' mosso). Lo usa il mondo fisico per decidere se le gambe si muovono: chi ci prova
      * e non riesce ad avanzare di un centimetro deve continuare a muovere le gambe, altrimenti
      * non imparera' mai.
      */
@@ -1441,11 +1478,11 @@ public class entity {
 
     /**
      * In che stato questa entita' sta tenendo il proprio corpo, per la fisica viva (vedi
-     * src.body.Palco.Stato). Dormire non e' "stare ferma": e' non dare piu' comandi al corpo.
+     * src.body.MondoFisico.Stato). Dormire non e' "stare ferma": e' non dare piu' comandi al corpo.
      */
-    public src.body.Palco.Stato statoDelCorpo(){
+    public src.body.MondoFisico.Stato statoDelCorpo(){
         if(isSleeping()){
-            return src.body.Palco.Stato.DORME;
+            return src.body.MondoFisico.Stato.DORME;
         }
         /*
          * CHI VUOLE GIRARE STA MUOVENDO IL CORPO quanto chi vuole camminare: girare e'
@@ -1454,7 +1491,7 @@ public class entity {
          * niente, e nessuna entita' riuscirebbe mai a cambiare direzione.
          */
         return vuoleMuoversi() || vuoleGirare()
-                ? src.body.Palco.Stato.CAMMINA : src.body.Palco.Stato.FERMA;
+                ? src.body.MondoFisico.Stato.CAMMINA : src.body.MondoFisico.Stato.FERMA;
     }
 
     /**
@@ -1473,11 +1510,11 @@ public class entity {
          * e si vedeva un corpo in piedi mentre nel mondo fisico strisciava. Qui si prende la
          * trasformata di ogni pezzo come sta in Jolt: se si trascina con un arto si vede
          * trascinarsi, se cade in continuazione si vede cadere, se dorme per terra sta per terra.
-         * L'unica cosa che non viene dalla fisica e' l'imbardata, che appartiene alla simulazione
-         * (vedi Palco.posaDi).
+         * Nel mondo unico anche l'imbardata viene dal corpo, quindi non si gira piu' niente: la
+         * posa arriva intera come sta nel mondo (vedi MondoFisico.posaDi).
          */
         if(ActionWeights.fisicaViva > 0){
-            src.body.BodyPose fisica = src.body.Palco.posaDi(EntityID, facing);
+            src.body.BodyPose fisica = src.body.MondoFisico.posaDi(EntityID);
             if(fisica != null){
                 return fisica;
             }

@@ -130,7 +130,7 @@ public final class ActionWeights {
     public static volatile double svezzamentoSoglia;
 
     /**
-     * LA FISICA VIVA: 1 = accesa, 0 = spenta (vedi src.body.Palco).
+     * LA FISICA VIVA: 1 = accesa, 0 = spenta (vedi src.body.MondoFisico).
      *
      * Accesa, le entita' si muovono di quanto la loro ragdoll si e' mossa DAVVERO in quel mezzo
      * secondo di mondo: le gambe e le braccia spingono contro il pavimento, e chi non riesce a

@@ -496,7 +496,7 @@ public final class JoltRagdoll {
     /**
      * Copia fuori le trasformate delle parti rigide. Separato da {@link #posaDa} perche' LEGGERE
      * il mondo fisico si puo' fare solo dal thread della fisica, mentre comporre la posa e' puro
-     * calcolo e lo puo' fare chiunque, anche il disegno (vedi Palco e la sua istantanea).
+     * calcolo e lo puo' fare chiunque, anche il disegno (vedi MondoFisico e la sua istantanea).
      */
     public void leggiTrasformate(V3[] pos, Rot[] rot) {
         BodyInterface bi = world.bodies();

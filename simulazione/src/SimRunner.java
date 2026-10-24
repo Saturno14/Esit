@@ -51,13 +51,10 @@ public class SimRunner {
                 // (vedi ActionWeights.n_moveMate). 0 = spento, come prima.
                 ActionWeights.n_moveMate = Double.parseDouble(args[i].substring(9));
             } else if (args[i].startsWith("fisica=")) {
-                // fisica=0: la fisica torna a essere un oracolo e il passo una formula. 1 =
-                // accesa, e quante entita' ci stanno lo decide il budget di tempo del tick
-                // (vedi src.body.Palco e Simulation.QUOTA_FISICA)
+                // fisica=0: la fisica torna a essere un oracolo, il passo una formula e la
+                // direzione un comando gratuito. 1 = accesa, e ci stanno TUTTE le entita'
+                // (vedi src.body.MondoFisico): in un mondo unico non si scelgono i corpi.
                 ActionWeights.fisicaViva = Double.parseDouble(args[i].substring(7));
-                // qui nessuno guarda: la fisica se la prende tutta, altrimenti un lotto di semi
-                // misurerebbe sei entita' in fisica su trecento (vedi Palco.senzaBudget)
-                src.body.Palco.senzaBudget = ActionWeights.fisicaViva > 0;
             } else if (args[i].startsWith("svezzamento=")) {
                 // svezzamento=0: chi non sa ancora camminare paga il consumo pieno, come prima
                 ActionWeights.svezzamento = Double.parseDouble(args[i].substring(12));
@@ -99,7 +96,7 @@ public class SimRunner {
         System.out.println(src.body.Locomotion.practiceStats());
         System.out.println(src.body.GaitArchive.stats());
         if (ActionWeights.fisicaViva > 0) {
-            System.out.println(src.body.Palco.stats());
+            System.out.println(src.body.MondoFisico.stats());
         }
         System.out.println("Entita' vive: " + Entity_manager.Entity_count());
 
