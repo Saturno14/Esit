@@ -2124,3 +2124,88 @@ che l'utente ha chiesto di vedere:
 
 PalcoSelfTest 63/63, BodySelfTest 335/335, VisionSelfTest 632/632, PhysicsSmokeTest OK.
 BodyPlanTest resta rosso da prima (10 su 2421, voce 20).
+
+==========================================================================================
+24. IL MONDO NON RIALZA NESSUNO (25/10/2026)
+==========================================================================================
+
+L'utente, dopo la voce 23: "mi devi togliere la questione che ogni 6 tick le entita' vengono
+rimesse in piedi, morire perche' non si riesce ad arrivare al cibo camminando fa parte della
+crescita delle entita', solo chi anche stando per terra riesce a recuperare del cibo allora puo
+progredire".
+
+Fatto. E' la terza volta in quattro voci che una cosa che avevo messo "perche' altrimenti la
+popolazione crolla" era una pezza che falsava la misura, e questa l'avevo perfino SCRITTA nella
+voce 23 come il buco piu' grosso ("li risollevo io, il corpo non impara ad alzarsi") lasciandola
+dentro.
+
+------------------------------------------------------------------------------------------
+1. COSA E' SPARITO
+------------------------------------------------------------------------------------------
+Palco.TICK_A_TERRA non esiste piu': non e' un interruttore spento, e' una costante cancellata,
+perche' un interruttore sarebbe un invito a rimetterla. Chi e' abbassato e fermo resta abbassato
+e fermo, sveglio o addormentato. Il contatore dei collassi resta - dice quanto la ricerca
+dell'andatura sta sbagliando - ma e' un conteggio, non un intervento.
+
+QUELLO CHE RESTA A CHI E' A TERRA e' tutto quello che aveva prima tranne il miracolo: i metri si
+contano IN QUALUNQUE POSA (e' la correzione della voce 22, quella sui corpi a un solo arto di
+appoggio che si trascinano a 0.84 m/s), quindi un corpo che da terra riesce a tirarsi avanti
+accumula credito come chiunque altro e arriva al cibo. E' esattamente la frase dell'utente: solo
+chi anche stando per terra recupera del cibo progredisce. Chi non ci riesce muore di fame - e non
+e' una punizione scritta nel palco, e' la conseguenza di non saper fare la cosa per cui il corpo
+serve.
+
+------------------------------------------------------------------------------------------
+2. QUANTO COSTA, MISURATO
+------------------------------------------------------------------------------------------
+3 semi x 3000 tick, stesso codice a parte il rimontaggio:
+
+    braccio                   semi 1/2/3             tot      m/s veri      gen. massima
+    senza fisica              103n/62v 85n/22v 112n/35v  300n 119v   -       5 5 5
+    col rimontaggio            34n/14v 53n/ 3v  81n/27v  168n  44v  .043-.053  5 4 5
+    nessuno viene rialzato     21n/ 7v 61n/18v  23n/ 4v  105n  29v  .020-.032  3 7 3
+
+Il rimontaggio valeva 105 -> 168 nascite e 29 -> 44 vivi: un terzo della popolazione viveva per
+un intervento del mondo e non per il proprio corpo. Adesso quel terzo non c'e' piu'.
+
+NESSUN SEME SI E' ESTINTO, ed era la cosa da verificare: 7, 18 e 4 vive a tremila tick, con
+popolazioni medie di 38, 44 e 34. La pressione morde, non azzera.
+
+IL SEME 2 E' ANDATO MEGLIO SENZA L'AIUTO: 53 -> 61 nascite, 3 -> 18 vive, e GENERAZIONE 7, la
+stirpe piu' profonda di qualunque braccio misurato finora (tutti gli altri si fermano a 5). Un
+seme non dimostra niente, ma e' il primo segno che la direzione che l'utente ha chiesto non e'
+solo piu' onesta: togliere il paracadute puo' far SELEZIONARE meglio. I semi 1 e 3 vanno
+all'opposto (generazione 3 contro 5): quando la popolazione resta piccola le generazioni non
+hanno il tempo di accumularsi. Serve il lotto a dodici semi per sapere quale dei due e' il caso.
+
+LA VELOCITA' VERA SI E' DIMEZZATA (0.043-0.053 -> 0.020-0.032 m/s) e il motivo e' aritmetico: un
+corpo caduto prima veniva rimesso in piedi e tornava a produrre metri, adesso contribuisce zero
+per il resto della sua vita. Quel dimezzamento E' la misura di quanta parte della locomozione
+veniva dal mondo invece che dai corpi.
+
+LA MEDIANA DELLE PROVE E' SCESA (0.812/0.697/0.772 -> 0.534/0.473/0.366 m/s). Attenzione a come
+si legge: e' la mediana dei corpi MISURATI nell'oracolo, non una perdita di capacita'. Con meno
+entita' vive e piu' giovani si misurano piu' corpi di prima generazione e meno andature allenate.
+Da ricontrollare quando il lotto sara' a dodici.
+
+------------------------------------------------------------------------------------------
+3. LA REGOLA GENERALE, perche' non la rifaccia una quarta volta
+------------------------------------------------------------------------------------------
+Una PEZZA CHE AIUTA I CORPI SCADENTI e' della stessa famiglia di un controllore imposto: decide
+da fuori chi ha diritto di funzionare. Balance lo faceva nel controllo, UPRIGHT_BONUS nel
+punteggio, il rimontaggio nel mondo. Tutti e tre li avevo messi io, tutti e tre li ha fatti
+togliere l'utente, e in tutti e tre i casi la misura era gonfiata esattamente dove doveva mordere.
+Il segnale da cercare, la prossima volta: se una cifra migliora grazie a un intervento del mondo
+e non a una proprieta' del corpo, quella cifra non misura il corpo.
+
+------------------------------------------------------------------------------------------
+4. VERIFICHE
+------------------------------------------------------------------------------------------
+PalcoSelfTest passa da 63 a 66, e le tre nuove stanno lì perche' un giorno qualcuno sara' tentato
+di rimettere la pezza:
+ - un corpo sveglio e fermo crolla (da 0.380 a 0.054 m) - cioe' la prova e' valida;
+ - dopo 40 tick a terra NESSUNO l'ha rimesso in piedi (prima questa verifica fallirebbe);
+ - un corpo a terra che non si trascina non accumula metri.
+
+PalcoSelfTest 66/66, BodySelfTest 335/335, VisionSelfTest 632/632, PhysicsSmokeTest OK.
+BodyPlanTest resta rosso da prima (10 su 2421, voce 20).

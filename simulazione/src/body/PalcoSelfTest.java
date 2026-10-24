@@ -25,6 +25,9 @@ import java.util.Random;
 public final class PalcoSelfTest {
 
     private static int fatte = 0;
+    /** Quanti metri si concedono a un corpo crollato prima di chiamarlo movimento (vedi sotto). */
+    private static final double PROGRESSO_CROLLO = 0.5;
+
     private static int passate = 0;
 
     private PalcoSelfTest() {
@@ -281,16 +284,15 @@ public final class PalcoSelfTest {
         // ---------------------------------------------------------------- dormire
         /*
          * CHI DORME NON DA' COMANDI AL CORPO: motori spenti, e se cade resta caduto. Due corpi
-         * identici, uno sveglio e fermo e uno che dorme, per piu' tick di quanti servono al mondo
-         * per rimettere in piedi chi e' a terra: quello che dorme deve finire piu' basso e
-         * restarci.
+         * identici, uno sveglio e fermo e uno che dorme, per abbastanza tick da far cadere
+         * entrambi: quello che dorme deve smettere di seguire i comandi.
          */
         Palco.chiudi();
         Palco.allestisci(List.of(
                 new Palco.Candidato(910, corpo, andatura, Palco.Stato.FERMA),
                 new Palco.Candidato(911, corpo, andatura, Palco.Stato.DORME)), 1);
         double altezzaSveglio = 0, altezzaDorme = 0;
-        for (int t = 0; t < Palco.TICK_A_TERRA + 10; t++) {
+        for (int t = 0; t < 16; t++) {
             Palco.avanza(src.Simulation.TICK_MS / 1000.0);
         }
         BodyPose sveglio = Palco.posaDi(910, 0);
@@ -319,6 +321,43 @@ public final class PalcoSelfTest {
                 "tronco: sveglio a %.3f m, dormendo a %.3f m; scarto dagli angoli comandati "
                         + "%.3f contro %.3f rad%n",
                 altezzaSveglio, altezzaDorme, scartoSveglio, scartoDorme);
+
+        // ------------------------------------------------- nessuno viene rimesso in piedi
+        /*
+         * CHI CADE RESTA CADUTO. Il palco rimetteva in piedi dal mondo un corpo abbassato e fermo
+         * dopo sei tick; toglierlo e' una decisione dell'utente del 25/10/2026 (morire perche'
+         * non si arriva al cibo fa parte dell'evoluzione delle entita'), e questa verifica
+         * esiste perche' un giorno qualcuno sara' tentato di rimetterla.
+         * Un corpo sveglio e FERMO crolla - e' misurato poco sopra - quindi: lo si tiene sul
+         * palco per molti piu' tick di quanti bastavano al vecchio rimontaggio, e deve essere
+         * ancora giu'. Prima di questa modifica sarebbe tornato alla quota di partenza.
+         */
+        Palco.chiudi();
+        Palco.allestisci(List.of(
+                new Palco.Candidato(920, corpo, andatura, Palco.Stato.FERMA)), 1);
+        String tronco = corpo.links().get(0).name;
+        Palco.avanza(src.Simulation.TICK_MS / 1000.0);
+        BodyPose primaPosa = Palco.posaDi(920, 0);
+        double quotaPartenza = primaPosa == null ? 0 : primaPosa.get(tronco).origin().y();
+        double quotaMinima = quotaPartenza;
+        for (int t = 0; t < 40; t++) {
+            Palco.avanza(src.Simulation.TICK_MS / 1000.0);
+            BodyPose ora = Palco.posaDi(920, 0);
+            if (ora != null) {
+                quotaMinima = Math.min(quotaMinima, ora.get(tronco).origin().y());
+            }
+        }
+        BodyPose ultimaPosa = Palco.posaDi(920, 0);
+        double quotaFinale = ultimaPosa == null ? 0 : ultimaPosa.get(tronco).origin().y();
+        check(quotaPartenza > 0 && quotaMinima < quotaPartenza * GaitEvaluator.FALL_RATIO,
+                String.format(Locale.ROOT, "un corpo sveglio e fermo crolla (da %.3f a %.3f m)",
+                        quotaPartenza, quotaMinima));
+        check(quotaFinale < quotaPartenza * GaitEvaluator.FALL_RATIO, String.format(Locale.ROOT,
+                "dopo 40 tick a terra nessuno l'ha rimesso in piedi (quota %.3f, partenza %.3f m)",
+                quotaFinale, quotaPartenza));
+        double metriDaTerra = Palco.consuma(920, 1e9);
+        check(metriDaTerra < PROGRESSO_CROLLO, String.format(Locale.ROOT,
+                "un corpo a terra che non si trascina non accumula metri (%.3f m)", metriDaTerra));
 
         System.out.printf(Locale.ROOT, "in 10 s di mondo: camminando %.2f m, riposando %.2f m%n",
                 camminando, fermo);

@@ -108,17 +108,25 @@ Aggiornato il 24/10/2026. Le voci chiuse stanno in STATO_LAVORO.txt, non qui.
       Tre semi non dichiarano niente e il confronto interessante non e' piu' "fisica si/no" ma
       "quanto manca ai 300". Da chiudere a 12 semi, e da rifare il seme 4 (l'unico in cui la
       fisica viva aveva fatto meglio) ora che il credito e' onesto.
-- [ ] **RIALZARSI DA TERRA E' IL BUCO PIU' GROSSO, e ora ha un numero.** Nel palco un corpo
-      abbassato e fermo per 6 tick viene rimesso in piedi DAL MONDO: e' un trucco, il corpo non
-      impara ad alzarsi. Quanto pesa: senza il rimontaggio la popolazione va da 168 nascite a
-      107 e dai 44 vivi a 22 (voce 23), cioe' un terzo della popolazione dipende da un trucco -
-      e il divario che resta coi 300 senza fisica e' in buona parte questo.
-      Rialzarsi e' un'abilita' che si puo' imparare, ma per impararla deve valere qualcosa nel
-      punteggio, e oggi il punteggio guarda solo l'avanzare: chi e' per terra non ha nessun
-      motivo per muoversi in un modo invece che in un altro. Un punteggio che premia il tornare
-      alti SENZA premiare lo stare alti (sarebbe di nuovo UPRIGHT_BONUS, l'errore della voce 22)
-      e' la cosa delicata da progettare: forse "prove che partono da terra", cioe' un secondo
-      compito, invece di un altro termine nello stesso punteggio.
+      AGGIORNATO il 25/10/2026, senza il rimontaggio (voce 24): 105 nascite e 29 vivi, m/s veri
+      0.020-0.032. La domanda per il lotto a dodici e' diventata piu' interessante di "quanto si
+      perde": il seme 2 e' andato meglio SENZA l'aiuto e ha raggiunto la generazione 7, i semi 1 e
+      3 si sono fermati alla 3. Se e' il caso o se togliere il paracadute seleziona meglio, tre
+      semi non lo dicono.
+- [ ] **RIALZARSI DA TERRA: ora e' un'abilita' da imparare, non una concessione.** Il
+      rimontaggio dal mondo e' stato CANCELLATO il 25/10/2026 su richiesta dell'utente (voce 24):
+      chi cade resta caduto, e progredisce solo chi arriva al cibo anche da terra. Costo misurato:
+      168 -> 105 nascite, 44 -> 29 vivi su tre semi, velocita' vera dimezzata. Nessun seme si e'
+      estinto, e il seme 2 e' andato MEGLIO senza l'aiuto (53 -> 61 nascite, 3 -> 18 vive,
+      generazione 7 contro il 5 di tutti gli altri bracci).
+      Quello che manca e' il compito: chi e' per terra non ha nessun motivo per muoversi in un
+      modo invece che in un altro, perche' il punteggio guarda solo l'avanzare. Un termine che
+      premi il TORNARE alti senza premiare lo STARE alti sarebbe di nuovo UPRIGHT_BONUS (l'errore
+      della voce 22): la strada giusta e' probabilmente un SECONDO COMPITO - prove che partono
+      da terra, punteggio separato - invece di un altro addendo nello stesso punteggio.
+      NON RIMETTERE IL RIMONTAGGIO: PalcoSelfTest ha tre verifiche che lo vietano, e il motivo e'
+      nella voce 24 (una pezza che aiuta i corpi scadenti decide da fuori chi ha diritto di
+      funzionare, come Balance e come UPRIGHT_BONUS).
 - [ ] **Terreno vero nel mondo fisico.** Il pavimento del palco e' PIATTO, quindi la fisica dice
       come un corpo cammina, non come affronta un gradino. E gli urti fra entita' (il
       combattimento) e le mele restano nella simulazione a griglia: la fisica muove le gambe, non

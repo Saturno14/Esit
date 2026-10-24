@@ -44,9 +44,14 @@ import java.util.Map;
  *  - IL PAVIMENTO E' PIATTO. Il terreno vero (la mappa delle altezze) non e' ancora nel mondo
  *    fisico, quindi il palco dice come un corpo cammina, non come affronta un gradino. Le entita'
  *    continuano a seguire la quota del terreno come prima (vedi entity.syncCell).
- *  - NON SI RIALZA DA SOLO. Un corpo abbassato e fermo per {@link #TICK_A_TERRA} tick viene
- *    rimesso in piedi dal mondo. Rialzarsi e' un'abilita' da imparare, e per impararla serve che
- *    valga qualcosa nel punteggio: oggi non vale niente.
+ *  - NON RIALZA NESSUNO. Chi cade resta caduto, e chi resta caduto non accumula metri: se non
+ *    riesce a trascinarsi fino al cibo, l'entita' muore. E' una scelta dell'utente del
+ *    25/10/2026, e la sua ragione e' che il contrario non e' una semplificazione ma un FALSO:
+ *    rimettere in piedi i corpi dal mondo (lo faceva, dopo sei tick abbassati e fermi) regalava
+ *    un terzo della popolazione a corpi che non sanno stare in piedi, e nascondeva proprio la
+ *    pressione che deve far evolvere il movimento. Rialzarsi resta un'abilita' da imparare - e
+ *    chi non la impara ha ancora una strada: trascinarsi, perche' i metri si contano in
+ *    qualunque posa. Progredisce solo chi arriva al cibo, anche da terra.
  *  - IL MONDO NON LO VEDE. Gli urti fra entita' (il combattimento) e le mele restano nella
  *    simulazione a griglia: la fisica muove le gambe, non risolve gli incontri.
  *
@@ -68,9 +73,6 @@ public final class Palco {
     private static final double CORSIA = 8.0;
     /** Oltre questi metri percorsi si riparte dall'inizio della corsia (tapis roulant). */
     private static final double LONTANANZA = 400.0;
-
-    /** Quanti tick un corpo abbassato E FERMO resta a terra prima di essere rimesso in piedi. */
-    public static volatile int TICK_A_TERRA = 6;
 
     /** Sotto questa frazione dell'altezza di partenza il corpo e' abbassato (come GaitEvaluator). */
     private static final double FALL_RATIO = GaitEvaluator.FALL_RATIO;
@@ -117,6 +119,7 @@ public final class Palco {
         /** Metri percorsi e non ancora consumati da un'azione di movimento. */
         double metriDisponibili;
         V3 ultimoCom;
+        /** Tick consecutivi abbassato e fermo (-1 = in piedi o in movimento). Solo diagnostica. */
         int tickATerra = -1;
         float[] angoli;
         /** Vero se in questo tick si e' mosso davvero. */
@@ -485,33 +488,33 @@ public final class Palco {
          * abbassato per tutta la vita e si sta muovendo. E' la stessa correzione fatta nel
          * punteggio di GaitEvaluator (CRAWL_WEIGHT, UPRIGHT_BONUS), qui nel mondo vivo.
          */
-        if (basso && !p.avanzato && p.stato != Stato.DORME) {
+        if (basso && !p.avanzato) {
+            /*
+             * NESSUNO VIENE RIMESSO IN PIEDI. Qui prima c'era una concessione del mondo: dopo sei
+             * tick abbassato e fermo la ragdoll veniva rimontata in piedi. Toglierla e' una
+             * decisione dell'utente, e il motivo e' che quella concessione valeva un terzo della
+             * popolazione (168 nascite contro 107 su tre semi, 44 vivi contro 22): un terzo delle
+             * entita' viveva perche' il mondo le raccoglieva da terra, non perche' il loro corpo
+             * sapesse muoversi. Cioe' la misura della locomozione era gonfiata esattamente dove
+             * doveva mordere.
+             *
+             * CHE COSA RESTA A CHI E' A TERRA: tutto quello che aveva prima tranne il miracolo.
+             * I metri si contano in QUALUNQUE POSA (vedi la nota sul trascinarsi in testa alla
+             * classe), quindi un corpo che da terra riesce a tirarsi avanti con l'arto che ha
+             * accumula credito come chiunque altro e arriva al cibo. Chi non ci riesce non arriva
+             * al cibo e muore di fame: non e' una punizione scritta qui, e' la conseguenza di non
+             * saper fare la cosa per cui il corpo serve.
+             *
+             * Si continua a CONTARE i collassi, perche' e' la cifra che dice quanto la ricerca
+             * dell'andatura sta sbagliando - ma e' un conteggio, non un intervento.
+             */
             if (p.tickATerra < 0) {
                 collassi++;
                 p.tickATerra = 0;
             } else {
                 p.tickATerra++;
             }
-            if (p.tickATerra >= TICK_A_TERRA) {
-                // rimesso in piedi: vedi la nota sul rialzarsi nell'intestazione
-                ricomincia(p);
-            }
         } else {
-            /*
-             * CHI E' SVEGLIO SI RIALZA, CHI DORME RESTA DOV'E' CADUTO.
-             *
-             * Rialzarsi e' una concessione del mondo e non un'abilita' del corpo (vedi la nota
-             * nell'intestazione): dopo TICK_A_TERRA tick abbassato e fermo, la ragdoll viene
-             * rimontata in piedi. Dormendo non succede, perche' tirare su un corpo che dorme ogni
-             * tre secondi sarebbe il mondo che gli rifa' il letto, e nasconderebbe proprio la
-             * cosa che si vuole vedere.
-             *
-             * MISURATO perche' prima la concessione valeva solo per chi stava provando a
-             * camminare: con il controllo di oggi crolla anche chi sta fermo sveglio, quindi chi
-             * cadeva mentre mangiava restava a terra per sempre, e le nascite su tre semi
-             * scendevano da 63/100/107 a 37/40/30. Un'entita' sveglia che e' per terra prova a
-             * tirarsi su: e' il minimo che un animale fa.
-             */
             p.tickATerra = -1;
         }
 
