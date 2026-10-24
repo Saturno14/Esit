@@ -419,7 +419,14 @@ public final class MondoFisico {
                     if (p.stato == Stato.CAMMINA) {
                         p.fase += PhysicsWorld.TIME_STEP;
                     }
-                    if (p.sensi != null && i % ogniQuanti == 0) {
+                    /*
+                     * I CONTATORI SONO GLOBALI, NON L'INDICE DEL PASSO IN QUESTA CHIAMATA. Da
+                     * quando il mondo avanza a fette di due passi (Simulation.FETTA_S), "i" vale
+                     * sempre 0 o 1: con "i % 4" la spinta dell'acqua sarebbe arrivata a OGNI
+                     * fetta con il dt di quattro passi, cioe' una spinta doppia. passiFisica
+                     * conta i passi di tutta la sessione e non sa quanto e' lunga una chiamata.
+                     */
+                    if (p.sensi != null && passiFisica % ogniQuanti == 0) {
                         p.sensi.read(p.doll, 0, 2 * Math.PI * p.gait.frequency() * p.fase);
                     }
                     if (p.stato != Stato.DORME) {
@@ -429,7 +436,7 @@ public final class MondoFisico {
                         p.angoli = p.gait.targetAngles(p.body, p.fase, p.sensi, u, p.angoli);
                         p.doll.setTargetAngles(p.angoli);
                     }
-                    if (i % GALLEGGIO_OGNI == 0) {
+                    if (passiFisica % GALLEGGIO_OGNI == 0) {
                         acqua(p, quotaAcqua);
                     }
                 }
@@ -449,8 +456,12 @@ public final class MondoFisico {
             return;
         }
         if (corpi > 0) {
-            double ms = (System.nanoTime() - t0) / 1e6 / corpi;
-            // media esponenziale: un tick lento perche' la macchina era occupata non deve
+            // ms per corpo PER TICK DI MONDO (mezzo secondo, 60 passi), qualunque sia la lunghezza
+            // di questa chiamata: cosi' il numero resta confrontabile con le misure delle voci
+            // precedenti (circa 1 ms per corpo per tick)
+            double passiPerTick = src.Simulation.TICK_S / PhysicsWorld.TIME_STEP;
+            double ms = (System.nanoTime() - t0) / 1e6 / corpi * (passiPerTick / passi);
+            // media esponenziale: una chiamata lenta perche' la macchina era occupata non deve
             // far sembrare la fisica il doppio piu' cara di quanto e'
             costoPerCorpoMs = 0.9 * costoPerCorpoMs + 0.1 * ms;
         }
@@ -591,7 +602,7 @@ public final class MondoFisico {
 
     public static synchronized String stats() {
         return String.format(Locale.ROOT,
-                "fisica: %d entita' nel mondo (mondo per %d, %.2f ms per corpo), %d passi, "
+                "fisica: %d entita' nel mondo (mondo per %d, %.2f ms per corpo per tick), %d passi, "
                         + "%.1f m percorsi, %d collassi%s%s",
                 posti.size(), capienzaMondo, costoPerCorpoMs, passiFisica, metriTotali, collassi,
                 montaggiFalliti > 0 ? ", " + montaggiFalliti + " corpi che la fisica non regge" : "",

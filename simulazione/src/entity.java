@@ -202,8 +202,21 @@ public class entity {
 
     public double getSignalB(){ return 0; }
     private double Netreward = 0;
-    private double actionPoints = 0;
     private boolean sleeping = false;
+    /**
+     * IL TEMPO DEL CORPO. A che secondo di mondo questo corpo decidera' la prossima volta: ogni
+     * entita' ha il suo orologio, col periodo che il gene speed le da' (periodoMotorio), e il
+     * mondo la sveglia quando scade - non tutte insieme a ogni tick (vedi Simulation.fetta).
+     */
+    private double prossimaDecisione;
+    /**
+     * L'ULTIMA COSA CHE IL CERVELLO HA SCELTO, e vale finche' non sceglie di nuovo. E' quello che
+     * il corpo sta facendo adesso: se e' camminare le gambe si muovono per tutto il periodo, se e'
+     * dormire i motori restano spenti. Niente finestre di tick scritte a mano ("vuole muoversi se
+     * l'ha chiesto negli ultimi due tick"): l'intenzione dura quanto il corpo mette a decidere
+     * un'altra cosa.
+     */
+    private volatile int azioneScelta = ACT_IDLE;
     private String lastDamageCause = "fame";
     private String deathCause = "";
     private long deathTick = -1;
@@ -258,6 +271,16 @@ public class entity {
         this.age = 0;
         this.sex = rng().nextBoolean() ? 1 : 2;
         tick.set(0);
+        /*
+         * La fase del proprio orologio: a caso dentro il primo periodo, altrimenti tutte le
+         * fondatrici deciderebbero nello stesso istante e la simultaneita' nascerebbe gia' in
+         * lockstep. Da un generatore SUO e non da quello condiviso, perche' un'estrazione in piu'
+         * qui sposterebbe i geni di tutte le entita' create dopo e romperebbe l'appaiamento fra
+         * due corse con lo stesso seme.
+         */
+        this.prossimaDecisione = Simulation.tempoMondo()
+                + new Random(id * 0x9E3779B97F4A7C15L ^ Simulation.getSeed()).nextDouble()
+                * periodoMotorio();
         position[0] = new AtomicInteger(x);
         position[1] = new AtomicInteger(y);
         position[2] = new AtomicInteger(z);
@@ -576,10 +599,36 @@ public class entity {
     private static final double MIN_STEP_RATIO = 0.35;
     private static final double MAX_STEP_RATIO = 2.0;
 
+    /**
+     * IL PERIODO MOTORIO: secondi di mondo fra una decisione e la successiva, dal gene speed.
+     *
+     * E' lo stesso numero di prima (un'entita' media, speed 1.75, decide ogni 2 s), ma prima era
+     * un accumulatore valutato a ogni tick da mezzo secondo - quindi quantizzato, e per tutte
+     * nello stesso istante. Adesso e' un orologio continuo del corpo: la media non cambia, la
+     * quantizzazione e il lockstep spariscono.
+     */
+    public double periodoMotorio(){
+        return TICK_SECONDS * SPEED_DIVISOR / Math.max(1e-6, stats.speed);
+    }
+
+    /**
+     * LA VELOCITA' MOTORIA: quando due corpi vogliono la stessa cosa nello stesso istante, vince
+     * questa. E' lo stesso gene che decide quanto spesso un corpo riesce ad agire, e non e' un
+     * caso che sia lo stesso: arrivare prima a una mela e agire piu' spesso sono la stessa
+     * proprieta' vista da due lati (vedi Simulation.fetta).
+     */
+    public double velocitaMotoria(){
+        return stats.speed;
+    }
+
+    /** Se il proprio orologio e' scaduto, a questo secondo di mondo. */
+    public boolean inScadenza(double tempoMondo){
+        return tempoMondo + 1e-9 >= prossimaDecisione;
+    }
+
     /** Secondi di mondo che passano tra un'azione e la successiva (dal gene speed). */
     private double secondsPerAction(){
-        double pointsPerTick = Math.max(1e-6, stats.speed / SPEED_DIVISOR);
-        return TICK_SECONDS / pointsPerTick;
+        return periodoMotorio();
     }
     public boolean isAlive(){ return life.get(); }
     public double getNetreward(){return Netreward;}
@@ -841,14 +890,18 @@ public class entity {
 
     // ------------------------------------------------------------------ ciclo di vita
 
-    /** Chiamato dal ciclo centrale a ogni tick: accumula punti azione e agisce quando arriva a 1. */
-    public void advance(){
+    /**
+     * Chiamato dal ciclo centrale a ogni TICK (mezzo secondo di mondo): solo il metabolismo, che
+     * e' a tempo di mondo. Le decisioni non passano piu' da qui - stanno in decidi() ed esegui(),
+     * che il mondo chiama quando scade l'orologio di QUESTO corpo.
+     */
+    public void tickMetabolico(){
         metabolism();
-        actionPoints += stats.speed / SPEED_DIVISOR;
-        if(actionPoints >= 1.0){
-            actionPoints -= 1.0;
-            step();
-        }
+    }
+
+    /** La causa dell'ultimo danno subito: e' quella che si scrive se questa fetta la uccide. */
+    String causaDanno(){
+        return lastDamageCause;
     }
 
     /**
@@ -938,16 +991,37 @@ public class entity {
     private static final double STARVE_DAMAGE_PER_TICK = 0.75;
     private double foodDrain, thirstDrain, starveDamage, healing;
 
-    private void step(){
+    /**
+     * FASE 1 DI UNA FETTA: guardare il mondo e scegliere. Non tocca niente fuori da se', quindi
+     * tutte le entita' in scadenza possono farlo guardando LO STESSO mondo, e l'ordine fra loro
+     * non conta. L'orologio avanza di un periodo del corpo.
+     */
+    public void decidi(double tempoMondo){
+        if(!life.get()){ return; }
+        sleeping = false;   // se sceglie di nuovo "dormi", torna vero in esegui()
+        double[] output = Brain.predict(get_NetInput());
+        azioneScelta = chooseAction(output);
+        prossimaDecisione += periodoMotorio();
+        if(prossimaDecisione < tempoMondo){
+            // dopo una pausa lunga o un caricamento non si recuperano le decisioni perse
+            prossimaDecisione = tempoMondo + periodoMotorio();
+        }
+    }
+
+    /**
+     * FASE 2 DI UNA FETTA: la scelta diventa un fatto. Il mondo chiama questo metodo in ordine di
+     * velocita' motoria, quindi quando due entita' hanno scelto la stessa mela ci arriva prima la
+     * piu' veloce, e la seconda trova il posto vuoto (ogni azione ricontrolla il suo bersaglio
+     * qui, non in decidi).
+     */
+    public void esegui(){
         if(!life.get()){ return; }
         tick.addAndGet(1);
         age++;
         applyAgeDrift();
         if(reproCooldown > 0){ reproCooldown--; }
-        sleeping = false;
 
-        double[] output = Brain.predict(get_NetInput());
-        perform(chooseAction(output));
+        perform(azioneScelta);
         if(!life.get()){ return; }
 
         // Fame, sete e salute stanno in metabolism(), che il ciclo centrale chiama a ogni tick.
@@ -990,10 +1064,8 @@ public class entity {
 
         // la stessa cosa, sul modo di camminare invece che sul cervello
         practiceWalking();
-
-        if(healt <= 0){
-            Simulation.kill(this, lastDamageCause);
-        }
+        // la morte NON si dichiara qui: la dichiara la fetta, alla fine, per tutti insieme
+        // (Simulation.fetta), cosi' due colpi nello stesso istante arrivano entrambi
     }
 
     /**
@@ -1241,7 +1313,6 @@ public class entity {
          * a 11. Chi prova a camminare e non ce la fa deve continuare a provare: e' esattamente
          * quello che significa imparare a camminare.
          */
-        lastWalkWishTick = Simulation.getTick();
         if(ActionWeights.fisicaViva > 0){
             // il passo lo fa il corpo: qui si paga soltanto il fiato di provarci
             spend(moveCost());
@@ -1413,8 +1484,6 @@ public class entity {
      * riuscito.
      */
     private void turn(double delta){
-        lastTurnWishTick = Simulation.getTick();
-        lastTurnSign = Math.signum(delta);
         if(!spend(TURN_COST)){ return; }
         if(ActionWeights.fisicaViva > 0){
             // come il passo: la direzione non si scrive, si legge dal corpo (leggiDalCorpo)
@@ -1423,14 +1492,9 @@ public class entity {
         facing = Vision.wrap(facing + delta);
     }
 
-    /** Ultimo tick in cui ha SCELTO di girare, riuscendoci o no. Vedi turn(). */
-    private volatile long lastTurnWishTick = Long.MIN_VALUE;
-    /** Da che parte ha chiesto di girare: -1 a sinistra, +1 a destra. */
-    private volatile double lastTurnSign = 0;
-
     /** Se sta PROVANDO a girare: lo usa il mondo fisico per sapere che sterzo dare al corpo. */
     public boolean vuoleGirare(){
-        return Simulation.getTick() - lastTurnWishTick <= 2;
+        return azioneScelta == ACT_TURN_RIGHT || azioneScelta == ACT_TURN_LEFT;
     }
 
     /**
@@ -1440,7 +1504,7 @@ public class entity {
      * src.body.Gait.sterzo), esattamente come quanto avanza dipende dal passo che ha trovato.
      */
     public double sterzoDelCorpo(){
-        return vuoleGirare() ? lastTurnSign : 0.0;
+        return azioneScelta == ACT_TURN_RIGHT ? 1.0 : azioneScelta == ACT_TURN_LEFT ? -1.0 : 0.0;
     }
 
     /** Gira la testa, entro i limiti del collo: oltre, l'azione non fa niente. */
@@ -1476,8 +1540,6 @@ public class entity {
     /** Metri percorsi in tutta la vita. */
     public double getDistanzaPercorsa(){ return distanzaPercorsa; }
     private volatile long lastMoveTick = Long.MIN_VALUE;
-    /** Ultimo tick in cui ha SCELTO di muoversi, riuscendoci o no (vedi vuoleMuoversi). */
-    private volatile long lastWalkWishTick = Long.MIN_VALUE;
 
     public double getGaitPhase(){ return gaitPhase; }
 
@@ -1490,10 +1552,11 @@ public class entity {
      * Se sta PROVANDO a camminare, che non e' la stessa cosa di {@link #isWalking()} (quello dice
      * se si e' mosso). Lo usa il mondo fisico per decidere se le gambe si muovono: chi ci prova
      * e non riesce ad avanzare di un centimetro deve continuare a muovere le gambe, altrimenti
-     * non imparera' mai.
+     * non imparera' mai. E' l'intenzione corrente (azioneScelta), quindi dura finche' il corpo
+     * non decide un'altra cosa.
      */
     public boolean vuoleMuoversi(){
-        return Simulation.getTick() - lastWalkWishTick <= 2;
+        return azioneScelta == ACT_FORWARD || azioneScelta == ACT_BACK;
     }
 
     /**
@@ -1945,11 +2008,14 @@ public class entity {
         }
         int damage = Math.max(1, (int) Math.round(stats.attackPower * attackFactor() * (0.8 + 0.4 * rng().nextDouble())));
         String cause = "ucciso da #" + EntityID;
+        boolean eraInPiedi = target.healt > 0;
         target.takeDamage(damage, cause);
-        // Nessuna ricompensa per il colpo: conta solo il cibo che si ricava dal corpo
-        if(target.healt <= 0){
+        // Nessuna ricompensa per il colpo: conta solo il cibo che si ricava dal corpo.
+        // L'uccisione si segna a chi ha dato il colpo che ha portato la salute a zero, ma la MORTE
+        // la dichiara la fetta alla fine (Simulation.fetta): se il bersaglio stava colpendo a sua
+        // volta nello stesso istante, il suo colpo arriva.
+        if(eraInPiedi && target.healt <= 0){
             kills++;
-            Simulation.kill(target, cause);
         }
     }
 

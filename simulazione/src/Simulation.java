@@ -1,24 +1,50 @@
 package src;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 
 /**
- * Ciclo di simulazione CENTRALE: un unico thread fa avanzare tutte le entita' a ogni tick,
- * al posto di un thread per entita'. Vantaggi: nessuna race condition tra entita' che
- * mangiano/attaccano nello stesso istante, risultati riproducibili con un seed, e il tempo
- * si puo' accelerare o rallentare (setTimeScale).
+ * Ciclo di simulazione CENTRALE, a TEMPO CONTINUO.
  *
- * Il gene "speed" di ogni entita' non cambia piu' la durata di uno sleep ma un accumulatore:
- * a ogni tick l'entita' accumula speed / SPEED_DIVISOR punti azione e agisce quando arriva a 1
- * (vedi entity.advance()).
+ * Un solo thread fa avanzare il mondo a FETTE brevi (FETTA_S, un sessantesimo di secondo di mondo):
+ * a ogni fetta la fisica integra, ogni corpo pubblica dove e' arrivato, e decidono SOLO le entita'
+ * il cui orologio e' scaduto. L'orologio e' DEL CORPO, non del mondo: ogni entita' decide con il
+ * periodo che il suo gene speed le da' (entity.periodoMotorio), in momenti scollegati da quelli
+ * delle altre. Il "tick" da mezzo secondo resta, ma solo per quello che e' davvero a tempo di
+ * mondo: metabolismo, flora, campionamento, giorno e notte.
+ *
+ * LA SIMULTANEITA' NON E' UN THREAD PER ENTITA'. Era cosi' nella prima versione del progetto, e
+ * l'utente la vuole di nuovo nella sostanza: entita' indipendenti, che agiscono insieme, e che se
+ * vogliono la stessa mela nello stesso istante la contendono. Ma con i thread chi vince la mela lo
+ * decide lo scheduler del sistema operativo - cioe' il caso, non il corpo - e si perde il seme
+ * riproducibile su cui si regge tutto il metodo di misura (confronti appaiati). Quindi la
+ * simultaneita' e' fatta cosi', dentro ogni fetta:
+ *  1. tutte le entita' in scadenza GUARDANO LO STESSO MONDO e scelgono (entity.decidi): nessuna
+ *     tocca niente, quindi l'ordine non conta per costruzione;
+ *  2. le scelte diventano fatti IN ORDINE DI VELOCITA' MOTORIA (entity.esegui): chi e' piu' veloce
+ *     arriva prima alla mela, e a parita' decide il caso, dichiarato;
+ *  3. le morti della fetta si dichiarano alla fine, tutte insieme: due colpi nello stesso
+ *     istante arrivano ENTRAMBI, anche se uno dei due uccide.
+ * La fetta e' la finestra di simultaneita'. Senza di essa, con tempi reali, "nello stesso istante"
+ * avrebbe probabilita' zero e nessuna contesa esisterebbe mai.
+ *
+ * Lo shuffle delle entita' ("ordine casuale: nessuna entita' e' sempre prima") non c'e' piu':
+ * esisteva per nascondere l'iniquita' di un ordine sequenziale, e adesso l'ordine e' una
+ * proprieta' dei corpi.
  */
 public class Simulation {
 
-    /** Durata di un tick a timeScale 1. */
+    /** Durata di un tick a timeScale 1: il passo del metabolismo e di tutto cio' che e' a tempo di mondo. */
     public static final long TICK_MS = 500;
+    public static final double TICK_S = TICK_MS / 1000.0;
+    /**
+     * LA FETTA: quanto tempo di mondo passa fra due letture del mondo, ed e' la finestra di
+     * simultaneita'. Un sessantesimo di secondo: sotto la soglia di percezione di chi guarda, e
+     * due passi di fisica (PhysicsWorld.TIME_STEP e' 1/120). Piu' corta: contese piu' rare e piu'
+     * costo per secondo di mondo; piu' lunga: il movimento torna a scatti.
+     */
+    public static final double FETTA_S = 1.0 / 60.0;
     /** Tick per "giorno" (incrementa world.cycle). */
     public static final int TICKS_PER_DAY = 240;
     /** Per quanti tick un cadavere resta nel mondo se nessuno lo finisce. */
@@ -45,6 +71,12 @@ public class Simulation {
     private static Thread thread;
     private static volatile double timeScale = 1.0;
     private static volatile long tickCount = 0;
+    /** Secondi di mondo trascorsi: e' l'orologio contro cui ogni corpo misura il proprio. */
+    private static volatile double tempoMondo = 0;
+    /** A che secondo di mondo scatta il prossimo tick (metabolismo e il resto). */
+    private static double prossimoTick = TICK_S;
+    /** Quante fette sono passate: serve al sorteggio delle parita' (vedi fetta). */
+    private static long fette = 0;
 
     private static long seed = System.nanoTime();
     private static Random rng = new Random(seed);
@@ -137,6 +169,9 @@ public class Simulation {
             pendingBirths.clear();
         }
         tickCount = 0;
+        tempoMondo = 0;
+        prossimoTick = TICK_S;
+        fette = 0;
         births = 0;
         deathsStarved = 0;
         deathsThirst = 0;
@@ -163,9 +198,16 @@ public class Simulation {
         return tickCount;
     }
 
+    /** Secondi di mondo trascorsi dall'inizio della sessione. */
+    public static double tempoMondo() {
+        return tempoMondo;
+    }
+
     /** Usato dal Load per riprendere dal tick salvato. */
     public static void setTick(long tick) {
         tickCount = tick;
+        tempoMondo = tick * TICK_S;
+        prossimoTick = tempoMondo + TICK_S;
     }
 
     // ------------------------------------------------------------------ eventi
@@ -244,22 +286,25 @@ public class Simulation {
             try {
                 if (!world.isPaused()) {
                     synchronized (LOCK) {
-                        tick();
+                        fetta();
                     }
                 }
             } catch (Throwable t) {
-                System.out.println("Errore tick simulazione: " + t);
+                System.out.println("Errore nella fetta di simulazione: " + t);
                 t.printStackTrace();
             }
-            long budgetMs = (long) (TICK_MS / timeScale);
-            long elapsedMs = (System.nanoTime() - startNs) / 1_000_000;
-            long sleepMs = Math.max(1, budgetMs - elapsedMs);
-            try {
-                Thread.sleep(sleepMs);
-            } catch (InterruptedException e) {
-                if (!running || myGeneration != generation) {
-                    break;
-                }
+            /*
+             * Il tempo vero che una fetta deve durare. Se la fisica ne prende di piu' (molti
+             * corpi, velocita' alta) il mondo va piu' lento di quanto chiesto: e' il prezzo
+             * dichiarato del mondo unico (voce 26), e si paga rallentando, non saltando fette.
+             */
+            long budgetNs = (long) (FETTA_S / timeScale * 1e9);
+            long restoNs = budgetNs - (System.nanoTime() - startNs);
+            if (restoNs > 0) {
+                java.util.concurrent.locks.LockSupport.parkNanos(restoNs);
+            }
+            if (Thread.interrupted() && (!running || myGeneration != generation)) {
+                break;
             }
         }
     }
@@ -278,36 +323,98 @@ public class Simulation {
         int fatti = 0;
         for (int i = 0; i < quanti; i++) {
             synchronized (LOCK) {
-                tick();
+                long prima = tickCount;
+                while (tickCount == prima) {
+                    fetta();
+                }
             }
             fatti++;
         }
         return fatti;
     }
 
+    /**
+     * UNA FETTA DI MONDO: la fisica avanza, i corpi si leggono, chi e' in scadenza decide e poi
+     * agisce, i morti si contano. Quando il tempo passa un multiplo di TICK_S scatta anche il
+     * tick (metabolismo, flora, campionamento). Vedi l'intestazione della classe per il perche'
+     * di quest'ordine.
+     */
+    private static void fetta() {
+        tempoMondo += FETTA_S;
+        fette++;
+
+        List<entity> alive = Entity_manager.snapshotAlive();
+        allestisciMondo(alive);
+        src.body.MondoFisico.avanza(FETTA_S);
+        for (entity e : alive) {
+            e.leggiDalCorpo();
+        }
+
+        // chi e' in scadenza secondo il PROPRIO orologio
+        List<entity> inScadenza = new ArrayList<>();
+        for (entity e : alive) {
+            if (e.isAlive() && e.inScadenza(tempoMondo)) {
+                inScadenza.add(e);
+            }
+        }
+        if (!inScadenza.isEmpty()) {
+            // FASE 1: tutte guardano lo stesso mondo e scelgono. Nessuna tocca niente.
+            for (entity e : inScadenza) {
+                e.decidi(tempoMondo);
+            }
+            /*
+             * FASE 2: le scelte diventano fatti, e l'ordine e' una proprieta' dei corpi: chi ha la
+             * velocita' motoria piu' alta arriva prima. A PARITA' DECIDE IL CASO, ma un caso che
+             * non consuma il generatore condiviso (altrimenti ogni parita' sposterebbe i geni dei
+             * figli che nascono dopo): una chiave mescolata da id e numero della fetta.
+             */
+            final long fettaCorrente = fette;
+            inScadenza.sort((a, b) -> {
+                int c = Double.compare(b.velocitaMotoria(), a.velocitaMotoria());
+                return c != 0 ? c : Long.compare(chiaveParita(a.getId(), fettaCorrente),
+                        chiaveParita(b.getId(), fettaCorrente));
+            });
+            for (entity e : inScadenza) {
+                e.esegui();
+            }
+        }
+        /*
+         * LE MORTI DELLA FETTA, TUTTE INSIEME. Un colpo non uccide piu' nell'istante in cui arriva
+         * (entity.attack): chi muore in questa fetta ha ancora fatto la sua azione, quindi due
+         * entita' che si colpiscono nello stesso istante si colpiscono davvero entrambe.
+         */
+        for (entity e : alive) {
+            if (e.isAlive() && e.getHealt() <= 0) {
+                kill(e, e.causaDanno());
+            }
+        }
+        flushBirths();
+
+        if (tempoMondo + 1e-9 >= prossimoTick) {
+            prossimoTick += TICK_S;
+            tick();
+        }
+    }
+
+    /** Un numero pseudo-casuale da (id, fetta): decide le parita' senza toccare il generatore. */
+    private static long chiaveParita(long id, long fetta) {
+        long z = (id * 0x9E3779B97F4A7C15L) ^ (fetta * 0xBF58476D1CE4E5B9L);
+        z = (z ^ (z >>> 30)) * 0xBF58476D1CE4E5B9L;
+        z = (z ^ (z >>> 27)) * 0x94D049BB133111EBL;
+        return z ^ (z >>> 31);
+    }
+
+    /**
+     * IL TICK: quello che e' a tempo di mondo e non a tempo di corpo. Mezzo secondo. Niente qui
+     * decide o muove: il movimento e le decisioni stanno in fetta().
+     */
     private static void tick() {
         tickCount++;
 
         List<entity> alive = Entity_manager.snapshotAlive();
-        /*
-         * IL MONDO FISICO AVANZA, POI SI LEGGE, POI LE ENTITA' AGISCONO. Tre righe in quest'ordine
-         * e non in un altro:
-         *  - il mondo avanza di un tick (mezzo secondo), con i corpi che fanno quello che
-         *    l'entita' aveva chiesto il tick prima;
-         *  - ogni entita' LEGGE dal proprio corpo dove e' finita e da che parte guarda: e' qui che
-         *    il mondo e' unico, perche' nessun altro scrive piu' la posizione;
-         *  - solo adesso le entita' guardano, pensano e scelgono - cioe' decidono guardando il
-         *    mondo da dove il loro corpo le ha portate, non da dove credevano di essere.
-         */
-        allestisciMondo(alive);
-        src.body.MondoFisico.avanza(TICK_MS / 1000.0);
-        for (entity e : alive) {
-            e.leggiDalCorpo();
-        }
-        Collections.shuffle(alive, rng); // ordine casuale: nessuna entita' e' sempre "prima"
         for (entity e : alive) {
             if (e.isAlive()) {
-                e.advance();
+                e.tickMetabolico();
             }
         }
 
@@ -361,7 +468,7 @@ public class Simulation {
      * e la simulazione va piu' lenta della velocita' richiesta. Rallentare e' la cosa onesta;
      * togliere corpi dalla fisica no.
      *
-     * La posizione serve solo alla prima messa in campo (vedi MondoFisico.Candidato): a ogni tick
+     * La posizione serve solo alla prima messa in campo (vedi MondoFisico.Candidato): a ogni fetta
      * la si passa di nuovo perche' le entita' nuove arrivano in ogni momento, ma per chi e' gia'
      * nel mondo viene ignorata.
      */
