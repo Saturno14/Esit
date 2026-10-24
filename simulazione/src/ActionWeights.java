@@ -273,8 +273,14 @@ public final class ActionWeights {
         n_mateFood = 2; n_mateMature = 2; n_mateEntity = 3; n_mateBias = -5.5;
         n_mateSignal = 4;
         n_idleBias = -3;
-        // spento: va misurato prima di diventare un istinto (vedi n_moveMate)
-        n_moveMate = 0;
+        /*
+         * MISURATO (voce 19): 12 semi appaiati, nascite 1317 -> 1807 (+37%), dieci semi su
+         * dodici, p = 0.039. A 3 (il peso del cibo) il guadagno scende a +15% e non e' piu'
+         * dichiarato: avvicinarsi a chiunque con la stessa forza con cui si va verso una mela
+         * fa camminare addosso a tutti invece che verso un partner, e le morti di lotta
+         * crescono. 1.5 e' il peso dell'acqua, cioe' "un motivo, non il motivo".
+         */
+        n_moveMate = 1.5;
     }
 
     /** Valori originali, istinti sfasati compresi. */

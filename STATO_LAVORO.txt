@@ -1591,7 +1591,16 @@ accoppiarsi. Cioe' mancava il primo pezzo del protocollo che avevamo deciso - CI
 si chiede. Un'entita' matura che vedeva un partner a dieci metri non aveva nessun motivo innato
 per andargli incontro: poteva solo sperare che il caso la portasse a portata.
 Aggiunto l'interruttore ActionWeights.n_moveMate ("qualcuno davanti e' un motivo per camminare",
-e per girarsi dalla sua parte come per il cibo), spento per difetto e DA MISURARE. Non e' una
+e per girarsi dalla sua parte come per il cibo).
+MISURATO, 12 semi appaiati, con richiesta e svezzamento accesi in tutti i bracci:
+    avvicina=0 -> 1.5   nascite 1317 -> 1807 (+37%)   10 semi su 12   p = 0.039
+    avvicina=0 -> 3     nascite 1317 -> 1518 (+15%)    8 semi su 12   p = 0.388
+IL PESO CONTA, E QUELLO GIUSTO E' IL PIU' DEBOLE. A 1.5 (il peso dell'acqua) l'avvicinamento e'
+dichiarato; a 3 (il peso del cibo) il guadagno si dimezza e sparisce nel rumore, perche'
+avvicinarsi a chiunque con la forza con cui si va verso una mela vuol dire camminare addosso a
+tutti invece che verso un partner - e le morti di lotta lo dicono (+79% a 1.5, e in un seme 80
+contro 26). Messo a 1.5 in embodied(). Resta da capire se il protocollo recupera TUTTO quello che
+costa: il confronto diretto con richiesta=0 va rifatto a parita' di svezzamento. Non e' una
 ricompensa di avvicinamento - quelle erano oracoli e sono state togliute - e' un peso iniziale
 del cervello come gli altri istinti: vale per chiunque si veda, partner, preda o rivale, e
 l'evoluzione lo puo' spegnere in una generazione.
