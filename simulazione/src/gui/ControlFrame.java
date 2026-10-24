@@ -139,7 +139,7 @@ class ControlFrame extends JFrame {
         sb.append("   x").append(Simulation.getTimeScale());
         sb.append("   seed ").append(Simulation.getSeed());
         sb.append("   vive ").append(Entity_manager.Entity_count())
-          .append('/').append(Simulation.maxPopulation());
+          .append('/').append(Simulation.limiteDiSicurezza());
         sb.append("   mele ").append(world.countApples());
         if (Flora.enabled) {
             sb.append(" (").append(Flora.countOnTree()).append(" sugli alberi)")

@@ -1101,8 +1101,16 @@ public class entity {
          * chiesto a me. La stamina richiesta e' quella della richiesta, piu' bassa: accettare
          * costa di piu' ma chi accetta sta per fare un figlio, non una domanda.
          */
-        boolean puoRiprodursi = age >= MATURITY_AGE && reproCooldown <= 0 && food >= REPRO_FOOD_MIN
-                && Entity_manager.Entity_count() < Simulation.maxPopulation();
+        /*
+         * NESSUN TETTO DI POPOLAZIONE NELLA MASCHERA. C'era "e la popolazione non e' al tetto", in
+         * questa riga e nella successiva: era un'informazione che il mondo regalava all'entita'
+         * ("non provarci, e' pieno") e un freno messo prima della fame. Adesso l'unico limite e'
+         * il cibo, e la riproduzione si ferma solo perche' non si e' mangiato abbastanza
+         * (REPRO_FOOD_MIN). Resta un limite di sicurezza della macchina, controllato dove il
+         * figlio nasce davvero (vedi Simulation.limiteDiSicurezza).
+         */
+        boolean puoRiprodursi = age >= MATURITY_AGE && reproCooldown <= 0
+                && food >= REPRO_FOOD_MIN;
         if(ActionWeights.mateRequest > 0){
             // RISPONDERE non e' INIZIARE. Chi accetta fa la parte del partner: gli basta
             // canMate (60 di cibo) e non paga ne' stamina ne' ricerca, perche' il costo lo paga
@@ -1110,9 +1118,7 @@ public class entity {
             // doveva solo dire si', e per via del corto circuito di && la richiesta non veniva
             // nemmeno GUARDATA da chi non era in condizione di chiedere: la domanda arrivava a
             // un'entita' sorda. Vedi STATO_LAVORO.txt voce 19.
-            boolean puoAccettare = canMate()
-                    && Entity_manager.Entity_count() < Simulation.maxPopulation()
-                    && richiedente() != null;
+            boolean puoAccettare = canMate() && richiedente() != null;
             ok[ACT_REPRODUCE] = puoAccettare
                     || (puoRiprodursi && stamina >= RICHIESTA_COST && findPartnerNoRandom());
         }else{
@@ -1146,7 +1152,7 @@ public class entity {
         actionCounts[action]++;
         switch (action) {
             case ACT_IDLE:
-                Netreward -= 0.5;
+                penalita(0.5);
                 break;
             case ACT_FORWARD: walk(1); break;
             case ACT_BACK: walk(-1); break;
@@ -1183,10 +1189,24 @@ public class entity {
         }
     }
 
+    /**
+     * UNA PUNIZIONE SCRITTA A MANO, e l'unico posto da cui passano tutte.
+     *
+     * Erano una dozzina di "Netreward -= n" sparsi nelle azioni, nessuno dietro a un peso: non
+     * fare niente costava 0.5, provare a entrare in acqua 2, un colpo a vuoto 1. Adesso valgono
+     * quanto dice ActionWeights.penalitaAzioni, che nel profilo in uso e' ZERO - cioe' non
+     * esistono (vedi ActionWeights.soloRiproduzione). Il metodo resta perche' il confronto
+     * appaiato con il mondo di prima (premi=1) deve essere possibile senza riscrivere tredici
+     * righe.
+     */
+    private void penalita(double quanto){
+        Netreward -= quanto * ActionWeights.penalitaAzioni;
+    }
+
     /** Consuma stamina: se non basta l'azione fallisce (l'entita' e' troppo stanca). */
     private boolean spend(double cost){
         if(stamina < cost){
-            Netreward -= 1.0;
+            penalita(1.0);
             return false;
         }
         stamina -= cost;
@@ -1234,18 +1254,18 @@ public class entity {
         int nx = cellOf(tx);
         int nz = cellOf(tz);
         if(nx < 0 || nx >= dim || nz < 0 || nz >= dim){
-            Netreward -= 10;
+            penalita(10);
             return;
         }
         if(world.isWaterColumn(nx, nz)){
             // L'acqua non si attraversa a nuoto: ci si puo' solo affacciare per bere
-            Netreward -= 2;
+            penalita(2);
             return;
         }
         if(Flora.isTrunk(nx, nz)){
             // Un albero e' un oggetto fisico: lo si gira attorno, non lo si attraversa. E' anche
             // il primo ostacolo solido del mondo, quindi il primo motivo per girarsi.
-            Netreward -= 1;
+            penalita(1);
             return;
         }
         if(!spend(moveCost())){ return; }
@@ -1427,7 +1447,7 @@ public class entity {
     private void turnHead(double delta){
         double range = gazeRange();
         if(range <= 1e-3){
-            Netreward -= 0.5;   // collo rigido: l'azione e' sprecata
+            penalita(0.5);   // collo rigido: l'azione e' sprecata
             return;
         }
         double want = gazeYaw + delta;
@@ -1620,7 +1640,7 @@ public class entity {
             }
         }
         if(!nearWater){
-            Netreward -= 1.5;
+            penalita(1.5);
             return;
         }
         if(!spend(1)){ return; }
@@ -1776,7 +1796,7 @@ public class entity {
         }else if(apple != null){
             eatApple(apple);
         }else{
-            Netreward -= 2.0;
+            penalita(2.0);
         }
     }
 
@@ -1849,7 +1869,7 @@ public class entity {
     void takeDamage(int amount, String cause){
         healt -= amount;
         lastDamageCause = cause;
-        Netreward -= amount * 0.2; // si punisce la salute persa
+        penalita(amount * 0.2); // si punisce la salute persa
     }
 
     /** Distanza entro cui un colpo arriva: la portata delle estremita', almeno una cella. */
@@ -1920,7 +1940,7 @@ public class entity {
             }
         }
         if(target == null){
-            Netreward -= 1.0; // colpo a vuoto
+            penalita(1.0); // colpo a vuoto
             return;
         }
         int damage = Math.max(1, (int) Math.round(stats.attackPower * attackFactor() * (0.8 + 0.4 * rng().nextDouble())));
@@ -2026,7 +2046,7 @@ public class entity {
             }
         }
         if(scelta == null){
-            Netreward -= 1.0;
+            penalita(1.0);
             return;
         }
         if(!spend(RICHIESTA_COST)){ return; }
@@ -2044,15 +2064,17 @@ public class entity {
         chiedente.generaFiglioCon(this);
     }
 
+    /** Ultimo tick in cui si e' avvisato del limite di sicurezza: per non stampare 300 righe. */
+    private static volatile long ultimoAvvisoLimite = Long.MIN_VALUE;
+
     private void reproduce(){
-        if(age < MATURITY_AGE || reproCooldown > 0 || food < REPRO_FOOD_MIN
-                || Entity_manager.Entity_count() >= Simulation.maxPopulation()){
-            Netreward -= 1.0;
+        if(age < MATURITY_AGE || reproCooldown > 0 || food < REPRO_FOOD_MIN){
+            penalita(1.0);
             return;
         }
         entity partner = findPartner();
         if(partner == null){
-            Netreward -= 1.0;
+            penalita(1.0);
             return;
         }
         generaFiglioCon(partner);
@@ -2065,9 +2087,22 @@ public class entity {
     private void generaFiglioCon(entity partner){
         // Tra la domanda e il si' passano fino a RICHIESTA_TTL tick: le condizioni si ricontrollano
         // qui, che e' l'unico punto da cui nasce un figlio in tutti e due i modi.
-        if(!canMate() || !partner.canMate()
-                || Entity_manager.Entity_count() >= Simulation.maxPopulation()){
-            Netreward -= 1.0;
+        if(!canMate() || !partner.canMate()){
+            penalita(1.0);
+            return;
+        }
+        /*
+         * IL LIMITE DI MACCHINA, nell'unico punto da cui nasce un figlio. Non e' un tetto
+         * ecologico (vedi Simulation.limiteDiSicurezza): e' il numero oltre il quale la fisica di
+         * tutti i corpi non sta piu' in un tick. Se ci si arriva si stampa, perche' un limite
+         * raggiunto in silenzio sembra un equilibrio.
+         */
+        if(Entity_manager.Entity_count() >= Simulation.limiteDiSicurezza()){
+            if(Simulation.getTick() != ultimoAvvisoLimite){
+                ultimoAvvisoLimite = Simulation.getTick();
+                System.out.println("[limite] la popolazione ha toccato il limite di sicurezza ("
+                        + Simulation.limiteDiSicurezza() + "): il cibo non l'ha fermata.");
+            }
             return;
         }
         if(!spend(REPRODUCE_COST)){ return; }

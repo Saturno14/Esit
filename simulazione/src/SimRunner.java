@@ -55,6 +55,13 @@ public class SimRunner {
                 // direzione un comando gratuito. 1 = accesa, e ci stanno TUTTE le entita'
                 // (vedi src.body.MondoFisico): in un mondo unico non si scelgono i corpi.
                 ActionWeights.fisicaViva = Double.parseDouble(args[i].substring(7));
+            } else if (args[i].startsWith("premi=")) {
+                // premi=1: rimette i premi di prima (mangiare, bere, dormire, la fame che fa
+                // male, le punizioni delle azioni mancate). E' il BRACCIO DI CONTROLLO del passo
+                // 5: senza, l'unico premio e' quello della riproduzione.
+                if (Double.parseDouble(args[i].substring(6)) > 0) {
+                    ActionWeights.premiVecchi();
+                }
             } else if (args[i].startsWith("svezzamento=")) {
                 // svezzamento=0: chi non sa ancora camminare paga il consumo pieno, come prima
                 ActionWeights.svezzamento = Double.parseDouble(args[i].substring(12));
@@ -70,6 +77,7 @@ public class SimRunner {
                 + " archivio=" + ActionWeights.gaitArchive
                 + " svezzamento=" + ActionWeights.svezzamento
                 + " fisica=" + ActionWeights.fisicaViva
+                + " premi=" + ActionWeights.penalitaAzioni
                 + " avvicina=" + ActionWeights.n_moveMate
                 + " riflesso=" + (src.body.Gait.useReflex ? 1 : 0)
                 + " oscillatore=" + src.body.Gait.oscWeight

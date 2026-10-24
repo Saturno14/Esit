@@ -24,6 +24,15 @@ public final class ActionWeights {
     public static volatile double sleepRestedPenalty; // dormire da riposati (negativo)
     public static volatile double drinkReward;        // bere: ricompensa
     public static volatile double drinkNeedScaled;    // 1 = ricompensa * (1 - sete/MAX), 0 = fissa
+    /**
+     * Quanto valgono le PUNIZIONI SCRITTE A MANO dentro le azioni (1 = come prima, 0 = via).
+     *
+     * Sono i "-0.5 se non fai niente", "-2 se provi a entrare in acqua", "-1 se il colpo va a
+     * vuoto": una dozzina di numeri sparsi in entity, nessuno dei quali era dietro a un peso.
+     * Adesso passano tutti da entity.penalita, e questo e' il loro unico interruttore - serve a
+     * poter rimettere in piedi il mondo di prima per un confronto appaiato, non a tararli.
+     */
+    public static volatile double penalitaAzioni;
 
 
     // ---- struttura
@@ -226,6 +235,54 @@ public final class ActionWeights {
     private ActionWeights() {
     }
 
+    /**
+     * SOLO LA RIPRODUZIONE PREMIA. Tutto il resto a zero, per decisione dell'utente del
+     * 25/10/2026: "rimuovere ogni tipo di premio, perche' tanto tutte le statistiche l'entita' le
+     * percepisce nella rete neurale, quindi quando ha mancanze o abbondanze come fame o sete se ne
+     * accorge da se'. Solo per la riproduzione diamo un premio, per il resto totale liberta'".
+     *
+     * COSA ERA IL PREMIO. Era l'ultima direzione comportamentale imposta: mangiare valeva 3,
+     * bere 6, dormire stanchi valeva la stanchezza, e avere fame costava mezzo punto per tick.
+     * Nessuno di quei numeri descrive il mondo - descrivono quello che CHI HA SCRITTO IL
+     * PROGRAMMA pensa che convenga fare. La fame e la sete l'entita' le ha fra gli ingressi della
+     * rete: dirle anche "avere fame e' brutto" e' insegnarle la risposta.
+     *
+     * COSA RESTA, e perche' non e' una contraddizione. Resta la riproduzione, che non e' un
+     * consiglio su come vivere: e' la definizione di cosa conta in una simulazione evolutiva. E
+     * resta implicito il premio piu' grande di tutti, che non e' un numero: chi sbaglia muore, e
+     * i morti non hanno figli.
+     *
+     * COSA COSTA, dichiarato prima di misurarlo. L'apprendimento in vita (entity.step) confronta
+     * il punteggio di una finestra con la migliore: senza premi densi quasi tutte le finestre
+     * valgono ZERO, quindi quasi tutte le mutazioni del cervello vengono annullate e il cervello
+     * resta quello con cui si e' nati. L'apprendimento si sposta quasi tutto sull'EVOLUZIONE fra
+     * generazioni. Non e' un effetto collaterale nascosto: e' la conseguenza diretta di "conta
+     * solo sopravvivere", e va misurata, non supposta. Il braccio di controllo e' premi=1
+     * (vedi SimRunner), che rimette esattamente i premi di prima.
+     */
+    private static void soloRiproduzione() {
+        eatApple = 0;
+        eatCorpse = 0;
+        sleepNeedFactor = 0;
+        sleepRestedPenalty = 0;
+        drinkReward = 0;
+        drinkNeedScaled = 0;
+        needPain = 0;
+        penalitaAzioni = 0;
+    }
+
+    /** I premi di prima, per un confronto appaiato (SimRunner: premi=1). Vedi soloRiproduzione. */
+    public static void premiVecchi() {
+        eatApple = 3.0;
+        eatCorpse = 4.0;
+        sleepNeedFactor = 1.0;
+        sleepRestedPenalty = -0.5;
+        drinkReward = 6.0;
+        drinkNeedScaled = 1;
+        needPain = 0.5;
+        penalitaAzioni = 1;
+    }
+
     private static void rewardsLegacy() {
         eatApple = 3.0;
         eatCorpse = 4.0;
@@ -235,6 +292,7 @@ public final class ActionWeights {
         sleepRestedPenalty = -0.5;
         drinkReward = 3.0;
         drinkNeedScaled = 0;
+        penalitaAzioni = 1;
         levelTolerance = 1;
     }
 
@@ -351,6 +409,8 @@ public final class ActionWeights {
          * corpo che non si muove mai. Quanto costa al bilanciamento sta nella voce 22 del diario.
          */
         fisicaViva = 1;
+        // via ogni premio tranne quello della riproduzione: vedi soloRiproduzione
+        soloRiproduzione();
         bodyGaitSpeed = 1;
         bodyMassStats = 1;
         bodyReach = 1;

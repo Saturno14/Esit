@@ -633,7 +633,7 @@ public final class Commands {
           .append("  -  velocita' x").append(Simulation.getTimeScale())
           .append("  -  seed ").append(Simulation.getSeed()).append('\n');
         sb.append("Entita' vive: ").append(Entity_manager.Entity_count())
-          .append(" / tetto ").append(Simulation.maxPopulation())
+          .append(" (limite di sicurezza ").append(Simulation.limiteDiSicurezza()).append(')')
           .append("  -  mai vissute: ").append(Entity_manager.snapshotAll().size()).append('\n');
         int[] m = History.mortiPerCausa();
         sb.append("Nascite ").append(History.nasciteTotali())

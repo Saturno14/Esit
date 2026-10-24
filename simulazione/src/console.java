@@ -32,10 +32,12 @@ public class console{
         DayNight.OFFSET = 0;
         StatsLog.open(Genealogy.getSession());
 
-        // Fondatrici e mele iniziali scalate sulla dimensione della mappa (stessa densita' che
-        // funzionava bene a 20x20: 10 fondatrici e mele fino al tetto), altrimenti su una mappa
-        // grande le entita' nascono troppo isolate e senza abbastanza cibo a portata di vista.
-        int startEntities = Math.max(10, Math.round(Simulation.maxPopulation() / 6f));
+        // Fondatrici scalate sulla dimensione della mappa (stessa densita' che funzionava bene a
+        // 20x20: 10 fondatrici), altrimenti su una mappa grande le entita' nascono troppo isolate
+        // e senza abbastanza cibo a portata di vista. Prima questo numero era una frazione del
+        // tetto di popolazione: il tetto non c'e' piu' (vedi Simulation.limiteDiSicurezza) e le
+        // fondatrici non c'entravano niente con un tetto, quindi adesso e' una densita' sua.
+        int startEntities = Math.max(10, (int) Math.round(world.getDim() * world.getDim() * 0.025));
         System.out.println("Fondatrici dagli istinti di base");
         for(int i=0; i<startEntities; i++){
             int id = Entity_manager.newId();

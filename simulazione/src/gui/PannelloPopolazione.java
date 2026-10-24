@@ -72,7 +72,7 @@ class PannelloPopolazione extends JPanel {
         }
         int[] m = History.mortiPerCausa();
 
-        tVive.set(Entity_manager.Entity_count() + " / " + Simulation.maxPopulation());
+        tVive.set(Entity_manager.Entity_count() + " / " + Simulation.limiteDiSicurezza());
         tPicco.set(picco);
         tNascite.set(History.nasciteTotali());
         tMorti.set(m[0] + m[1] + m[2]);

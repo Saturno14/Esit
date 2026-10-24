@@ -408,10 +408,30 @@ public class Simulation {
         return Math.max(60, (int) Math.round(dim * dim * DENSITY_PER_CELL));
     }
 
-    /** Popolazione massima, scalata sull'area della mappa con la stessa densita' delle mele. */
-    public static int maxPopulation() {
+    /**
+     * IL LIMITE DI SICUREZZA, che non e' un tetto di popolazione.
+     *
+     * Qui c'era maxPopulation: la stessa densita' delle mele, 375 entita' su una mappa 50x50 -
+     * cioe' ESATTAMENTE il numero massimo di mele. Un tetto a quel valore impediva alla
+     * popolazione di arrivare dove il cibo non basta piu', e quindi impediva la cosa che si
+     * voleva vedere: la competizione. La fame non limitava niente, perche' c'era un limite prima
+     * della fame. Via (decisione dell'utente del 25/10/2026: "togliendo anche il cap di entita'
+     * massime costringeremo queste ultime a competere per il cibo").
+     *
+     * Quello che resta e' un limite GEOMETRICO e di macchina, non ecologico: un'entita' per cella
+     * di terreno. Non e' una scelta sull'ecologia perche' a quella densita' i corpi non ci
+     * starebbero fisicamente in piedi, e la fisica costa circa 1 ms per corpo per tick, quindi
+     * molto prima di arrivarci la simulazione sarebbe diventata inguardabile. Se questo numero
+     * viene raggiunto non e' il limite che ha funzionato: e' il mondo che non si e' limitato da
+     * se', ed e' un risultato da guardare, non da nascondere.
+     *
+     * Si controlla in UN SOLO POSTO, generaFiglioCon, che e' l'unico punto da cui nasce un figlio.
+     * Nella maschera delle azioni NON c'e': un'entita' non deve sapere che il mondo e' pieno,
+     * perche' sarebbe l'ennesima informazione regalata al posto di una percepita.
+     */
+    public static int limiteDiSicurezza() {
         int dim = world.getDim();
-        return Math.max(60, (int) Math.round(dim * dim * DENSITY_PER_CELL));
+        return Math.max(600, dim * dim);
     }
 
     /** Quante mele far nascere a ogni intervallo, scalato sull'area (1 ogni 400 celle circa). */
