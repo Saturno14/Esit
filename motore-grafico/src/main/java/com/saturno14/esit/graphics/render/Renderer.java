@@ -227,7 +227,9 @@ public class Renderer {
             treeShader.setUniformInt("uTexture", 0);
             for (FloraField.Tree tree : FloraField.trees()) {
                 float footY = tree.baseY() - SURFACE_OFFSET;
-                float trunkRadius = 0.07f + 0.045f * tree.height();
+                // il raggio lo decide Flora, perche' il tronco e' anche un ostacolo fisico:
+                // disegnarlo di una misura e urtarlo di un'altra sarebbe un mondo che mente
+                float trunkRadius = tree.trunkRadius();
                 float height = Math.max(0.05f, tree.height());
                 treeModel.identity()
                         .translate(tree.x(), footY, tree.z())

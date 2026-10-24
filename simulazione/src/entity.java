@@ -1338,10 +1338,53 @@ public class entity {
         return Vision.wrap(facing + gazeYaw);
     }
 
-    /** Gira il corpo. Il cono di visuale segue, perche' e' centrato sullo sguardo. */
+    /**
+     * Gira il corpo. Il cono di visuale segue, perche' e' centrato sullo sguardo.
+     *
+     * GIRARE E' LOCOMOZIONE, NON UN COMANDO. Prima questa riga era "facing += delta": una
+     * rotazione gratuita e istantanea, cioe' la direzione era l'ultima cosa che il mondo
+     * regalava alle entita' - e una regalia dallo stesso scaffale del rimontaggio dei corpi
+     * caduti e del premio alla postura. Adesso, con la fisica viva, l'entita' CHIEDE di girare e
+     * gira di quanto il suo corpo e' riuscito a girare davvero nel mondo fisico: un corpo che non
+     * ha trovato nessuna svolta non gira, non riesce a puntare quello che vede, e muore.
+     *
+     * L'INTENZIONE SI SEGNA SUBITO, prima di sapere se la rotazione riuscira': e' lo stesso
+     * circolo vizioso misurato il 24/10/2026 per il passo (legare il comando al risultato da'
+     * zero per sempre). Il palco muove i giunti di chi CHIEDE di girare, non di chi ci e' gia'
+     * riuscito.
+     */
     private void turn(double delta){
+        lastTurnWishTick = Simulation.getTick();
+        lastTurnSign = Math.signum(delta);
         if(!spend(TURN_COST)){ return; }
-        facing = Vision.wrap(facing + delta);
+        double giro = delta;
+        if(ActionWeights.fisicaViva > 0){
+            double reale = src.body.Palco.consumaImbardata(EntityID, Math.abs(delta));
+            if(reale >= 0){
+                giro = Math.signum(delta) * reale;
+            }
+        }
+        facing = Vision.wrap(facing + giro);
+    }
+
+    /** Ultimo tick in cui ha SCELTO di girare, riuscendoci o no. Vedi turn(). */
+    private volatile long lastTurnWishTick = Long.MIN_VALUE;
+    /** Da che parte ha chiesto di girare: -1 a sinistra, +1 a destra. */
+    private volatile double lastTurnSign = 0;
+
+    /** Se sta PROVANDO a girare: lo usa il palco per sapere che sterzo dare al corpo. */
+    public boolean vuoleGirare(){
+        return Simulation.getTick() - lastTurnWishTick <= 2;
+    }
+
+    /**
+     * Lo sterzo da dare al corpo: -1 a sinistra, +1 a destra, 0 dritto.
+     *
+     * E' una RICHIESTA. Quanto il corpo giri davvero dipende dalla svolta che ha trovato (vedi
+     * src.body.Gait.sterzo), esattamente come quanto avanza dipende dal passo che ha trovato.
+     */
+    public double sterzoDelCorpo(){
+        return vuoleGirare() ? lastTurnSign : 0.0;
     }
 
     /** Gira la testa, entro i limiti del collo: oltre, l'azione non fa niente. */
@@ -1404,7 +1447,14 @@ public class entity {
         if(isSleeping()){
             return src.body.Palco.Stato.DORME;
         }
-        return vuoleMuoversi() ? src.body.Palco.Stato.CAMMINA : src.body.Palco.Stato.FERMA;
+        /*
+         * CHI VUOLE GIRARE STA MUOVENDO IL CORPO quanto chi vuole camminare: girare e'
+         * locomozione, e un corpo con i motori che tengono la posa non gira. Senza questo, lo
+         * sterzo arriverebbe a un corpo con la fase ferma, cioe' a un corpo che non sta facendo
+         * niente, e nessuna entita' riuscirebbe mai a cambiare direzione.
+         */
+        return vuoleMuoversi() || vuoleGirare()
+                ? src.body.Palco.Stato.CAMMINA : src.body.Palco.Stato.FERMA;
     }
 
     /**

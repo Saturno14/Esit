@@ -75,6 +75,80 @@ public final class GaitEvaluator implements AutoCloseable {
      */
     public static final double MAX_PLAUSIBLE_SPEED = 5.0;
 
+    /**
+     * DI QUANTO SI CHIEDE DI GIRARE in una prova di svolta (rad): un quarto di giro.
+     *
+     * Perche' un BERSAGLIO e non "il massimo che riesci a fare". E' la differenza fra girare e
+     * ruzzolare, e l'ho imparata sbagliando: col punteggio sull'imbardata massima la ricerca
+     * trovava corpi che giravano a 10 rad/s - 95 giri al minuto - cadendo tutti, 6 su 6. Non era
+     * un difetto della fisica ne' dei corpi: il punteggio chiedeva di ruotare il piu' possibile,
+     * e il modo piu' rapido di ruotare e' perdere l'equilibrio e trottolare. Un'entita' che
+     * trottola non arriva a una mela: le serve cambiare direzione DI QUANTO VUOLE e poi
+     * fermarsi.
+     *
+     * E' un COMPITO, non una strategia: il mondo chiede di arrivare a una direzione, e come ci si
+     * arriva resta affare del corpo. E' la stessa cosa che "avanzare" e' per il passo. Quello che
+     * NON si fa e' premiare una posa: chi arriva alla direzione giusta strisciando ha ragione
+     * quanto chi ci arriva in piedi.
+     */
+    public static volatile double TURN_TARGET = Math.PI / 2;
+    /**
+     * Tempo massimo concesso per arrivare al bersaglio (s): sotto ~0.8 rad/s non si arriva.
+     * Era 3.0 nella prima misura (soglia 0.5 rad/s); portato a 2.0 perche' una prova di svolta
+     * sono DUE corse di fisica e il costo si paga su ogni corpo che nasce.
+     */
+    public static volatile double TURN_SECONDS = 2.0;
+    /**
+     * Tempo che si guarda DOPO aver mollato lo sterzo (s).
+     *
+     * E' la meta' del compito che conta davvero: saper SMETTERE di girare. Senza questa finestra
+     * una trottola arriverebbe al bersaglio col primo giro e prenderebbe punteggio pieno; con
+     * questa, quello che si misura e' dove il corpo si trova QUANDO HA FINITO di girare.
+     */
+    public static volatile double TURN_RELEASE = 0.75;
+
+    /**
+     * Esito di una prova di SVOLTA: quanto bene questo corpo arriva a una direzione data.
+     *
+     * @param errore       di quanto ha sbagliato la direzione finale (rad, sempre >= 0)
+     * @param girato       quanto ha girato in tutto (rad, segno = verso)
+     * @param tempo        secondi impiegati ad arrivare al bersaglio (NaN = non ci e' arrivato)
+     * @param erroreOpposto lo stesso errore chiedendo di girare dall'ALTRA parte: serve a
+     *                      MISURARE l'assunzione dello specchio invece di darla per buona (vedi
+     *                      il commento sulla svolta in Gait). NaN = non misurato.
+     * @param avanti       quanto si e' spostato mentre girava (m/s): si riporta, non si giudica -
+     *                      girare fermi e girare camminando sono due andature diverse e quale
+     *                      serva lo dice il mondo, non questo punteggio
+     * @param errorePartenza l'errore dello STESSO corpo CON LO STERZO A ZERO, cioe' senza nessuna
+     *                      svolta. E' il braccio di controllo, e viaggia dentro il risultato
+     *                      perche' senza di lui "errore 0.8" non vuol dire niente: non si saprebbe
+     *                      se la ricerca ha trovato qualcosa o se quel corpo girava gia' da solo.
+     */
+    public record Turn(Gait gait, double errore, double girato, double tempo,
+                       double erroreOpposto, double avanti, boolean fell,
+                       double errorePartenza) {
+
+        /** Quanto la svolta trovata guadagna sul non averne nessuna (rad di errore in meno). */
+        public double guadagno() {
+            return Double.isFinite(errorePartenza) ? errorePartenza - errore : Double.NaN;
+        }
+
+        /** Quanto vale questa svolta: quanto POCO si sbaglia la direzione finale. */
+        public double score() {
+            return Double.isFinite(errore) ? -errore : -1e9;
+        }
+
+        /** Vero se il bersaglio e' stato raggiunto entro il tempo concesso. */
+        public boolean arrivato() {
+            return Double.isFinite(tempo);
+        }
+
+        /** Vero se la svolta funziona anche dall'altra parte quasi come da questa. */
+        public boolean simmetrica() {
+            return Double.isFinite(erroreOpposto) && erroreOpposto <= errore + 0.3;
+        }
+    }
+
     /** Esito di una prova. */
     public record Result(Gait gait, double speed, double forwardSpeed, double drift,
                          boolean fell, double uprightRatio, double endRatio) {
@@ -116,6 +190,8 @@ public final class GaitEvaluator implements AutoCloseable {
                     || speed > MAX_PLAUSIBLE_SPEED;
         }
     }
+
+
 
     private final PhysicsWorld world;
     private int nextGroup = 1;
@@ -200,6 +276,142 @@ public final class GaitEvaluator implements AutoCloseable {
     public Result measure(Automaton body, Gait gait) {
         return measure(body, gait, DEFAULT_SECONDS);
     }
+
+    /**
+     * Una corsa di fisica in cui si chiede al corpo di GIRARE DI UN QUARTO DI GIRO e poi di
+     * smettere: di quanto sbaglia la direzione finale.
+     *
+     * COME SI MISURA LA DIREZIONE. Non con JoltRagdoll.yawRoot: quello ricade sull'asse laterale
+     * quando l'asse in avanti e' quasi verticale, e la ricaduta e' un SALTO - un corpo che
+     * ruzzola ci passa dentro continuamente e sommando i salti risultava girare a 10 rad/s senza
+     * aver cambiato direzione. Qui si integra la velocita' angolare del tronco ATTORNO ALLA
+     * VERTICALE (rootAngularVelocity().y()): e' continua, non ha ricadute, e un corpo che rotola
+     * attorno a un asse orizzontale non accumula niente - perche' rotolare non e' girare.
+     *
+     * DUE FASI: si tiene lo sterzo finche' il bersaglio non e' passato, poi si MOLLA e si guarda
+     * dove il corpo si ferma. La seconda fase e' la meta' che conta: saper smettere.
+     */
+    public Turn measureTurn(Automaton body, Gait gait, double verso, double seconds) {
+        JoltRagdoll doll = JoltRagdoll.spawn(world, body, 0, 0, 0, 0, nextGroup++);
+        try {
+            float[] q = null;
+            int settleSteps = (int) Math.round(SETTLE_SECONDS / PhysicsWorld.TIME_STEP);
+            int steps = (int) Math.round(seconds / PhysicsWorld.TIME_STEP);
+            int rilascio = (int) Math.round(TURN_RELEASE / PhysicsWorld.TIME_STEP);
+            MotorSense sensi = new MotorSense(body);
+            q = gait.anglesAt(body, 0, q);
+            doll.setTargetAngles(q);
+            for (int i = 0; i < settleSteps; i++) {
+                world.step();
+            }
+            double startHeight = doll.rootPosition().y();
+            double bersaglio = verso * TURN_TARGET;
+            double girato = 0;
+            double tempo = Double.NaN;
+            double lowestRatio = Double.MAX_VALUE;
+            V3 comStart = doll.centerOfMass();
+            int ogniQuanti = Math.max(1, CONTROL_EVERY);
+            int totale = steps + rilascio;
+            int i = 0;
+            for (; i < totale; i++) {
+                double t = i * PhysicsWorld.TIME_STEP;
+                boolean arrivato = Double.isFinite(tempo);
+                // oltre il tempo concesso si molla comunque: chi non ci arriva ha finito
+                double sterzo = (arrivato || i >= steps) ? 0.0 : verso;
+                if (i % ogniQuanti == 0) {
+                    sensi.read(doll, 0, 2 * Math.PI * gait.frequency() * t);
+                }
+                q = gait.targetAngles(body, t, sensi, sterzo, q);
+                doll.setTargetAngles(q);
+                world.step();
+                girato += doll.rootAngularVelocity().y() * PhysicsWorld.TIME_STEP;
+                if (!arrivato && girato * verso >= TURN_TARGET) {
+                    tempo = t;
+                }
+                double r = startHeight > 1e-6 ? doll.rootPosition().y() / startHeight : 0;
+                lowestRatio = Math.min(lowestRatio, r);
+                // chi e' arrivato ha finito la sua finestra di rilascio: non serve il resto
+                if (arrivato && t >= tempo + TURN_RELEASE) {
+                    break;
+                }
+            }
+            double durata = Math.max(1e-3, i * PhysicsWorld.TIME_STEP);
+            V3 comEnd = doll.centerOfMass();
+            double avanti = Math.hypot(comEnd.x() - comStart.x(), comEnd.z() - comStart.z()) / durata;
+            double errore = Math.abs(girato - bersaglio);
+            return new Turn(gait, errore, girato, tempo, Double.NaN, avanti,
+                    lowestRatio < FALL_RATIO, Double.NaN);
+        } finally {
+            doll.remove();
+        }
+    }
+
+    /**
+     * Cerca la SVOLTA di questo corpo: salita della collina sul solo blocco dello sterzo, col
+     * punteggio sull'errore di direzione (vedi {@link Turn}).
+     *
+     * SI PARTE DA ZERO, cioe' da un corpo che non sa girare, e si misura anche quello: cosi' il
+     * guadagno e' sempre leggibile contro "niente svolta" senza un braccio di controllo a parte.
+     * Alla fine si fissa la convenzione (sterzo +1 = gira in positivo per tutti i corpi, perche'
+     * l'entita' deve poter chiedere "a destra" e ottenere destra) e si misura anche il verso
+     * opposto, per sapere quanto l'assunzione dello specchio tiene su questo corpo.
+     *
+     * Il passo dell'andatura NON si tocca: la svolta si cerca SOPRA l'andatura che il corpo ha
+     * gia' trovato per camminare. Due ricerche separate con due punteggi separati, perche' una
+     * prova di fisica risponde a una domanda sola.
+     */
+    public Turn optimizeTurn(Automaton body, Gait start, int trials, Random rng) {
+        Gait best = start;
+        // anche il punto di partenza si misura nei due versi: il confronto deve essere alla pari
+        Turn p0 = measureTurn(body, best, 1.0, TURN_SECONDS);
+        Turn p1 = measureTurn(body, best, -1.0, TURN_SECONDS);
+        // l'errore del punto di partenza E' il braccio di controllo: lo sterzo qui e' tutto a zero
+        double partenza = Math.max(p0.errore(), p1.errore());
+        Turn bestResult = new Turn(best, p0.errore(), p0.girato(), p0.tempo(), p1.errore(),
+                p0.avanti(), p0.fell() || p1.fell(), partenza);
+        for (int i = 0; i < trials; i++) {
+            double sigma = TURN_SIGMA * (1.0 - 0.7 * i / (double) Math.max(1, trials));
+            Gait candidate = best.perturbSterzo(body, rng, sigma, TURN_FRACTION);
+            /*
+             * SI PROVANO I DUE VERSI E SI TIENE IL PEGGIORE DEI DUE. Non e' prudenza: una svolta
+             * che funziona solo da un lato lascia l'entita' incapace di tornare indietro, e il
+             * punteggio deve dire la verita' su cosa quel corpo sa fare. Costa due corse per
+             * prova, ed e' il prezzo per non scoprire dopo che meta' delle svolte era finta.
+             */
+            Turn destra = measureTurn(body, candidate, 1.0, TURN_SECONDS);
+            Turn sinistra = measureTurn(body, candidate, -1.0, TURN_SECONDS);
+            double punteggio = Math.min(destra.score(), sinistra.score());
+            if (punteggio > peggiore(bestResult)) {
+                best = candidate;
+                bestResult = new Turn(candidate, destra.errore(), destra.girato(), destra.tempo(),
+                        sinistra.errore(), destra.avanti(), destra.fell() || sinistra.fell(),
+                        partenza);
+            }
+        }
+        if (bestResult.girato() < 0) {
+            // convenzione: sterzo +1 gira in positivo per tutti (vedi Gait.sterzoRovesciato)
+            best = best.sterzoRovesciato();
+            Turn destra = measureTurn(body, best, 1.0, TURN_SECONDS);
+            Turn sinistra = measureTurn(body, best, -1.0, TURN_SECONDS);
+            return new Turn(best, destra.errore(), destra.girato(), destra.tempo(),
+                    sinistra.errore(), destra.avanti(), destra.fell() || sinistra.fell(),
+                    partenza);
+        }
+        return bestResult;
+    }
+
+    /** Il punteggio di una svolta tenendo conto anche del verso opposto, quando si conosce. */
+    private static double peggiore(Turn t) {
+        if (!Double.isFinite(t.erroreOpposto())) {
+            return t.score();
+        }
+        return Math.min(t.score(), -t.erroreOpposto());
+    }
+
+    /** Quanto si sposta uno spostamento di centro a ogni prova di svolta (frazione dell'escursione). */
+    public static volatile double TURN_SIGMA = 0.35;
+    /** Quanti giunti si spostano a ogni prova di svolta. */
+    public static volatile double TURN_FRACTION = 0.3;
 
     /**
      * Cerca l'andatura migliore per questo corpo partendo da quella data (quella dei genitori, o

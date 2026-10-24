@@ -322,6 +322,46 @@ public final class PalcoSelfTest {
                         + "%.3f contro %.3f rad%n",
                 altezzaSveglio, altezzaDorme, scartoSveglio, scartoDorme);
 
+        // ------------------------------------------------------------------ la svolta
+        /*
+         * GIRARE E' UN'ABILITA' DEL CORPO, NON UN COMANDO DEL MONDO. Tre verifiche:
+         *  - un corpo con la svolta cercata gira davvero quando glielo si chiede;
+         *  - un corpo con lo sterzo a ZERO non gira (altrimenti lo sterzo non serve a niente e
+         *    i radianti li regalerebbe la caduta, come i metri prima della correzione);
+         *  - chi non chiede di girare non accumula radianti, anche se il corpo ruota cadendo.
+         * La svolta si cerca con l'oracolo, poche prove: serve un corpo che giri, altrimenti il
+         * confronto e' fra due zeri (lo stesso errore corretto sopra per la camminata).
+         */
+        Palco.chiudi();
+        Gait conSvolta = andatura;
+        double erroreSvolta = Double.NaN;
+        try (GaitEvaluator ev = new GaitEvaluator()) {
+            GaitEvaluator.Turn t = ev.optimizeTurn(corpo, andatura, 10, r2);
+            conSvolta = t.gait();
+            erroreSvolta = t.errore();
+        }
+        check(!conSvolta.sterzoNullo(), String.format(Locale.ROOT,
+                "la ricerca ha trovato una svolta per questo corpo (errore %.2f rad)", erroreSvolta));
+        Palco.allestisci(List.of(
+                new Palco.Candidato(930, corpo, conSvolta, Palco.Stato.CAMMINA, 1.0),
+                new Palco.Candidato(931, corpo, andatura, Palco.Stato.CAMMINA, 1.0),
+                new Palco.Candidato(932, corpo, conSvolta, Palco.Stato.CAMMINA, 0.0)), 1);
+        for (int t = 0; t < 20; t++) {
+            Palco.avanza(src.Simulation.TICK_MS / 1000.0);
+        }
+        double giraConSvolta = Palco.consumaImbardata(930, 1e9);
+        double giraSenzaSterzo = Palco.consumaImbardata(931, 1e9);
+        double giraSenzaChiedere = Palco.consumaImbardata(932, 1e9);
+        check(giraConSvolta > giraSenzaSterzo, String.format(Locale.ROOT,
+                "chi ha una svolta gira piu' di chi ha lo sterzo a zero (%.3f contro %.3f rad)",
+                giraConSvolta, giraSenzaSterzo));
+        check(giraSenzaChiedere == 0.0, String.format(Locale.ROOT,
+                "chi non chiede di girare non accumula radianti (%.3f rad)", giraSenzaChiedere));
+        check(Palco.consumaImbardata(930, 1e9) == 0.0,
+                "i radianti consumati non si possono riconsumare");
+        check(Palco.consumaImbardata(999, 1e9) < 0,
+                "chi non e' sul palco non ha radianti da consumare");
+
         // ------------------------------------------------- nessuno viene rimesso in piedi
         /*
          * CHI CADE RESTA CADUTO. Il palco rimetteva in piedi dal mondo un corpo abbassato e fermo

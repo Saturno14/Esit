@@ -29,6 +29,21 @@ public final class Rot {
     }
 
     /** Rotazione attorno all'asse Y (imbardata): l'orientamento con cui un'entita' sta in piedi. */
+    /**
+     * Riporta un angolo in (-pi, pi]. Serve a sommare DIFFERENZE di angolo: senza questo, un
+     * corpo che gira passando per mezzo giro sembrerebbe aver girato nell'altro verso.
+     */
+    public static double wrapPi(double angle) {
+        double a = angle;
+        while (a > Math.PI) {
+            a -= 2 * Math.PI;
+        }
+        while (a <= -Math.PI) {
+            a += 2 * Math.PI;
+        }
+        return a;
+    }
+
     public static Rot yaw(double angle) {
         return axisAngle(new V3(0, 1, 0), angle);
     }

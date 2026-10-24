@@ -79,12 +79,47 @@ public final class Locomotion {
      *                   all'allenamento durante la vita per sapere se una prova e' andata meglio.
      *                   Per la stima geometrica e' meno infinito: non e' confrontabile con niente.
      */
-    public record Profile(double speed, boolean stable, Gait gait, boolean measured, double score) {
+    /**
+     * @param turnError di quanto questo corpo sbaglia la direzione quando gli si chiede di girare
+     *                  di un quarto di giro (rad; vedi GaitEvaluator.Turn). NaN = non misurato.
+     *                  La SVOLTA in se' non e' qui: sta dentro {@code gait}, perche' girare e'
+     *                  locomozione e quindi fa parte del genoma del movimento.
+     */
+    public record Profile(double speed, boolean stable, Gait gait, boolean measured, double score,
+                          double turnError) {
 
         Profile(double speed, boolean stable, Gait gait, boolean measured) {
-            this(speed, stable, gait, measured, Double.NEGATIVE_INFINITY);
+            this(speed, stable, gait, measured, Double.NEGATIVE_INFINITY, Double.NaN);
+        }
+
+        Profile(double speed, boolean stable, Gait gait, boolean measured, double score) {
+            this(speed, stable, gait, measured, score, Double.NaN);
+        }
+
+        /** Vero se questo corpo sa cambiare direzione abbastanza da puntare a quello che vede. */
+        public boolean saGirare() {
+            return Double.isFinite(turnError) && turnError <= TURN_OK;
         }
     }
+
+    /**
+     * Errore di direzione sotto il quale si dice che un corpo SA girare (rad): mezzo radiante,
+     * cioe' 29 gradi. Con un errore cosi' un'entita' che punta a una mela vista di lato ci arriva
+     * vicino e poi corregge; oltre il quarto di giro (1.57) non ha girato affatto.
+     * Misurato su 78 corpi evoluti il 25/10/2026: 38 su 78 ci arrivano, 13 non girano affatto.
+     */
+    public static final double TURN_OK = 0.5;
+
+    /**
+     * Prove di fisica spese a cercare la SVOLTA, oltre a quelle del passo.
+     *
+     * A 0 la svolta non si cerca: l'andatura non ha sterzo, ed e' esattamente il comportamento di
+     * prima (serve come braccio di controllo). COSTA: ogni prova di svolta sono due corse di
+     * fisica (si prova a destra E a sinistra, perche' una svolta che funziona da un lato solo
+     * lascia l'entita' incapace di tornare indietro), quindi 8 prove di svolta costano piu' o
+     * meno quanto le 24 del passo.
+     */
+    public static volatile int turnTrials = 8;
 
     private static final Map<String, Profile> cache = new ConcurrentHashMap<>();
     private static final Map<String, Boolean> pending = new ConcurrentHashMap<>();
@@ -428,7 +463,17 @@ public final class Locomotion {
         }
         // la velocita' utile e' quella in avanti: e' la direzione in cui l'entita' si muovera'
         double speed = Math.max(0.0, r.forwardSpeed());
-        return new Profile(speed, !r.fell(), r.gait(), true, r.score());
+        /*
+         * E POI SI CERCA LA SVOLTA, sopra il passo appena trovato. Due ricerche con due punteggi:
+         * il passo si giudica su quanto si avanza, la svolta su quanto si sbaglia la direzione.
+         * L'andatura che ne esce e' la stessa di prima PIU' lo sterzo, quindi un corpo che non
+         * trova nessuna svolta resta esattamente il corpo di prima.
+         */
+        if (turnTrials <= 0) {
+            return new Profile(speed, !r.fell(), r.gait(), true, r.score());
+        }
+        GaitEvaluator.Turn t = ev.optimizeTurn(body, r.gait(), turnTrials, rng);
+        return new Profile(speed, !r.fell(), t.gait(), true, r.score(), t.errore());
     }
 
     /**
@@ -454,6 +499,16 @@ public final class Locomotion {
             // DUE RIFLESSI DIVERSI SONO DUE LOCOMOZIONI DIVERSE: senza i pesi nella firma, la
             // misura di un corpo che ha imparato a reagire verrebbe riusata per uno che non ha
             // imparato niente, e l'allenamento non si vedrebbe mai
+            /*
+             * DUE SVOLTE DIVERSE SONO DUE LOCOMOZIONI DIVERSE. Senza lo sterzo nella firma, la
+             * misura di un corpo che ha imparato a girare verrebbe riusata per uno che non sa
+             * girare, e la svolta non si vedrebbe mai nella cache.
+             */
+            for (Map.Entry<String, Double> e : gait.sterzi().entrySet()) {
+                if (e.getValue() != 0) {
+                    sb.append('s').append(e.getKey()).append(round(e.getValue()));
+                }
+            }
             Reflex r = gait.reflex();
             if (r != null) {
                 for (Map.Entry<String, double[]> e : r.all().entrySet()) {

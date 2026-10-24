@@ -2213,3 +2213,162 @@ di rimettere la pezza:
 
 PalcoSelfTest 66/66, BodySelfTest 335/335, VisionSelfTest 632/632, PhysicsSmokeTest OK.
 BodyPlanTest resta rosso da prima (10 su 2421, voce 20).
+
+==========================================================================================
+25. GIRARE E' LOCOMOZIONE, E IL TERRENO ENTRA NELLA FISICA (25/10/2026)
+==========================================================================================
+
+L'utente ha fissato la fase: "bisogna continuare a lavorare a questa fase finche' dalla
+simulazione non si vede un mondo con entita' del tutto autonome e dinamiche, che si muovono per
+libera scelta ed esplorano per procacciarsi cibo. [...] La parte fondamentale al momento e' che la
+simulazione fisica di Jolt debba lavorare nella simulazione, perche' se nel terreno c'e' un buco
+l'entita' inciampa, se c'e' un dosso provera' a superarlo; se non riesce o e' troppo lenta muore.
+Mi serve che la simulazione sia piu' realistica possibile e non sia controllata in nessun modo,
+quindi non dobbiamo neanche imporli una direzione comportamentale".
+
+Cinque passi, decisi insieme: (1) la svolta, (2) il terreno e l'acqua nella fisica, (3) un solo
+mondo, (4) via il tetto di popolazione, (5) via ogni premio tranne quello della riproduzione.
+Questa voce copre il primo e meta' del secondo.
+
+------------------------------------------------------------------------------------------
+1. QUELLO CHE LA RICOGNIZIONE HA TROVATO, prima di scrivere una riga
+------------------------------------------------------------------------------------------
+Tre cose erano gia' autonome, e vale la pena dirlo perche' definiscono il metodo che funziona: il
+CORPO (ogni corpo scopre la sua andatura), il CERVELLO (una rete per entita', ereditata e mutata -
+i pesi n_* cablano solo gli istinti delle fondatrici, e il progetto ha gia' deciso con cura di non
+cablare luce e dieta), e la POSIZIONE (exactX/exactZ sono metri continui, il mondo e' 50x50 m con
+una mappa di altezze).
+
+Tre no:
+ - LA FISICA NON ERA NEL MONDO, era un distributore di metri. Palco: pavimento piatto, corsie a
+   8 m, un corpo per corsia, tapis roulant a 400 m.
+ - GIRARE ERA GRATIS, e questo e' il nodo che non avevo visto. entity.turn faceva
+   "facing += TURN_STEP": una rotazione istantanea e gratuita. Nel mondo fisico girare E'
+   locomozione, e finche' una svolta non esiste come abilita' scoperta un'entita' sa andare solo
+   nella direzione in cui e' nata - quindi il mondo unico non misurerebbe niente. Per questo la
+   svolta viene PRIMA del terreno.
+ - IL PREMIO e' l'ultima direzione comportamentale imposta (eatApple, drinkReward, n_moveMate...).
+   L'utente ha deciso: via tutto tranne quello della riproduzione, al passo 5, "perche' tanto
+   tutte le statistiche l'entita' le percepisce nella rete neurale, quindi quando ha mancanze o
+   abbondanze come fame o sete se ne accorge da se'".
+
+------------------------------------------------------------------------------------------
+2. LA SVOLTA STA NEL GENOMA DEL MOVIMENTO
+------------------------------------------------------------------------------------------
+Un numero per grado di liberta' dentro Gait: di quanto si sposta il CENTRO di quel giunto quando
+si chiede di girare con sterzo = +1. Sta dentro l'andatura e non in una classe a fianco per la
+stessa ragione del riflesso: girare e' locomozione, quindi appartiene al genoma del movimento - si
+eredita, si incrocia per giunto intero, si muta, si allena e finisce nell'archivio senza che sia
+stato scritto nessun apparato nuovo. Parte TUTTA A ZERO, quindi un corpo che non trova nessuna
+svolta e' esattamente il corpo di prima.
+
+COSA IMPONE QUESTA FORMA, dichiarato: un solo numero per giunto, e girare a sinistra e' sterzo -1,
+cioe' lo SPECCHIO di girare a destra. Non e' una verita' sui corpi: e' una compressione dello
+spazio di ricerca, la stessa scelta dell'oscillatore che impone una sinusoide. L'asimmetria non si
+assume, SI MISURA (si prova anche il verso opposto).
+
+DUE RICERCHE SEPARATE, non una. Il passo si punteggia su quanto si avanza, la svolta su quanto si
+sbaglia la direzione: una prova di fisica da' UN NUMERO, e non puo' rispondere a due domande.
+Quindi perturbSterzo e optimizeTurn sono separati da perturb e optimize, e la svolta si cerca
+SOPRA l'andatura che il corpo ha gia' trovato per camminare.
+
+------------------------------------------------------------------------------------------
+3. IL PUNTEGGIO SBAGLIATO, E COME L'HO VISTO
+------------------------------------------------------------------------------------------
+Prima versione: "gira il piu' possibile". Risultato della ricerca: corpi che giravano a 10 RAD/S -
+95 giri al minuto - CADENDO TUTTI, 6 su 6. Non era un difetto della fisica ne' dei corpi: il modo
+piu' rapido di ruotare e' perdere l'equilibrio e trottolare, e il punteggio chiedeva esattamente
+quello. Un'entita' che trottola non arriva a una mela: le serve cambiare direzione DI QUANTO VUOLE
+e poi fermarsi.
+
+E dentro quel numero c'era anche un errore MIO di misura. JoltRagdoll.yawRoot ricade sull'asse
+laterale quando l'asse in avanti e' quasi verticale, e quella ricaduta e' un SALTO: un corpo che
+ruzzola ci passa dentro continuamente, e sommando i salti risultava aver girato senza aver
+cambiato direzione. Adesso l'imbardata si INTEGRA dalla velocita' angolare del tronco attorno
+alla verticale (rootAngularVelocity().y): e' continua, non ha ricadute, e un corpo che rotola
+attorno a un asse orizzontale non accumula niente - perche' rotolare non e' girare.
+
+IL PUNTEGGIO DI ADESSO E' UN COMPITO: arriva a un quarto di giro e poi SMETTI. La seconda meta' e'
+quella che conta, perche' una trottola arriva al bersaglio col primo giro e poi lo manca di molto.
+E' un compito, non una strategia - e' la stessa cosa che "avanzare" e' per il passo - e non premia
+nessuna posa: chi arriva alla direzione giusta strisciando ha ragione quanto chi ci pivota sopra
+un piede.
+Si provano i DUE VERSI e si tiene il peggiore: una svolta che funziona da un lato solo lascia
+l'entita' incapace di tornare indietro, e il punteggio deve dire la verita' su cosa quel corpo sa
+fare. Costa due corse per prova, ed e' il prezzo per non scoprire dopo che meta' delle svolte era
+finta.
+
+MISURATO su 78 corpi evoluti (6 stirpi x 13 generazioni), 12 prove di svolta, col CONTROLLO dentro
+il risultato (lo stesso corpo con lo sterzo a zero):
+    73 corpi su 78 sbagliano MENO con la svolta trovata che senza    guadagno mediano 2.32 rad
+    38 su 78 arrivano entro mezzo radiante (29 gradi)
+    13 su 78 non girano affatto
+    48 su 78 girano anche dall'altra parte
+UNA COSA CHE NON MI ASPETTAVO: senza sterzo l'errore di partenza e' 1.8-7.5 rad, cioe' molto PIU'
+del quarto di giro chiesto. Le andature di oggi non vanno dritte: SPIRALEGGIANO. La svolta trovata
+non aggiunge solo una rotazione, riduce una rotazione che c'era gia' e non era comandata.
+
+NEL MONDO, girare si paga. entity.turn non fa piu' "facing += delta": l'entita' CHIEDE di girare e
+gira di quanto il suo corpo ha girato davvero (Palco.consumaImbardata), con le stesse due regole
+dei metri - l'intenzione si segna prima di sapere se riuscira' (altrimenti si chiude l'anello
+vizioso misurato il 24/10) e il credito va solo a chi l'ha chiesto, perche' un corpo che cade
+ruota e contare quella rotazione sarebbe un sussidio alla caduta.
+
+------------------------------------------------------------------------------------------
+4. IL TERRENO E L'ACQUA, I DUE MATTONI
+------------------------------------------------------------------------------------------
+PhysicsWorld.addHeightField: il terreno vero come campo di altezze statico. Su un pavimento piatto
+un'andatura e' una proprieta' del corpo; su un terreno e' una proprieta' del corpo E DEL POSTO.
+addGround resta, ma solo per l'ORACOLO: lì il terreno NON deve esistere, perche' la misura di
+un'andatura e' quanto quel corpo cammina, non quanto cammina su quella collina.
+
+L'ORDINE DEI CAMPIONI E' UNA TRAPPOLA, e ci sono caduto. Jolt indicizza il nodo (x, z) come
+iz * lato + ix: la Z scorre sulle righe. Scambiarli non da' nessun errore - da' il terreno
+TRASPOSTO, cioe' un mondo in cui le colline stanno dove la simulazione vede le valli, e NESSUNA
+PROVA se ne accorgerebbe se non guardando da che parte rotola un corpo. L'ho scoperto perche' la
+capsula di prova scivolava lungo Z mentre la rampa saliva lungo X. Adesso c'e'
+PhysicsWorld.indiceCampione e il PhysicsSmokeTest verifica anche GLI ASSI, non solo le quote.
+
+PhysicsWorld.galleggia: la spinta e la resistenza dell'acqua per un passo (applyBuoyancyImpulse di
+Jolt, che sa quanta parte di ogni capsula e' sotto il pelo). L'acqua della simulazione sta per
+COLONNE e cambia col terreno, quindi non e' una zona permanente nel mondo fisico: chi chiama
+decide a ogni passo chi e' in acqua.
+LA SPINTA E' 1.0 E NON E' UNA SCELTA: in Jolt 1 vuol dire "densita' uguale a quella del fluido", e
+i corpi hanno DENSITA' 1000 kg/m^3 (Automaton.DENSITY), cioe' esattamente quella dell'acqua.
+Quindi un corpo immerso non galleggia e non affonda: resta. Se un giorno la densita' diventasse un
+gene, quel numero diventerebbe il rapporto fra le due densita' - e sarebbe un gene che decide se
+sai nuotare.
+
+PhysicsSmokeTest verifica tre cose invece di una: la capsula si ferma sul pavimento piatto, si
+ferma ALLA QUOTA DEL TERRENO e scivola giu' da una rampa (lungo l'asse giusto), e in acqua CADE
+PIU' LENTAMENTE (dopo mezzo secondo da tre metri: y = 1.764 a secco, 2.547 in acqua).
+
+------------------------------------------------------------------------------------------
+6. QUANTO COSTA PAGARE LA SVOLTA, misurato
+------------------------------------------------------------------------------------------
+3 semi x 3000 tick, ogni corsa nella sua cartella (archivio a zero per tutte), contro il codice
+di prima dove girare era gratis:
+
+    braccio             semi 1/2/3            tot      gen       orologio
+    svolta gratis       18n/ 7v 56n/14v 22n/ 3v   96n 24v  4/5/3    93-126 s
+    svolta del corpo    10n/ 4v 35n/ 1v 34n/ 8v   79n 13v  3/3/5   111-128 s
+
+Nascite -18%, vivi 24 -> 13, due semi peggio e UNO MEGLIO (il terzo: 22 -> 34 nascite, 3 -> 8
+vive). Con tre semi e questa dispersione non c'e' niente da dichiarare: la direzione e' quella
+attesa - girare era gratis e adesso si paga - e la grandezza la dira' il lotto a dodici.
+Il costo di calcolo della ricerca della svolta e' +20% di orologio (8 prove di svolta, due corse
+di fisica ciascuna, contro le 24 del passo).
+
+ATTENZIONE A UN NUMERO CHE SEMBRA UN MIGLIORAMENTO E NON LO E': i "metri camminati davvero"
+passano da ~1000 a 1500-5100. Non e' che le entita' camminino di piu': e' che chi chiede di
+girare adesso sta in CAMMINA (le gambe si muovono per girare), quindi il corpo nel palco si
+muove in molti piu' tick. Quel contatore misura il movimento del CORPO, non il progresso
+dell'entita'.
+
+------------------------------------------------------------------------------------------
+7. VERIFICHE
+------------------------------------------------------------------------------------------
+PalcoSelfTest 71/71 (quattro verifiche nuove sulla svolta: la ricerca trova una svolta, chi ce
+l'ha gira piu' di chi ha lo sterzo a zero, chi non chiede di girare non accumula radianti, i
+radianti consumati non si riconsumano), BodySelfTest 335/335, VisionSelfTest 632/632,
+PhysicsSmokeTest OK su tutti e tre i casi. BodyPlanTest resta rosso da prima (10 su 2421, voce 20).

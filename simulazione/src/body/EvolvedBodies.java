@@ -45,8 +45,20 @@ public final class EvolvedBodies {
     }
 
     private record Sample(int generation, int segments, int dofs, BodyTraits traits,
-                          GaitEvaluator.Result result) {
+                          GaitEvaluator.Result result, GaitEvaluator.Turn turn) {
     }
+
+    /**
+     * Prove di fisica spese a cercare la SVOLTA, oltre a quelle del passo (-Dsvolta.prove).
+     *
+     * A 0 la svolta non si cerca e il risultato e' identico alle misure di prima: serve a
+     * confrontare senza rimisurare tutto. Il valore predefinito e' meta' del budget del passo,
+     * perche' lo sterzo ha UN parametro per giunto contro i tre dell'oscillatore.
+     */
+    private static final int TURN_TRIALS = Integer.getInteger("svolta.prove", 12);
+
+    /** Errore oltre il quale il corpo non ha girato affatto: quanto sbaglierebbe stando fermo. */
+    private static final double TURN_IMMOBILE = GaitEvaluator.TURN_TARGET - 0.05;
 
     public static void main(String[] args) {
         int generations = args.length > 0 ? Integer.parseInt(args[0]) : 12;
@@ -146,7 +158,15 @@ public final class EvolvedBodies {
         BodyPlan plan = g.bodyPlan(schema);
         Automaton body = Automaton.fromPlan(plan, 1.0);
         GaitEvaluator.Result r = ev.optimize(body, Gait.seed(body, rng), trials, seconds, rng);
-        return new Sample(generation, plan.size(), body.dofCount(), BodyTraits.of(body), r);
+        /*
+         * LA SVOLTA SI CERCA SOPRA IL PASSO GIA' TROVATO, non insieme: il punteggio del passo e'
+         * quanto si avanza e quello della svolta e' quanto si gira, e una prova sola non puo'
+         * rispondere a due domande. Si parte dall'andatura che il corpo ha appena trovato per
+         * camminare, cosi' la svolta e' un'aggiunta a quello che sa fare.
+         */
+        GaitEvaluator.Turn t = TURN_TRIALS > 0
+                ? ev.optimizeTurn(body, r.gait(), TURN_TRIALS, rng) : null;
+        return new Sample(generation, plan.size(), body.dofCount(), BodyTraits.of(body), r, t);
     }
 
     // ------------------------------------------------------------------ resoconto
@@ -169,6 +189,48 @@ public final class EvolvedBodies {
                     median(atGen, s -> s.traits().legLength()),
                     median(atGen, s -> s.result().forwardSpeed()),
                     (int) atGen.stream().filter(s -> s.result().fell()).count(), atGen.size());
+        }
+
+        List<Sample> conSvolta = samples.stream().filter(s -> s.turn() != null).toList();
+        if (!conSvolta.isEmpty()) {
+            System.out.println();
+            System.out.println("LA SVOLTA (arrivare a un quarto di giro e poi smettere):");
+            System.out.println("  gen   senza svolta   errore rad   a sinistra   girato   arrivano"
+                    + "   avanza girando");
+            for (int g = 0; g <= generations; g++) {
+                final int gen = g;
+                List<Sample> atGen = conSvolta.stream().filter(s -> s.generation() == gen).toList();
+                if (atGen.isEmpty()) {
+                    continue;
+                }
+                System.out.printf(Locale.ROOT,
+                        "  %3d   %12.3f   %10.3f   %10.3f   %+6.2f   %4d/%-4d  %14.3f%n",
+                        g,
+                        median(atGen, s -> s.turn().errorePartenza()),
+                        median(atGen, s -> s.turn().errore()),
+                        median(atGen, s -> s.turn().erroreOpposto()),
+                        median(atGen, s -> s.turn().girato()),
+                        (int) atGen.stream().filter(s -> s.turn().arrivato()).count(), atGen.size(),
+                        median(atGen, s -> s.turn().avanti()));
+            }
+            /*
+             * QUANTI CORPI SANNO GIRARE DAVVERO. La soglia e' mezzo radiante di errore, cioe' 29
+             * gradi: con un errore cosi' un'entita' che mira a una mela vista di lato ci arriva
+             * vicino e poi corregge. Sopra il quarto di giro di errore (1.57) il corpo non ha
+             * girato affatto, perche' tanto sbaglierebbe stando fermo.
+             */
+            long sanno = conSvolta.stream().filter(s -> s.turn().errore() <= 0.5).count();
+            long fermi = conSvolta.stream().filter(s -> s.turn().errore() >= TURN_IMMOBILE).count();
+            long simm = conSvolta.stream().filter(s -> s.turn().simmetrica()).count();
+            long meglio = conSvolta.stream().filter(s -> s.turn().guadagno() > 0.01).count();
+            System.out.printf(Locale.ROOT,
+                    "  %d corpi su %d arrivano entro mezzo radiante (29 gradi); %d non girano "
+                            + "affatto; %d girano anche dall'altra parte%n",
+                    sanno, conSvolta.size(), fermi, simm);
+            System.out.printf(Locale.ROOT,
+                    "  IL CONTROLLO: %d corpi su %d sbagliano MENO con la svolta trovata che con "
+                            + "lo sterzo a zero; guadagno mediano %.3f rad%n",
+                    meglio, conSvolta.size(), median(conSvolta, s -> s.turn().guadagno()));
         }
 
         System.out.println();
@@ -276,13 +338,17 @@ public final class EvolvedBodies {
         if (csv == null || csv.isBlank()) {
             return;
         }
-        StringBuilder sb = new StringBuilder("i;gen;forma;segmenti;gdl;appoggi;avanti;cade\n");
+        StringBuilder sb = new StringBuilder(
+                "i;gen;forma;segmenti;gdl;appoggi;avanti;cade;gira;gira_sin;avanza_girando\n");
         for (int i = 0; i < samples.size(); i++) {
             Sample s = samples.get(i);
-            sb.append(String.format(Locale.ROOT, "%d;%d;%s;%d;%d;%d;%.4f;%d%n",
+            GaitEvaluator.Turn t = s.turn();
+            sb.append(String.format(Locale.ROOT, "%d;%d;%s;%d;%d;%d;%.4f;%d;%.4f;%.4f;%.4f%n",
                     i, s.generation(), shapeOf(s), s.segments(), s.dofs(),
                     s.traits().supportCount(), s.result().forwardSpeed(),
-                    s.result().fell() ? 1 : 0));
+                    s.result().fell() ? 1 : 0,
+                    t == null ? 0.0 : t.errore(), t == null ? 0.0 : t.erroreOpposto(),
+                    t == null ? 0.0 : t.avanti()));
         }
         try {
             java.nio.file.Files.writeString(java.nio.file.Path.of(csv), sb.toString());
@@ -313,7 +379,10 @@ public final class EvolvedBodies {
     }
 
     private static double median(List<Sample> list, java.util.function.ToDoubleFunction<Sample> f) {
-        double[] v = list.stream().mapToDouble(f).sorted().toArray();
+        // i NaN si scartano invece di finire in fondo all'ordinamento e spostare la mediana: la
+        // simmetria della svolta vale NaN per un corpo che non gira affatto, e quei corpi non
+        // hanno una simmetria da mediare
+        double[] v = list.stream().mapToDouble(f).filter(Double::isFinite).sorted().toArray();
         return v.length == 0 ? 0 : v[v.length / 2];
     }
 }

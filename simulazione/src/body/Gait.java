@@ -4,6 +4,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,15 +47,42 @@ public final class Gait {
      * ottenerlo. Null vale come "tutti i pesi a zero", cioe' solo oscillatore.
      */
     private final Reflex reflex;
+    /**
+     * LA SVOLTA, un numero per grado di liberta': di quanto si sposta il centro di quel giunto
+     * quando al corpo si chiede di girare con sterzo = +1 (vedi {@link #targetAngles}).
+     *
+     * PERCHE' STA QUI E NON IN UNA CLASSE A PARTE: girare e' locomozione come camminare, quindi
+     * appartiene al genoma del movimento - si eredita, si incrocia, si muta, si allena e finisce
+     * nell'archivio con tutto il resto, senza che serva scrivere una macchina nuova. E' la stessa
+     * ragione per cui il riflesso sta qui dentro.
+     *
+     * PARTE TUTTA A ZERO, quindi un'andatura appena creata si comporta ESATTAMENTE come prima: la
+     * svolta e' un caso particolare dell'andatura di sempre, non un esperimento a fianco.
+     *
+     * COSA IMPONE QUESTA FORMA, dichiarato: un solo numero per giunto, e girare a sinistra e'
+     * sterzo = -1, cioe' lo SPECCHIO di girare a destra. Non e' una verita' sui corpi (un corpo
+     * asimmetrico gira meglio da un lato), e' una compressione dello spazio di ricerca - la
+     * stessa scelta dell'oscillatore, che impone una sinusoide. Un blocco per verso raddoppierebbe
+     * i parametri; questa versione li tiene a uno per giunto e l'asimmetria la si MISURA invece di
+     * assumerla (vedi GaitEvaluator.Turn.yawOpposta).
+     * Null vale come "tutti a zero", cioe' un corpo che non sa girare.
+     */
+    private final Map<String, Double> sterzoByDof;
 
     private Gait(double frequency, Map<String, Osc> oscByDof) {
-        this(frequency, oscByDof, null);
+        this(frequency, oscByDof, null, null);
     }
 
     private Gait(double frequency, Map<String, Osc> oscByDof, Reflex reflex) {
+        this(frequency, oscByDof, reflex, null);
+    }
+
+    private Gait(double frequency, Map<String, Osc> oscByDof, Reflex reflex,
+                 Map<String, Double> sterzoByDof) {
         this.frequency = Math.max(FREQ_MIN, Math.min(FREQ_MAX, frequency));
         this.oscByDof = oscByDof;
         this.reflex = reflex;
+        this.sterzoByDof = sterzoByDof;
     }
 
     /**
@@ -94,11 +122,64 @@ public final class Gait {
      */
     public static volatile boolean useReflex = false;
 
+    /** Lo spostamento di centro del giunto per sterzo = +1 (0 se questo corpo non sa girare). */
+    public double sterzo(String dofName) {
+        Double v = sterzoByDof == null ? null : sterzoByDof.get(dofName);
+        return v == null ? 0.0 : v;
+    }
+
+    /** Tutta la svolta, per diagnostica e per la firma della misura. */
+    public Map<String, Double> sterzi() {
+        return sterzoByDof == null ? Map.of() : Collections.unmodifiableMap(sterzoByDof);
+    }
+
+    /** Vero se questo corpo non ha ancora nessuna svolta (tutti gli spostamenti a zero). */
+    public boolean sterzoNullo() {
+        if (sterzoByDof == null) {
+            return true;
+        }
+        for (double v : sterzoByDof.values()) {
+            if (v != 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** La stessa andatura con questa svolta al posto della sua. */
+    public Gait withSterzo(Map<String, Double> sterzo) {
+        return new Gait(frequency, oscByDof, reflex, sterzo == null ? null : new LinkedHashMap<>(sterzo));
+    }
+
+    /**
+     * La stessa andatura con la svolta rovesciata di segno.
+     *
+     * Serve a fissare la CONVENZIONE: la ricerca trova uno spostamento dei centri che fa girare il
+     * corpo, ma da che parte lo giri non lo si puo' sapere prima di provarlo (dipende da dove le
+     * mutazioni hanno attaccato gli arti). Se la svolta trovata gira in negativo si rovescia, e
+     * cosi' sterzo = +1 vuol dire sempre lo stesso verso per tutti i corpi - che e' la condizione
+     * perche' l'entita' possa chiedere "a destra" e ottenere destra.
+     */
+    public Gait sterzoRovesciato() {
+        if (sterzoByDof == null) {
+            return this;
+        }
+        Map<String, Double> map = new LinkedHashMap<>();
+        for (Map.Entry<String, Double> e : sterzoByDof.entrySet()) {
+            map.put(e.getKey(), -e.getValue());
+        }
+        return new Gait(frequency, oscByDof, reflex, map);
+    }
+
     public Reflex reflex() {
         return reflex;
     }
 
     /** La stessa andatura con un altro riflesso (l'oscillatore non si tocca). */
+    public Gait withReflexKeepSterzo(Reflex r) {
+        return new Gait(frequency, oscByDof, r, sterzoByDof);
+    }
+
     public Gait withReflex(Reflex r) {
         return new Gait(frequency, oscByDof, r);
     }
@@ -287,7 +368,37 @@ public final class Gait {
         if (tastaRiflesso) {
             r = r.perturb(body, rng, sigma * REFLEX_SIGMA, Math.min(1.0, fraction * REFLEX_FRACTION));
         }
-        return new Gait(f, map, r);
+        // la svolta non si tocca qui: ha la sua ricerca e il suo punteggio (vedi perturbSterzo)
+        return new Gait(f, map, r, sterzoByDof);
+    }
+
+    /**
+     * Copia con la SOLA SVOLTA spostata a caso: e' il passo della ricerca della svolta.
+     *
+     * E' un metodo a parte e non un terzo blocco di {@link #perturb} per una ragione di misura:
+     * una prova che cerca la svolta si punteggia sull'IMBARDATA, una che cerca il passo si
+     * punteggia sull'AVANZARE. Sono due domande diverse con due risposte diverse, quindi due
+     * ricerche - mescolarle vorrebbe dire spostare la svolta in una prova che non la guarda
+     * nemmeno, cioe' buttare la prova.
+     *
+     * Lo spostamento e' in frazione dell'ESCURSIONE del giunto, come i centri dell'oscillatore, e
+     * resta dentro i limiti: chiedere a un giunto un angolo fuori corsa non lo fa girare di piu',
+     * fa strappare il motore.
+     */
+    public Gait perturbSterzo(Automaton body, Random rng, double sigma, double fraction) {
+        Map<String, Double> map = new LinkedHashMap<>();
+        for (Dof d : body.dofs()) {
+            double v = sterzo(d.name);
+            if (fraction < 1.0 && rng.nextDouble() > fraction) {
+                map.put(d.name, v);
+                continue;
+            }
+            double span = (d.upper - d.lower) / 2.0;
+            double moved = v + rng.nextGaussian() * sigma * span;
+            // la svolta non puo' da sola portare un giunto fuori dalla sua corsa
+            map.put(d.name, Math.max(-span, Math.min(span, moved)));
+        }
+        return new Gait(frequency, oscByDof, reflex, map);
     }
 
     /** Quanto si sposta un peso del riflesso, in rapporto alla sigma dell'oscillatore. */
@@ -313,7 +424,7 @@ public final class Gait {
             Osc o = e.getValue();
             map.put(e.getKey(), new Osc(o.amplitude(), -o.phase(), o.center()));
         }
-        return new Gait(frequency, map, reflex);
+        return new Gait(frequency, map, reflex, sterzoByDof);
     }
 
     /**
@@ -327,7 +438,18 @@ public final class Gait {
             Osc mine = oscByDof.get(d.name);
             map.put(d.name, clampOsc(mine != null ? mine : fallback.osc(d.name), d));
         }
-        return new Gait(frequency, map, reflex == null ? null : reflex.adaptTo(body));
+        /*
+         * LA SVOLTA SI EREDITA PER NOME, come l'oscillatore: un giunto che il figlio ha in comune
+         * col genitore tiene lo spostamento imparato, un giunto NUOVO parte da zero. Non si
+         * inventa una svolta per un arto che il genitore non aveva - quella la deve trovare la
+         * ricerca.
+         */
+        Map<String, Double> st = new LinkedHashMap<>();
+        for (Dof d : body.dofs()) {
+            double span = (d.upper - d.lower) / 2.0;
+            st.put(d.name, Math.max(-span, Math.min(span, sterzo(d.name))));
+        }
+        return new Gait(frequency, map, reflex == null ? null : reflex.adaptTo(body), st);
     }
 
     /** Incrocio di due andature: per ogni giunto si prende da uno dei due genitori. */
@@ -343,7 +465,18 @@ public final class Gait {
             map.put(d.name, clampOsc(pick, d));
         }
         double f = rng.nextBoolean() ? a.frequency : b.frequency;
-        return new Gait(f, map, Reflex.cross(a.reflex, b.reflex, body, rng));
+        /*
+         * LA SVOLTA SI INCROCIA PER GIUNTO INTERO, come tutto il resto: lo spostamento di un'anca
+         * e' una cosa sola, e prenderne una parte da un genitore e una dall'altro vorrebbe dire
+         * inventare un terzo modo di girare che nessuno dei due ha provato.
+         */
+        Map<String, Double> st = new LinkedHashMap<>();
+        for (Dof d : body.dofs()) {
+            double span = (d.upper - d.lower) / 2.0;
+            double v = rng.nextBoolean() ? a.sterzo(d.name) : b.sterzo(d.name);
+            st.put(d.name, Math.max(-span, Math.min(span, v)));
+        }
+        return new Gait(f, map, Reflex.cross(a.reflex, b.reflex, body, rng), st);
     }
 
     private static Osc clampOsc(Osc o, Dof d) {
@@ -389,15 +522,36 @@ public final class Gait {
      *              {@link MotorSense#read}); null = non disponibile, vale il solo oscillatore
      */
     public float[] targetAngles(Automaton body, double t, MotorSense sensi, float[] out) {
+        return targetAngles(body, t, sensi, 0.0, out);
+    }
+
+    /**
+     * Come sopra, chiedendo al corpo di GIRARE: sterzo va da -1 a +1, 0 = dritto.
+     *
+     * La svolta e' uno spostamento dei centri dei giunti, proporzionale allo sterzo, SOPRA
+     * l'oscillazione che resta quella di sempre. Cioe' il corpo continua a fare il suo passo e
+     * intanto tiene i giunti un po' spostati da un lato: come ci gira - inclinandosi, accorciando
+     * un arto, puntando il piede - lo decide la ricerca, non questa riga.
+     *
+     * NON C'E' NESSUN CONTROLLO DI DIREZIONE QUI: nessuno misura dove il corpo e' girato per
+     * correggerlo. Lo sterzo e' una RICHIESTA, e quanto ne esce dipende dal corpo - esattamente
+     * come i metri camminati.
+     */
+    public float[] targetAngles(Automaton body, double t, MotorSense sensi, double sterzo,
+                                float[] out) {
         List<Dof> dofs = body.dofs();
         float[] q = out != null && out.length == dofs.size() ? out : new float[dofs.size()];
         double w = 2 * Math.PI * frequency * t;
         double peso = Math.max(0, oscWeight);
+        double u = Math.max(-1.0, Math.min(1.0, sterzo));
         for (int i = 0; i < dofs.size(); i++) {
             Dof d = dofs.get(i);
             Osc o = oscByDof.get(d.name);
             double value = o == null ? 0
                     : o.center() + peso * o.amplitude() * Math.sin(w + o.phase());
+            if (u != 0) {
+                value += u * sterzo(d.name);
+            }
             q[i] = (float) Math.max(d.lower, Math.min(d.upper, value));
         }
         if (useReflex && reflex != null && sensi != null) {
@@ -429,6 +583,15 @@ public final class Gait {
         if (reflex != null && !reflex.isZero()) {
             root.put("riflesso", reflex.toJson());
         }
+        if (!sterzoNullo()) {
+            JSONObject st = new JSONObject();
+            for (Map.Entry<String, Double> e : sterzoByDof.entrySet()) {
+                if (e.getValue() != 0) {
+                    st.put(e.getKey(), e.getValue());
+                }
+            }
+            root.put("sterzo", st);
+        }
         return root;
     }
 
@@ -443,7 +606,15 @@ public final class Gait {
             }
         }
         Reflex r = obj.has("riflesso") ? Reflex.fromJson(obj.getJSONObject("riflesso")) : null;
-        return new Gait(obj.optDouble("frequency", 1.0), map, r);
+        Map<String, Double> st = null;
+        JSONObject sj = obj.optJSONObject("sterzo");
+        if (sj != null) {
+            st = new LinkedHashMap<>();
+            for (String k : sj.keySet()) {
+                st.put(k, sj.getDouble(k));
+            }
+        }
+        return new Gait(obj.optDouble("frequency", 1.0), map, r, st);
     }
 
     /** Nomi dei gradi di liberta' coperti da questa andatura (per diagnostica). */

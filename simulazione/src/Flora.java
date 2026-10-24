@@ -129,6 +129,18 @@ public final class Flora {
             return height;
         }
 
+        /**
+         * Raggio del tronco (m): cresce con l'altezza dell'albero.
+         *
+         * STA QUI, e non nel disegno, perche' adesso il tronco e' anche un OSTACOLO FISICO: se il
+         * raggio con cui si disegna e quello con cui si urta fossero due numeri diversi, le
+         * entita' sbatterebbero contro l'aria o passerebbero attraverso il legno. La formula e'
+         * quella che il motore grafico usava da sempre (Renderer).
+         */
+        public double trunkRadius() {
+            return 0.07 + 0.045 * height;
+        }
+
         public boolean mature() {
             return height >= maxHeight * MATURITY;
         }

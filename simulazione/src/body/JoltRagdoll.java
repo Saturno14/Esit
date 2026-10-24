@@ -478,6 +478,22 @@ public final class JoltRagdoll {
     }
 
     /**
+     * Il corpo rigido di Jolt che porta questo cluster.
+     *
+     * Serve a chi deve agire su un pezzo di corpo dall'esterno - oggi l'acqua, che spinge pezzo
+     * per pezzo perche' un corpo lungo puo' avere le gambe immerse e il tronco fuori.
+     */
+    public int clusterBody(int c) {
+        return clusterBodyIds.get(c);
+    }
+
+    /** Dove sta questo cluster adesso: serve a sapere se e' sotto il pelo dell'acqua. */
+    public V3 clusterPosition(int c) {
+        RVec3 p = world.bodies().getPosition(clusterBodyIds.get(c));
+        return new V3(p.x(), p.y(), p.z());
+    }
+
+    /**
      * Copia fuori le trasformate delle parti rigide. Separato da {@link #posaDa} perche' LEGGERE
      * il mondo fisico si puo' fare solo dal thread della fisica, mentre comporre la posa e' puro
      * calcolo e lo puo' fare chiunque, anche il disegno (vedi Palco e la sua istantanea).

@@ -74,6 +74,14 @@ public final class Palco {
     /** Oltre questi metri percorsi si riparte dall'inizio della corsia (tapis roulant). */
     private static final double LONTANANZA = 400.0;
 
+    /**
+     * Oltre questa imbardata in un tick si tratta di una ricaduta di yawRoot e non di una
+     * rotazione: mezzo radiante in mezzo secondo di mondo e' 1 rad/s, piu' di quanto un corpo
+     * giri davvero (misurato su 78 corpi evoluti: chi gira bene arriva a un quarto di giro in
+     * due secondi).
+     */
+    private static final double SALTO_IMBARDATA = 0.5;
+
     /** Sotto questa frazione dell'altezza di partenza il corpo e' abbassato (come GaitEvaluator). */
     private static final double FALL_RATIO = GaitEvaluator.FALL_RATIO;
 
@@ -118,6 +126,18 @@ public final class Palco {
         double altezzaIniziale;
         /** Metri percorsi e non ancora consumati da un'azione di movimento. */
         double metriDisponibili;
+        /**
+         * Lo sterzo che l'entita' sta chiedendo: -1 a sinistra, +1 a destra, 0 dritto.
+         *
+         * E' una RICHIESTA, non un comando: quanto il corpo giri davvero dipende dalla svolta che
+         * ha trovato (vedi Gait.sterzo), e un corpo che non l'ha trovata non gira - come un corpo
+         * che non ha trovato il passo non avanza.
+         */
+        double sterzo;
+        /** Radianti girati davvero e non ancora consumati da un'azione di rotazione. */
+        double radianiDisponibili;
+        /** Imbardata del tronco al tick precedente: serve a contare quanto ha girato. */
+        double ultimaImbardata = Double.NaN;
         V3 ultimoCom;
         /** Tick consecutivi abbassato e fermo (-1 = in piedi o in movimento). Solo diagnostica. */
         int tickATerra = -1;
@@ -167,6 +187,7 @@ public final class Palco {
     private static long collassi = 0;
     private static long montaggiFalliti = 0;
     private static double metriTotali = 0;
+    private static double radianiTotali = 0;
 
     private Palco() {
     }
@@ -215,6 +236,7 @@ public final class Palco {
                 smonta(p);
             }
             p.stato = c.stato();
+            p.sterzo = Math.max(-1.0, Math.min(1.0, c.sterzo()));
             if (p.doll == null) {
                 monta(p);
             }
@@ -264,7 +286,12 @@ public final class Palco {
      * agiscano, altrimenti spenderebbero i metri del tick prima), quindi fra la decisione e il
      * corpo c'e' un tick di ritardo: mezzo secondo di mondo, meno del tempo che un passo dura.
      */
-    public record Candidato(long id, Automaton body, Gait gait, Stato stato) {
+    public record Candidato(long id, Automaton body, Gait gait, Stato stato, double sterzo) {
+
+        /** Candidato che va dritto: lo sterzo a zero. */
+        public Candidato(long id, Automaton body, Gait gait, Stato stato) {
+            this(id, body, gait, stato, 0.0);
+        }
     }
 
     /**
@@ -426,7 +453,14 @@ public final class Palco {
                         p.sensi.read(p.doll, 0, 2 * Math.PI * p.gait.frequency() * p.fase);
                     }
                     if (p.stato != Stato.DORME) {
-                        p.angoli = p.gait.targetAngles(p.body, p.fase, p.sensi, p.angoli);
+                        /*
+                         * LO STERZO VALE SOLO PER CHI HA SCELTO DI MUOVERSI. Girare e'
+                         * locomozione: un corpo fermo che tiene i giunti spostati da un lato non
+                         * sta girando, sta solo sbilanciandosi. Stessa ragione per cui la fase
+                         * scorre solo in CAMMINA.
+                         */
+                        double u = p.stato == Stato.CAMMINA ? p.sterzo : 0.0;
+                        p.angoli = p.gait.targetAngles(p.body, p.fase, p.sensi, u, p.angoli);
                         p.doll.setTargetAngles(p.angoli);
                     }
                 }
@@ -480,6 +514,29 @@ public final class Palco {
         }
         p.avanzato = p.stato == Stato.CAMMINA && avanti > PROGRESSO_MINIMO;
         p.ultimoCom = com;
+
+        /*
+         * QUANTO HA GIRATO DAVVERO, con la stessa regola dei metri: si conta solo quello che
+         * l'entita' ha CHIESTO. Un corpo che cade ruota, e contare quella rotazione sarebbe un
+         * sussidio alla caduta esattamente come contare i metri di chi scivola in avanti - lo
+         * stesso difetto trovato dal PalcoSelfTest il 25/10/2026.
+         *
+         * L'imbardata si legge come differenza fra due tick, riportata in (-pi, pi]: yawRoot
+         * ricade sull'asse laterale quando l'asse in avanti e' quasi verticale, e quella ricaduta
+         * e' un salto - per questo si guarda la DIFFERENZA e non il valore assoluto, e per questo
+         * un salto piu' grande di mezzo radiante in un tick si butta invece di contarlo.
+         */
+        double imbardata = p.doll.yawRoot();
+        if (Double.isFinite(p.ultimaImbardata) && Double.isFinite(imbardata)) {
+            double girato = Rot.wrapPi(imbardata - p.ultimaImbardata);
+            boolean plausibile = Math.abs(girato) <= SALTO_IMBARDATA;
+            if (plausibile && p.sterzo != 0 && p.stato == Stato.CAMMINA
+                    && Math.signum(girato) == Math.signum(p.sterzo)) {
+                p.radianiDisponibili += Math.abs(girato);
+                radianiTotali += Math.abs(girato);
+            }
+        }
+        p.ultimaImbardata = imbardata;
 
         boolean basso = p.altezzaIniziale > 1e-6
                 && p.doll.rootPosition().y() / p.altezzaIniziale < FALL_RATIO;
@@ -579,6 +636,27 @@ public final class Palco {
     }
 
     /**
+     * I RADIANTI che questa entita' ha girato davvero e non ha ancora speso, fino a un massimo di
+     * {@code tetto} (la rotazione che stava per fare). Chi non e' sul palco riceve -1, e chi
+     * chiama gira di quanto vuole, come prima.
+     *
+     * E' l'esatto gemello di {@link #consuma} per la rotazione, e ha la stessa ragione: girare
+     * deve costare quello che costa. Prima entity.turn ruotava l'entita' di un passo fisso,
+     * gratis e all'istante - cioe' la direzione era l'ultima cosa che il mondo regalava. Adesso
+     * un corpo che non ha trovato nessuna svolta non gira, e un'entita' che non gira non riesce a
+     * puntare quello che vede: muore, e chi sa girare si riproduce.
+     */
+    public static synchronized double consumaImbardata(long id, double tetto) {
+        Posto p = posti.get(id);
+        if (p == null || p.doll == null) {
+            return -1;
+        }
+        double preso = Math.min(p.radianiDisponibili, Math.max(0, tetto));
+        p.radianiDisponibili -= preso;
+        return preso;
+    }
+
+    /**
      * Gli angoli VERI dei giunti di questa entita', come stanno adesso nel mondo fisico.
      *
      * Serve alla grafica, ed e' la differenza fra vedere la fisica e sentirsi dire che c'e': se il
@@ -639,9 +717,10 @@ public final class Palco {
     public static synchronized String stats() {
         return String.format(Locale.ROOT,
                 "palco: %d entita' in fisica viva (capienza %d, mondo per %d, %.2f ms per corpo), "
-                        + "%d passi di fisica, %.1f m camminati davvero, %d collassi%s%s",
+                        + "%d passi di fisica, %.1f m camminati davvero, %.1f rad girati "
+                        + "davvero, %d collassi%s%s",
                 posti.size(), capienzaUltima, capienzaMondo, costoPerCorpoMs, passiFisica,
-                metriTotali, collassi,
+                metriTotali, radianiTotali, collassi,
                 montaggiFalliti > 0 ? ", " + montaggiFalliti + " corpi che la fisica non regge" : "",
                 fisicaRotta ? " (palco spento da un errore)" : "");
     }

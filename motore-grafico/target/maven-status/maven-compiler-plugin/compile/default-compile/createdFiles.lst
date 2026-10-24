@@ -23,6 +23,7 @@ src\gui\PannelloEntita$2.class
 com\saturno14\esit\graphics\entity\EntityInstance.class
 src\body\EvolvedBodies$Sample.class
 src\gui\GraficoStorico.class
+src\body\MondoFisico$Istantanea.class
 src\gui\ControlFrame.class
 src\gui\GraficoStorico$1.class
 src\body\JoltRagdoll.class
@@ -43,6 +44,7 @@ src\body\GaitEvaluator$Result.class
 com\saturno14\esit\graphics\render\WaterTexture.class
 src\body\GaitEvaluator.class
 com\saturno14\esit\graphics\mesh\Primitives.class
+src\body\MondoFisico$Candidato.class
 src\body\BodyCollision.class
 src\Saving.class
 src\gui\SchedaEntita$1.class
@@ -97,6 +99,7 @@ src\gui\Tema.class
 src\body\Palco$Stato.class
 com\saturno14\esit\graphics\engine\Shader.class
 com\saturno14\esit\graphics\apple\AppleTexture.class
+src\body\MondoFisico$Posizione.class
 main.class
 src\Simulation.class
 src\genetics\GenomeSchema.class
@@ -113,9 +116,11 @@ src\Commands.class
 src\body\BodyPlanTest.class
 src\Genealogy$Node.class
 src\body\BodyPose.class
+src\body\GaitEvaluator$Turn.class
 src\DayNight.class
 src\genetics\DietType.class
 src\body\Gaze.class
+src\body\MondoFisico$Stato.class
 src\BrainIO.class
 src\genetics\BodyPlan$Seg.class
 src\gui\PannelloComandi$1.class
@@ -127,6 +132,7 @@ src\body\Locomotion.class
 com\saturno14\esit\graphics\mesh\MeshData.class
 src\Flora$Apple.class
 src\body\GaitEvaluator$1Case.class
+src\body\MondoFisico$Posto.class
 src\body\Gait$Osc.class
 src\body\Palco$Istantanea.class
 src\brain$Layer.class
@@ -138,6 +144,7 @@ src\Flora.class
 com\saturno14\esit\graphics\render\MaterialTextures.class
 src\StatsLog.class
 src\Genealogy.class
+src\body\MondoFisico.class
 src\gui\Targhetta.class
 src\gui\Gui.class
 src\body\EvolvedBodies.class

@@ -21,7 +21,14 @@ public final class FloraField {
     }
 
     /** Un albero pronto da disegnare: piede, altezza e raggio della chioma in metri. */
-    public record Tree(float x, float baseY, float z, float height, float crownRadius, float maturity) {
+    /**
+     * @param trunkRadius raggio del tronco: viene da src.Flora.Tree.trunkRadius e NON si ricalcola
+     *                    qui, perche' lo stesso numero decide anche dove le entita' SBATTONO
+     *                    (il tronco e' un ostacolo fisico). Due formule vorrebbero dire sbattere
+     *                    contro l'aria o passare attraverso il legno.
+     */
+    public record Tree(float x, float baseY, float z, float height, float crownRadius,
+                       float maturity, float trunkRadius) {
     }
 
     private FloraField() {
@@ -42,7 +49,8 @@ public final class FloraField {
         List<Tree> out = new ArrayList<>(src.size());
         for (Flora.Tree t : src) {
             out.add(new Tree(t.x + 0.5f, t.baseY, t.z + 0.5f,
-                    (float) t.height(), (float) t.crownNow(), (float) t.maturity()));
+                    (float) t.height(), (float) t.crownNow(), (float) t.maturity(),
+                    (float) t.trunkRadius()));
         }
         return out;
     }

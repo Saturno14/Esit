@@ -4,6 +4,30 @@ Aggiornato il 24/10/2026. Le voci chiuse stanno in STATO_LAVORO.txt, non qui.
 
 ## Corpo e locomozione
 
+- [ ] **LA FASE IN CORSO (decisa con l'utente il 25/10/2026): un mondo fisico, autonomo e non
+      controllato.** Cinque passi, in ordine. 1 FATTO (la svolta, voce 25), 2 a META' (i mattoni
+      del terreno e dell'acqua ci sono e sono provati; manca metterli nel mondo), 3-4-5 da fare.
+      - [x] **1. Girare e' un'abilita' scoperta dal corpo** (voce 25). 73 corpi su 78 sbagliano
+            meno con la svolta trovata che senza, guadagno mediano 2.32 rad. Nel mondo: -18%
+            nascite su 3 semi, +20% di orologio. Da chiudere a 12 semi.
+      - [~] **2. Terreno e acqua nella fisica.** `PhysicsWorld.addHeightField`,
+            `addStaticCylinder` (i tronchi) e `galleggia` (spinta e resistenza dell'acqua) sono
+            scritti e verificati dal PhysicsSmokeTest. Da usare: ci vuole il passo 3, perche' con
+            le corsie del palco un terreno non vuol dire niente.
+      - [ ] **3. Un solo mondo.** `src.body.MondoFisico` E' SCRITTO MA NON COLLEGATO: compila e
+            nessuno lo chiama ancora. Quello che resta da fare e' la parte che tocca tutto il
+            resto: `entity.walk` non deve piu' spostare l'entita' (solo segnare l'intenzione e
+            pagare la fatica), `syncCell` deve LEGGERE la posizione dal corpo
+            (`MondoFisico.posizioneDi`), `facing` deve venire da `yawRoot`, e vanno via i rifiuti
+            scritti a mano in `walk` (l'acqua non si attraversa, un albero non si attraversa):
+            adesso l'acqua ha la sua fisica e un tronco e' un cilindro statico. Poi si cancella
+            `Palco` e il suo credito di metri e radianti.
+      - [ ] **4. Via il tetto di popolazione** (`Simulation.maxPopulation`, 375 a 50x50, gate in
+            4 punti di entity.java). Il limite diventa il cibo. Conseguenza da misurare, non da
+            nascondere: il costo della fisica non ha piu' un tetto.
+      - [ ] **5. Via ogni premio tranne quello della riproduzione.** Vedi la voce dedicata qui
+            sotto.
+
 - [ ] **LA RICERCA, NON IL CONTROLLO: il riflesso ha 350 pesi e la salita della collina non li
       sa cercare.** E' quello che resta aperto dopo il rifacimento del movimento (voce 21).
       L'apparato c'e' tutto - sensi per giunto, contatto per segmento, pesi ereditati e allenati -
