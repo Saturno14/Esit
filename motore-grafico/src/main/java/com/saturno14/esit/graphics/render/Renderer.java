@@ -175,8 +175,14 @@ public class Renderer {
             // e' quella continua in metri, non la cella: cosi' il movimento e' fluido e si vede
             // l'andatura che la fisica ha misurato per quel corpo.
             for (EntityInstance instance : entityBridge.getInstances()) {
-                int[] pos = instance.getPosition();
-                float groundY = GridToWorld.toWorld(0, pos[1], 0).y - SURFACE_OFFSET;
+                /*
+                 * LA BASE E' LA QUOTA DEL SUOLO CHE DICE LA SIMULAZIONE, senza SURFACE_OFFSET.
+                 * Qui c'era "indice della cella - 0.5": il mesher mette la superficie a y = h
+                 * (VoxelMesher.cubeVertex), quindi quel -0.5 disegnava ogni entita' mezzo metro
+                 * dentro la terra. E la quota deve essere la STESSA che la fisica ha sottratto
+                 * dalla posa, non una ricostruzione fatta qui (voce 26 del diario).
+                 */
+                float groundY = instance.quotaSuolo();
                 instance.advanceRenderPosition(deltaTime);
                 entityBase.set(instance.renderX(), groundY, instance.renderZ());
 
@@ -226,7 +232,8 @@ public class Renderer {
             treeTexture.bind(0);
             treeShader.setUniformInt("uTexture", 0);
             for (FloraField.Tree tree : FloraField.trees()) {
-                float footY = tree.baseY() - SURFACE_OFFSET;
+                // baseY e' gia' la quota del suolo fisico sotto il tronco (FloraField): nessun offset
+                float footY = tree.baseY();
                 // il raggio lo decide Flora, perche' il tronco e' anche un ostacolo fisico:
                 // disegnarlo di una misura e urtarlo di un'altra sarebbe un mondo che mente
                 float trunkRadius = tree.trunkRadius();
@@ -372,8 +379,7 @@ public class Renderer {
         int scelta = -1;
         Vector3f centro = new Vector3f();
         for (EntityInstance instance : bridge.getInstances()) {
-            int[] pos = instance.getPosition();
-            float groundY = GridToWorld.toWorld(0, pos[1], 0).y - SURFACE_OFFSET;
+            float groundY = instance.quotaSuolo();
             float altezza = altezzaDi(instance);
             centro.set(instance.renderX(), groundY + altezza * 0.5f, instance.renderZ());
             // generoso di proposito: si clicca su un'entita' alta mezzo metro, vista da lontano,

@@ -542,12 +542,31 @@ public final class JoltRagdoll {
     public double yawRoot() {
         Rot r = rootRotation();
         V3 avanti = r.apply(new V3(0, 0, 1));
-        if (Math.hypot(avanti.x(), avanti.z()) > 0.2) {
-            return Math.atan2(avanti.x(), avanti.z());
+        V3 su = r.apply(new V3(0, 1, 0));
+        /*
+         * CONTINUA, SENZA RICADUTE. La versione precedente usava l'asse avanti e, quando questo
+         * era quasi verticale, RICADEVA sull'asse laterale "riportato indietro di 90 gradi": ma
+         * il verso di quei 90 gradi dipende da se il muso punta in giu' o in su, e la formula
+         * non lo guardava. Risultato: un corpo che si piegava col muso in su vedeva la propria
+         * direzione saltare di MEZZO GIRO esatto (misurato: -3.141 rad in MondoFisicoSelfTest),
+         * e nel mondo unico la direzione dell'entita' - quindi il suo cono di vista - si
+         * capovolgeva.
+         *
+         * Qui la direzione e' quella di avanti_orizzontale - avanti.y * su_orizzontale. Con il
+         * muso a terra avanti si accorcia e l'asse "su" del tronco punta in avanti: lo si somma.
+         * Con il muso in alto l'asse "su" punta indietro e avanti.y cambia segno: si somma di
+         * nuovo nel verso giusto. Con il corpo dritto avanti.y e' zero e il termine sparisce.
+         * Con il solo rollio (il corpo su un fianco) lo stesso. E' un vettore che non si annulla
+         * finche' il tronco non e' verticale E rovesciato attorno alla verticale - dove "da che
+         * parte guarda" non ha comunque un senso.
+         */
+        double x = avanti.x() - avanti.y() * su.x();
+        double z = avanti.z() - avanti.y() * su.z();
+        if (Math.hypot(x, z) < 1e-6) {
+            V3 lato = r.apply(new V3(1, 0, 0));
+            return Math.atan2(lato.x(), lato.z()) - Math.PI / 2;
         }
-        V3 lato = r.apply(new V3(1, 0, 0));
-        // il laterale guarda a 90 gradi dall'avanti: si riporta indietro di altrettanto
-        return Math.atan2(lato.x(), lato.z()) - Math.PI / 2;
+        return Math.atan2(x, z);
     }
 
     /**

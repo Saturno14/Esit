@@ -75,8 +75,12 @@ public final class MondoFisico {
      * @param abbassato vero se il corpo sta sotto la frazione {@link GaitEvaluator#FALL_RATIO}
      *                  della sua altezza di partenza. E' una DESCRIZIONE della posa, non un
      *                  giudizio: chi striscia ci sta sotto per tutta la vita e sta funzionando.
+     * @param suolo     la quota del terreno fisico sotto il corpo, cioe' il perno che
+     *                  {@link #posaDi} ha sottratto: il disegno la somma di nuovo, e DEVE essere
+     *                  questa e non una sua ricostruzione (voce 26).
      */
-    public record Posizione(double x, double z, double facing, double quota, boolean abbassato) {
+    public record Posizione(double x, double z, double facing, double quota, boolean abbassato,
+                            double suolo) {
     }
 
     /** Un corpo nel mondo: la ragdoll viva, la sua andatura e cosa l'entita' le sta chiedendo. */
@@ -148,6 +152,9 @@ public final class MondoFisico {
     private static int alberiNelMondo = -1;
     private static int corpoTerreno = -1;
     private static final List<Integer> corpiAlberi = new ArrayList<>();
+    /** I campioni consegnati a Jolt, tenuti per rileggerli: la quota del suolo in un punto. */
+    private static float[] quote;
+    private static int latoQuote;
 
     private MondoFisico() {
     }
@@ -289,16 +296,9 @@ public final class MondoFisico {
                 corpoTerreno = -1;
             }
             int lato = PhysicsWorld.latoCampioni(dim);
-            float[] altezze = new float[lato * lato];
-            for (int ix = 0; ix < lato; ix++) {
-                for (int iz = 0; iz < lato; iz++) {
-                    // oltre il bordo della mappa si ripete il bordo: meglio che un corpo che cade
-                    // nel vuoto all'ultima cella
-                    int cx = Math.min(ix, dim - 1);
-                    int cz = Math.min(iz, dim - 1);
-                    altezze[PhysicsWorld.indiceCampione(ix, iz, lato)] = src.world.surfaceY(cx, cz);
-                }
-            }
+            float[] altezze = campionaTerreno(dim, lato);
+            quote = altezze;
+            latoQuote = lato;
             corpoTerreno = mondo.addHeightField(altezze, lato, 1f, ATTRITO);
             versioneTerreno = versione;
             System.out.println("[fisica] terreno nella fisica: " + lato + "x" + lato
@@ -310,13 +310,65 @@ public final class MondoFisico {
         corpiAlberi.clear();
         for (src.Flora.Tree t : alberi) {
             double h = Math.max(0.05, t.height());
-            // il tronco sta al centro della sua cella, col piede alla quota del suo piede
-            int id = mondo.addStaticCylinder(t.x + 0.5, t.baseY + h / 2, t.z + 0.5,
+            // il tronco sta al centro della sua cella, col piede sul suolo FISICO di quel punto
+            // (non su t.baseY, che e' l'indice intero della cella: vedi quotaSuolo)
+            double piede = quotaSuolo(t.x + 0.5, t.z + 0.5);
+            int id = mondo.addStaticCylinder(t.x + 0.5, piede + h / 2, t.z + 0.5,
                     (float) t.trunkRadius(), (float) (h / 2), ATTRITO);
             corpiAlberi.add(id);
         }
         alberiNelMondo = alberi.size();
         mondo.optimize();
+    }
+
+    /**
+     * I CAMPIONI DEL TERRENO FISICO: la quota lisciata del mondo (world.quotaTerreno) ai nodi di
+     * Jolt. Il nodo (ix, iz) sta nel mondo a x = ix, z = iz, e vale la quota della colonna
+     * (ix, iz): e' la stessa convenzione del mesher, che mette la superficie disegnata a
+     * (x, h[x][z], z) per x e z interi. Oltre il bordo della mappa si ripete il bordo: meglio che
+     * un corpo che cade nel vuoto all'ultima cella.
+     *
+     * E' un metodo puro, separato da terrenoAggiornato, perche' la prova del suolo
+     * (SuoloSelfTest, nel motore grafico) deve poter confrontare ESATTAMENTE questi numeri con i
+     * vertici della mesh disegnata, senza aprire un mondo fisico.
+     */
+    public static float[] campionaTerreno(int dim, int lato) {
+        float[] altezze = new float[lato * lato];
+        for (int ix = 0; ix < lato; ix++) {
+            for (int iz = 0; iz < lato; iz++) {
+                int cx = Math.min(ix, dim - 1);
+                int cz = Math.min(iz, dim - 1);
+                altezze[PhysicsWorld.indiceCampione(ix, iz, lato)] =
+                        (float) src.world.quotaTerreno(cx, cz);
+            }
+        }
+        return altezze;
+    }
+
+    /**
+     * LA QUOTA DEL SUOLO FISICO in un punto qualunque: interpolazione bilineare dei campioni che
+     * Jolt ha, cioe' la stessa superficie su cui i corpi appoggiano. Senza campi di altezze
+     * (fisica spenta) ricade sulla quota lisciata della colonna, che e' la stessa funzione a
+     * meno dell'interpolazione.
+     */
+    public static double quotaSuolo(double x, double z) {
+        return quotaSuolo(quote, latoQuote, x, z);
+    }
+
+    /** La stessa interpolazione, su campioni dati: la usa la prova del suolo. */
+    public static double quotaSuolo(float[] campioni, int lato, double x, double z) {
+        if (campioni == null || lato < 2) {
+            return src.world.quotaTerreno(cella(x), cella(z));
+        }
+        double fx = Math.max(0, Math.min(lato - 1 - 1e-9, x));
+        double fz = Math.max(0, Math.min(lato - 1 - 1e-9, z));
+        int ix = (int) Math.floor(fx), iz = (int) Math.floor(fz);
+        double tx = fx - ix, tz = fz - iz;
+        double q00 = campioni[PhysicsWorld.indiceCampione(ix, iz, lato)];
+        double q10 = campioni[PhysicsWorld.indiceCampione(ix + 1, iz, lato)];
+        double q01 = campioni[PhysicsWorld.indiceCampione(ix, iz + 1, lato)];
+        double q11 = campioni[PhysicsWorld.indiceCampione(ix + 1, iz + 1, lato)];
+        return (q00 * (1 - tx) + q10 * tx) * (1 - tz) + (q01 * (1 - tx) + q11 * tx) * tz;
     }
 
     private static void rimuovi(int bodyId) {
@@ -330,9 +382,9 @@ public final class MondoFisico {
 
     private static void monta(Posto p) {
         try {
-            int cx = cella(p.x);
-            int cz = cella(p.z);
-            double quota = src.world.surfaceY(cx, cz);
+            // sul suolo FISICO di quel punto, non sull'indice intero della cella: altrimenti un
+            // corpo nasce mezzo metro sopra o sotto il terreno su cui dovra' camminare
+            double quota = quotaSuolo(p.x, p.z);
             /*
              * UN GRUPPO DI COLLISIONE PER ENTITA'. Dentro un corpo le parti non si urtano (il
              * filtro di PhysicsWorld spegne le coppie dello stesso gruppo); fra entita' diverse si
@@ -507,9 +559,9 @@ public final class MondoFisico {
         }
         p.ultimoCom = com;
 
-        int cx = cella(com.x());
-        int cz = cella(com.z());
-        double quotaTerreno = src.world.surfaceY(cx, cz);
+        // il suolo fisico sotto il baricentro: e' il perno della posa E la quota che il disegno
+        // somma di nuovo, quindi deve essere lo stesso numero da tutte e due le parti
+        double quotaTerreno = quotaSuolo(com.x(), com.z());
         double alto = p.doll.rootPosition().y() - quotaTerreno;
         boolean abbassato = p.altezzaIniziale > 1e-6 && alto / p.altezzaIniziale < GaitEvaluator.FALL_RATIO;
         /*
@@ -535,7 +587,7 @@ public final class MondoFisico {
             p.doll.leggiTrasformate(pos, rot);
             V3 perno = new V3(com.x(), quotaTerreno, com.z());
             Posizione dove = new Posizione(com.x(), com.z(), p.doll.yawRoot(),
-                    p.doll.rootPosition().y(), abbassato);
+                    p.doll.rootPosition().y(), abbassato, quotaTerreno);
             istantanee.put(p.id, new Istantanea(p.doll, pos, rot, perno, dove));
         } catch (Throwable ignored) {
             // se non si riesce a leggere le trasformate, il disegno usa l'istantanea di prima
@@ -621,6 +673,8 @@ public final class MondoFisico {
         alberiNelMondo = -1;
         corpoTerreno = -1;
         corpiAlberi.clear();
+        quote = null;
+        latoQuote = 0;
         fisicaRotta = false;
         passiFisica = 0;
         collassi = 0;

@@ -1,6 +1,7 @@
 package com.saturno14.esit.graphics.flora;
 
 import src.Flora;
+import src.body.MondoFisico;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,7 +49,10 @@ public final class FloraField {
         List<Flora.Tree> src = Flora.snapshotTrees();
         List<Tree> out = new ArrayList<>(src.size());
         for (Flora.Tree t : src) {
-            out.add(new Tree(t.x + 0.5f, t.baseY, t.z + 0.5f,
+            // il piede sul suolo FISICO di quel punto, lo stesso su cui il cilindro del tronco
+            // appoggia in MondoFisico: t.baseY e' l'indice intero della cella, non una quota
+            float piede = (float) MondoFisico.quotaSuolo(t.x + 0.5, t.z + 0.5);
+            out.add(new Tree(t.x + 0.5f, piede, t.z + 0.5f,
                     (float) t.height(), (float) t.crownNow(), (float) t.maturity(),
                     (float) t.trunkRadius()));
         }

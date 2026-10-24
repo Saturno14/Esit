@@ -71,29 +71,15 @@ public class SimulationWorldBridge {
         int dim = grid.getDimension();
         float waterLevel = world.getWaterLevel();
 
-        // altezza della superficie per colonna, come la vede la simulazione
-        float[][] height = new float[dim][dim];
-        for (int x = 0; x < dim; x++) {
-            for (int z = 0; z < dim; z++) {
-                height[x][z] = world.surfaceY(x, z);
-            }
-        }
-
-        // lisciatura: media pesata con le quattro colonne vicine. Il peso del centro tiene la
-        // superficie aderente all'altezza vera (entro mezza cella), i vicini smussano il gradino
+        /*
+         * LA QUOTA LISCIATA LA DA' LA SIMULAZIONE (world.quotaTerreno), non questo ponte. La
+         * formula stava qui, e la fisica non la vedeva: due terreni diversi (voce 26 del diario).
+         * Il ponte continua a leggere soltanto.
+         */
         float[][] smooth = new float[dim][dim];
         for (int x = 0; x < dim; x++) {
             for (int z = 0; z < dim; z++) {
-                float sum = 2f * height[x][z];
-                float weight = 2f;
-                for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
-                    int nx = x + d[0], nz = z + d[1];
-                    if (nx >= 0 && nx < dim && nz >= 0 && nz < dim) {
-                        sum += height[nx][nz];
-                        weight += 1f;
-                    }
-                }
-                smooth[x][z] = sum / weight;
+                smooth[x][z] = (float) world.quotaTerreno(x, z);
             }
         }
 

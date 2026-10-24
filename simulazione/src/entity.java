@@ -1518,6 +1518,23 @@ public class entity {
         gazeYaw = Math.max(-range, Math.min(range, want));
     }
 
+    /**
+     * LA QUOTA DEL SUOLO SOTTO QUESTA ENTITA', per chi la disegna: e' il numero che il disegno
+     * somma alla posa, e deve essere LO STESSO che il mondo fisico ha sottratto (il perno di
+     * MondoFisico.posaDi). Prima il disegno usava "indice della cella - 0.5" e la fisica
+     * "indice della cella": mezzo metro di differenza, e le entita' camminavano dentro il
+     * terreno (voce 26). Per chi non e' in fisica e' la stessa superficie, interpolata.
+     */
+    public double quotaSuolo(){
+        if(ActionWeights.fisicaViva > 0){
+            src.body.MondoFisico.Posizione p = src.body.MondoFisico.posizioneDi(EntityID);
+            if(p != null){
+                return p.suolo();
+            }
+        }
+        return src.body.MondoFisico.quotaSuolo(exactX, exactZ);
+    }
+
     /** Posizione continua in metri (per grafica, portata e distanze reali). */
     public double getExactX(){ return exactX; }
     public double getExactZ(){ return exactZ; }

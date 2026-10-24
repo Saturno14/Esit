@@ -124,6 +124,11 @@ public class EntityInstance {
         return (float) source.getExactZ();
     }
 
+    /** La quota del suolo sotto l'entita', dalla simulazione: vedi src.entity.quotaSuolo. */
+    public float quotaSuolo() {
+        return (float) source.quotaSuolo();
+    }
+
     /**
      * Posizione addolcita per il disegno: la simulazione sposta l'entita' a scatti (un passo per
      * azione), qui la si insegue con un'interpolazione, cosi' non teletrasporta tra due celle.

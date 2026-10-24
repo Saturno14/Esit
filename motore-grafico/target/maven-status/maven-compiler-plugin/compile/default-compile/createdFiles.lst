@@ -26,6 +26,7 @@ src\body\MondoFisico$Istantanea.class
 src\gui\ControlFrame.class
 src\gui\GraficoStorico$1.class
 src\body\JoltRagdoll.class
+com\saturno14\esit\graphics\world\SuoloSelfTest.class
 src\genetics\MutationService.class
 com\saturno14\esit\graphics\entity\skeleton\Bone.class
 com\saturno14\esit\graphics\world\WorldGrid.class

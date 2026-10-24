@@ -116,6 +116,32 @@ public class world {
         return surface[x][z];
     }
 
+    /**
+     * LA QUOTA DEL SUOLO, LISCIATA: L'UNICA FONTE per il disegno E per la fisica.
+     *
+     * surfaceY e' un intero (l'indice della prima cella d'aria), quindi il terreno "vero" della
+     * griglia e' una scalinata di gradini da un metro. Il motore grafico non disegna quella
+     * scalinata: disegna una superficie lisciata (media pesata con le quattro colonne vicine, il
+     * centro pesa due), e il mesher mette la superficie esattamente a questa quota (vedi
+     * VoxelMesher.cubeVertex: la soglia cade a y = h). Fino al 25/10/2026 questa formula viveva
+     * SOLO nel motore grafico (SimulationWorldBridge) e la fisica usava la scalinata grezza: due
+     * terreni diversi fino a mezzo metro, e le entita' si vedevano camminare dentro il primo
+     * strato di terra. Adesso chiunque abbia bisogno della quota del suolo la chiede qui.
+     *
+     * NON e' una scelta nuova sul terreno: e' la convenzione che il progetto aveva gia' per
+     * quello che si VEDE, resa unica.
+     */
+    public static double quotaTerreno(int x, int z){
+        int dim = Dimension;
+        double somma = 2.0 * surface[x][z];
+        double peso = 2.0;
+        if(x > 0){ somma += surface[x - 1][z]; peso++; }
+        if(x < dim - 1){ somma += surface[x + 1][z]; peso++; }
+        if(z > 0){ somma += surface[x][z - 1]; peso++; }
+        if(z < dim - 1){ somma += surface[x][z + 1]; peso++; }
+        return somma / peso;
+    }
+
     /** True se la colonna e' allagata (le entita' non ci possono entrare, ma ci possono bere accanto). */
     public static boolean isWaterColumn(int x, int z){
         return waterColumn[x][z];

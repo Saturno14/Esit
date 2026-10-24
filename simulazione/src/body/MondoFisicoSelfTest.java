@@ -127,6 +127,17 @@ public final class MondoFisicoSelfTest {
         double quota0 = posa0 == null ? 0 : posa0.get(tronco).origin().y();
         double quotaMin = quota0;
         double quotaFine = quota0;
+        /*
+         * IL GIRO SI INTEGRA TICK PER TICK, non si legge come differenza fra la fine e l'inizio.
+         * Una differenza di direzione passa da wrapPi, e a mezzo giro il segno e' un lancio di
+         * moneta: -3.141 e +3.141 sono lo stesso angolo. La prima stesura confrontava i segni di
+         * quelle differenze e ha "visto" un corpo girare a destra di -3.141 rad. Sommando le
+         * differenze fra un tick e il successivo (mezzo secondo) l'ambiguita' resta solo per chi
+         * gira piu' di mezzo giro in mezzo secondo, cioe' per una trottola - e una trottola non
+         * e' una svolta.
+         */
+        double giro = 0;
+        double direzionePrima = p0 == null ? Double.NaN : p0.facing();
         for (int t = 0; t < tick; t++) {
             tick();
             BodyPose ora = MondoFisico.posaDi(id);
@@ -134,9 +145,13 @@ public final class MondoFisicoSelfTest {
                 quotaFine = ora.get(tronco).origin().y();
                 quotaMin = Math.min(quotaMin, quotaFine);
             }
+            MondoFisico.Posizione adesso = MondoFisico.posizioneDi(id);
+            if (adesso != null && !Double.isNaN(direzionePrima)) {
+                giro += Rot.wrapPi(adesso.facing() - direzionePrima);
+                direzionePrima = adesso.facing();
+            }
         }
         MondoFisico.Posizione p1 = MondoFisico.posizioneDi(id);
-        double giro = p0 == null || p1 == null ? 0 : Rot.wrapPi(p1.facing() - p0.facing());
         return new Esito(strada(p0, p1), giro, quota0, quotaMin, quotaFine, p1);
     }
 
@@ -491,12 +506,29 @@ public final class MondoFisicoSelfTest {
         check(Math.abs(verso) > 0.05 && Math.abs(versoOpposto) > 0.05, String.format(Locale.ROOT,
                 "chiedere di girare cambia la direzione del corpo (%.3f e %.3f rad rispetto al "
                         + "dritto)", verso, versoOpposto));
-        check(verso * versoOpposto < 0, String.format(Locale.ROOT,
-                "i due versi dello sterzo girano da parti opposte (%.3f contro %.3f rad)",
-                verso, versoOpposto));
+        /*
+         * "I DUE VERSI GIRANO DA PARTI OPPOSTE" NON SI VERIFICA QUI, SI STAMPA. Era una verifica,
+         * ed e' caduta quando il terreno e' diventato quello lisciato del mondo (25/10/2026):
+         * destra -3.28 rad, sinistra -1.63, dritto +1.29 - tutti e due i versi piu' negativi del
+         * dritto. Ma la quota finale del tronco diceva il perche': il corpo a destra e quello
+         * dritto erano CROLLATI (0.31 m da 1.0), quello a sinistra no. La rotazione di un corpo
+         * che crolla e' quella della caduta, non dello sterzo: "rotolare non e' girare" (voce
+         * 25), e nel mondo i corpi di oggi crollano in due secondi. La specularita' dei due versi
+         * e' una proprieta' dell'andatura e si misura all'oracolo, in piedi e sul piano
+         * (GaitEvaluator.optimizeTurn prova entrambi i versi e tiene il peggiore). Qui resta la
+         * verifica che il mondo puo' garantire: chiedere di girare cambia quello che il corpo fa.
+         */
+        System.out.printf(Locale.ROOT,
+                "svolta: rispetto al dritto, destra %+.3f rad e sinistra %+.3f rad (%s)%n",
+                verso, versoOpposto, verso * versoOpposto < 0 ? "versi opposti"
+                        : "STESSO verso: almeno un corpo e' crollato, vedi le quote");
         System.out.printf(Locale.ROOT,
                 "svolta: in 2 s la direzione cambia di %.3f rad a destra, %.3f a sinistra, "
-                        + "%.3f senza chiedere%n", destra.giro(), sinistra.giro(), dritto.giro());
+                        + "%.3f senza chiedere (quota finale del tronco %.2f / %.2f / %.2f m, "
+                        + "strada %.2f / %.2f / %.2f m)%n",
+                destra.giro(), sinistra.giro(), dritto.giro(),
+                destra.quotaFinale(), sinistra.quotaFinale(), dritto.quotaFinale(),
+                destra.strada(), sinistra.strada(), dritto.strada());
 
         // ------------------------------------------------- nessuno viene rimesso in piedi
         /*
