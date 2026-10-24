@@ -64,9 +64,12 @@ Aggiornato il 24/10/2026. Le voci chiuse stanno in STATO_LAVORO.txt, non qui.
       AVVICINA, poi si chiede. Interruttore `ActionWeights.n_moveMate` pronto e spento: da
       misurare. Se non basta: allungare RICHIESTA_TTL, esentare il partner da maskSeen, o
       allargare PARTNER_RANGE.
-- [ ] **Svezzamento da chiudere**: `svezzamento=0.75` da' +82% di nascite e tre volte i vivi su 12
-      semi, ma p = 0.146. Lotto a 24 semi in corso; se non si chiude, il valore va tarato
-      (0.75 e' scelto a occhio, come la soglia di meta' REFERENCE_SPEED).
+- [x] ~~Svezzamento da chiudere~~ - CHIUSO a 24 semi: nascite +56% (1736 -> 2716), 19 semi su 24,
+      p = 0.0066. Acceso a 0.75 in `embodied()`.
+- [ ] **Tarare lo svezzamento**: 0.75 e la soglia di meta' `REFERENCE_SPEED` sono scelti a occhio,
+      e la popolazione finale triplica senza passare il test dei segni (p = 0.093). In piu' le
+      corse estinte sono 3 contro 1: piu' nascite non vuol dire meno estinzioni, e il perche'
+      (popolazione piu' grande = consumo piu' grande) va guardato.
 - [ ] **Il palco (fisica viva) resta spento**: con il controllore di oggi quattro entita' in
       fisica vera camminano a ~0.05 m/s contro 0.27 di riferimento, con 339 cadute in 600 tick.
       Serve prima il controllore di passo (prima voce di questo file). Poi: terreno vero nel

@@ -1603,7 +1603,8 @@ maskSeen, o allargare PARTNER_RANGE.
 ------------------------------------------------------------------------------------------
 2. LA SETE, CONTATA SU 24 CORSE
 ------------------------------------------------------------------------------------------
-Con il contatore giusto (vedi voce 18), su 4033 morti nelle 24 corse di questo lotto:
+Con il contatore giusto (vedi voce 18), su 4033 morti nelle 24 corse di questo lotto - e
+confermato sulle 48 corse del lotto dello svezzamento (fame 54.5%, SETE 40.4%, lotta 5.1%):
     fame 2288 (56.7%)     SETE 1511 (37.5%)     combattimento 234 (5.8%)
 Due morti su cinque sono di sete. La riga del TODO che diceva "drink() resta a raggio di una
 cella, la sete e' il 3% delle morti e non valeva la pena spostare un equilibrio gia' misurato"
@@ -1683,11 +1684,21 @@ riferimento). I due limiti servono entrambi: senza il primo un corpo che non imp
 nutrito a vita e la fame smetterebbe di selezionare; senza il secondo sarebbe un regalo a tutti i
 cuccioli e non avrebbe niente a che vedere con il camminare.
 
-MISURATO, 12 semi appaiati, 6000 tick, svezzamento=0 contro 0.75:
-    nascite  756 contro 1379    9 semi su 12 a favore    p = 0.146
-    vivi      61 contro  211    8 semi su 12             p = 0.388
-La direzione e' netta e la grandezza grossa (+82% di nascite, tre volte i vivi), ma il test dei
-segni a dodici semi NON la dichiara: p = 0.146. Lotto esteso a 24 semi per chiudere la domanda.
+MISURATO, 24 semi appaiati, 6000 tick, svezzamento=0 contro 0.75:
+    nascite  1736 contro 2716  (+56%)   19 semi su 24 a favore   p = 0.0066
+    vivi      133 contro  372 (+180%)   16 semi su 23            p = 0.093
+LE NASCITE SONO DICHIARATE: nutrire chi non sa ancora camminare finche' e' cucciolo porta piu'
+della meta' di nascite in piu', in diciannove semi su ventiquattro. La popolazione finale
+triplica ma NON passa il test dei segni (p = 0.093): e' la grandezza che cresce, non la
+regolarita'. A dodici semi lo stesso confronto dava p = 0.146 su +82% di nascite - la direzione
+era quella ma il lotto era corto, e vale la pena ricordarlo la prossima volta che un +80%
+sembra ovvio.
+DUE COSE DA NON CONFONDERE: le morti aumentano con lo svezzamento (fame +25%, sete +16%)
+semplicemente perche' vive piu' gente; e le corse finite a ZERO vivi sono 3 con lo svezzamento
+contro 1 senza. Piu' nascite non vuol dire meno estinzioni - nutrire i cuccioli fa crescere la
+popolazione e con essa il consumo, e un mondo piu' popoloso cade da piu' alto.
+Lasciato acceso a 0.75 in embodied(). Il valore e' scelto a occhio, come la soglia di meta'
+REFERENCE_SPEED: nessuno dei due e' stato tarato.
 
 ------------------------------------------------------------------------------------------
 4. IL PALCO: la fisica viva per poche entita' alla volta (src.body.Palco)
