@@ -20,17 +20,6 @@ public class Entity_manager {
         return new ArrayList<>(EntityList);
     }
 
-    public static synchronized entity getRandomPartner(int excludeId, int neededSex){
-        ArrayList<entity> candidates = new ArrayList<>();
-        for(entity e : EntityList){
-            if(e.getId() != excludeId && e.getSex() == neededSex && e.life.get()){
-                candidates.add(e);
-            }
-        }
-        if(candidates.isEmpty()) return null;
-        return candidates.get(new Random().nextInt(candidates.size()));
-    }
-
     public static synchronized double getAverageFitness(){
         if(EntityList.isEmpty()) return 0;
         double sum = 0;
@@ -57,10 +46,6 @@ public class Entity_manager {
 
     public static synchronized void Entity_remuve(entity a){
         EntityList.remove(a);
-    }
-
-    public static synchronized int get_EntityN(){
-        return EntityNumber;
     }
 
     public static synchronized void Entity_remuve_ID(int id){

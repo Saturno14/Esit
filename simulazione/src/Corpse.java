@@ -25,7 +25,6 @@ public class Corpse {
     public int getX() { return x; }
     public int getY() { return y; }
     public int getZ() { return z; }
-    public double getMeat() { return meat; }
     public long getExpireTick() { return expireTick; }
 
     public boolean isConsumed() { return meat <= 0; }

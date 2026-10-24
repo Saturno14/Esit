@@ -54,6 +54,18 @@ public class Simulation {
 
     private static int births = 0;
     private static int deathsStarved = 0;
+    /**
+     * MORTE DI SETE: era contata tra gli OMICIDI, ed e' stato un bug per molte sessioni.
+     * Qui c'era "if (cause.startsWith(\"fame\")) deathsStarved++; else deathsKilled++;", e la
+     * causa che un'entita' morta di sete porta e' "sete", che non comincia per "fame": finiva
+     * quindi nel conteggio dei combattimenti, insieme a "ucciso da #N".
+     * Quanto pesava, contato dalla genealogia della sessione 19: fame 127, SETE 126,
+     * combattimento 52. Il log diceva "178 uccise" e le uccisioni vere erano 52, cioe' il 17%
+     * delle morti e non il 57%. La sete uccide quanto la fame, e nessuno lo sapeva perche' era
+     * mascherata dagli omicidi (e perche' avg_thirst non era nel log).
+     * History.morte le tre cause le ha sempre distinte giuste: era solo questo conteggio.
+     */
+    private static int deathsThirst = 0;
     private static int deathsKilled = 0;
     /** Morti divise per sesso (1 maschio, 2 femmina): vedi kill(). */
     private static int deathsMale = 0;
@@ -115,6 +127,7 @@ public class Simulation {
         tickCount = 0;
         births = 0;
         deathsStarved = 0;
+        deathsThirst = 0;
         deathsKilled = 0;
         deathsMale = 0;
         deathsFemale = 0;
@@ -170,6 +183,8 @@ public class Simulation {
         History.morte(cause);
         if (cause.startsWith("fame")) {
             deathsStarved++;
+        } else if (cause.startsWith("sete")) {
+            deathsThirst++;
         } else {
             deathsKilled++;
         }
@@ -280,7 +295,8 @@ public class Simulation {
         }
         if (tickCount % SUMMARY_INTERVAL_TICKS == 0) {
             StatsLog.record(tickCount, world.countApples(), corpsesSnapshot().size(),
-                    births, deathsStarved, deathsKilled, deathsMale, deathsFemale);
+                    births, deathsStarved, deathsThirst, deathsKilled,
+                    deathsMale, deathsFemale);
             System.out.println("[tick " + tickCount + "] entita'=" + Entity_manager.Entity_count()
                     + " " + DayNight.phaseName()
                     + " mele=" + world.countApples()
@@ -288,7 +304,8 @@ public class Simulation {
                         + " alberi=" + Flora.countTrees() : "")
                     + " cadaveri=" + corpsesSnapshot().size()
                     + " nascite=" + births
-                    + " morti(fame/combattimento)=" + deathsStarved + "/" + deathsKilled
+                    + " morti(fame/sete/lotta)=" + deathsStarved + "/" + deathsThirst
+                        + "/" + deathsKilled
                     + " azioni=" + java.util.Arrays.toString(entity.actionCounts));
         }
         if (tickCount % 100 == 0) {
@@ -311,6 +328,11 @@ public class Simulation {
 
     /** Numero massimo di mele in giro, scalato sull'area della mappa (vedi DENSITY_PER_CELL). */
     /** Morti per sesso: [maschi, femmine]. */
+    /** Morti per causa: fame, sete, combattimento. */
+    public static int[] mortiPerCausa() {
+        return new int[]{deathsStarved, deathsThirst, deathsKilled};
+    }
+
     public static int[] mortiPerSesso() {
         return new int[]{deathsMale, deathsFemale};
     }

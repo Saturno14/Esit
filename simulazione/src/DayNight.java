@@ -71,10 +71,6 @@ public final class DayNight {
         return (((tick + OFFSET) % d) + d) % d / (double) d;
     }
 
-    public static boolean isNight() {
-        return daylight() < 0.35;
-    }
-
     /** Nome della fase, per i log e la console. */
     public static String phaseName() {
         double light = daylight();

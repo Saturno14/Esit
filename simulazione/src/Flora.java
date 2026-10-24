@@ -631,12 +631,6 @@ public final class Flora {
         }
     }
 
-    public static Tree treeAt(int x, int z) {
-        synchronized (LOCK) {
-            return trunkByColumn.get(key(x, z, world.getDim()));
-        }
-    }
-
     /**
      * La mela migliore che un'entita' puo' prendere in questa colonna, o null.
      *
@@ -711,20 +705,6 @@ public final class Flora {
                 }
             }
             return n;
-        }
-    }
-
-    /** Altezza media degli alberi (m): per vedere se il bosco cresce o viene consumato. */
-    public static double averageTreeHeight() {
-        synchronized (LOCK) {
-            if (trees.isEmpty()) {
-                return 0;
-            }
-            double sum = 0;
-            for (Tree t : trees) {
-                sum += t.height;
-            }
-            return sum / trees.size();
         }
     }
 

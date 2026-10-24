@@ -195,12 +195,8 @@ public class brain {
         }
    }
 
+   /** Come nasce il cervello di un figlio: dai due genitori, o da uno solo. */
    public static class Reproduction {
-        public static NeuralNetwork createChild(NeuralNetwork parent){
-            NeuralNetwork child = parent.copy();
-            child.mutate(0.1);
-            return child;
-        }
 
         /**
          * Crossover a due genitori: ogni neurone viene preso da A o da B con probabilita' 50%.

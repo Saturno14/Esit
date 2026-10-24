@@ -25,10 +25,6 @@ public final class ActionWeights {
     public static volatile double drinkReward;        // bere: ricompensa
     public static volatile double drinkNeedScaled;    // 1 = ricompensa * (1 - sete/MAX), 0 = fissa
 
-    // ---- istinti legacy (seedVersion < 3)
-    public static volatile double eatNeuronWeight;
-    public static volatile double mateBias;
-    public static volatile double restBias;
 
     // ---- struttura
     /**
@@ -37,7 +33,6 @@ public final class ActionWeights {
      * entity.seedInstincts). I cablaggi vecchi collegavano "settore a nord-est" a "muoviti verso
      * est", e ne' quei settori ne' quelle azioni esistono piu'.
      */
-    public static volatile double seedVersion;
     public static volatile double maskActions;        // 1 = scelta solo tra azioni che possono riuscire
     public static volatile double allowAttack;        // 0 = con la maschera attivata, ATTACK non e' mai scelta (per esperimenti)
     /**
@@ -69,6 +64,44 @@ public final class ActionWeights {
      * recente quando una mutazione viene rifiutata: serve a non congelare il cervello su una
      * finestra fortunata (vedi entity.step).
      */
+    /**
+     * 1 = LA MASCHERA DELLE AZIONI CHIEDE DI VEDERE. Con maskActions la rete scegliera' solo tra
+     * le azioni che possono riuscire, quindi la maschera e' informazione quanto la vista: finche'
+     * "posso bere" era vero per una pozza in una qualunque delle otto celle intorno, le otto
+     * celle erano state togliute dalla vista e sopravvivevano qui.
+     *   0 = come prima (nessuna richiesta di percezione)
+     *   1 = tatto solo sotto i piedi, cono per tutto il resto. MISURATO E BOCCIATO: nascite 87
+     *       contro 256 (p = 0.039) e cinque corse estinte su dodici contro zero.
+     *   2 = il tatto copre le celle adiacenti (la portata con cui si bere e si incontra
+     *       qualcuno), il cono serve per quello che sta piu' lontano.
+     * La realta' fisica non cambia in nessuno dei due casi: drink() beve ancora da una cella
+     * adiacente, e' solo l'avviso che non arriva piu'.
+     */
+    public static volatile double maskSeen;
+
+    /**
+     * 1 = L'ACCOPPIAMENTO E' UNA RICHIESTA, non un fatto compiuto.
+     *
+     * Prima bastava un si': chi scegliava ACT_REPRODUCE con un partner a portata faceva un
+     * figlio, e l'altra parte lo scopriva dal conto del cibo. Adesso la stessa azione ha due
+     * significati secondo il contesto: se qualcuno mi ha chiesto, ACCETTO; altrimenti CHIEDO.
+     * Chiedere mette una richiesta in capo all'altra e accende il proprio segnale (vedi
+     * entity.getSignalA e Vision.ENT_SIGNAL_A), cosi' la richiesta e' una cosa che SI VEDE e a
+     * cui si puo' rispondere. Niente nasce senza due si'.
+     *
+     * Perche' conta: rende la percezione una premessa invece di una penalita' (chiedere e' un
+     * atto verso qualcuno che si vede), e apre la SCELTA DEL PARTNER - una stirpe che accetta
+     * chiunque e una che risponde solo a chi e' grosso e in forze sono due strategie diverse, e
+     * adesso la differenza puo' essere selezionata. E' anche il primo uso vero di un canale di
+     * segnale: il dialogo comincia da qui, con una parola sola.
+     *
+     * A 0 si torna al vecchio accoppiamento immediato, per misurare.
+     */
+    public static volatile double mateRequest;
+
+    /** Peso innato dell'ingresso "quello li' sta chiedendo" sul neurone dell'accoppiamento. */
+    public static volatile double n_mateSignal;
+
     public static volatile double needPain;
     public static volatile double windowDecay;
 
@@ -81,22 +114,6 @@ public final class ActionWeights {
     public static volatile double bodyMassStats;      // 1 = la massa pesa su salute e costo del movimento
     public static volatile double bodyReach;          // 1 = portata delle estremita' per mangiare e attaccare
     public static volatile double bodyAttackPower;    // 1 = massa e portata entrano nel danno
-
-    // ---- economia del mondo (vedi STATO_LAVORO.txt, voce 12 del 23/10/2026). Attive in tutti i
-    // profili: non sono effetti del corpo ma correzioni al mondo. Si spengono per i confronti A/B
-    // (src.Experiment ... "timeMetabolism=0").
-    /**
-     * 1 = fame e sete scendono col TEMPO (per tick) e un passo costa in proporzione alla strada
-     * che copre; 0 = il vecchio consumo per AZIONE.
-     *
-     * PERCHE'. Con il consumo per azione un'entita' lenta ha un metabolismo lento in tempo di
-     * mondo, perche' le azioni arrivano al ritmo speed/7. Misurato nella sessione 13: la
-     * velocita' media della popolazione e' scesa da 1.80 a 1.05 e l'ultima sopravvissuta (la 120)
-     * ha vissuto 27000 tick facendo 3672 azioni e mangiando 33 mele. Non aveva imparato a
-     * sopravvivere: aveva imparato a non fare niente, piano. Finche' il tempo non costa, la
-     * strategia vincente e' la torpore e tutto il lavoro sulla locomozione non conta.
-     */
-    public static volatile double timeMetabolism;
     /**
      * Dislivello in celle entro cui si vede, si raggiunge e si trova un partner. 0 = solo la
      * propria quota, come prima; 1 = un gradino.
@@ -149,10 +166,6 @@ public final class ActionWeights {
         sleepRestedPenalty = -0.5;
         drinkReward = 3.0;
         drinkNeedScaled = 0;
-        eatNeuronWeight = 8.0;
-        mateBias = -9.0;
-        restBias = 3.0;
-        timeMetabolism = 1;
         levelTolerance = 1;
     }
 
@@ -195,17 +208,19 @@ public final class ActionWeights {
         n_drinkGain = 0; n_drinkHere = 6; n_drinkThirst = -6; n_drinkBias = -1.5;
         n_restGain = -6; n_restBias = 2.5;
         n_mateFood = 2; n_mateMature = 2; n_mateEntity = 3; n_mateBias = -5.5;
+        n_mateSignal = 4;
         n_idleBias = -3;
     }
 
     /** Valori originali, istinti sfasati compresi. */
     public static void legacy() {
         rewardsLegacy();
-        seedVersion = 0;
         maskActions = 0;
         allowAttack = 1;
         dietAdapt = 0;    dietEffMin = 0.25; dietEffMax = 1.35;
         needPain = 0;     windowDecay = 0;   // il braccio vecchio: nessun dolore del bisogno
+        maskSeen = 0;
+        mateRequest = 0;
         v3Parameters();
         bodyEffectsOff();
     }
@@ -219,8 +234,6 @@ public final class ActionWeights {
         reproducePartner = 20.0;
         sleepNeedFactor = 0.5;
         sleepRestedPenalty = -1.0;
-        eatNeuronWeight = 12.0;
-        restBias = 1.5;
     }
 
     /** Maschera delle azioni + istinti graduati + acqua adiacente + bere guidato dal bisogno. */
@@ -228,11 +241,12 @@ public final class ActionWeights {
         rewardsLegacy();
         drinkReward = 6.0;
         drinkNeedScaled = 1;
-        seedVersion = 4;
         maskActions = 1;
         allowAttack = 1;
         dietAdapt = 0.02; dietEffMin = 0.25; dietEffMax = 1.35;
         needPain = 0.5;   windowDecay = 0.1;
+        maskSeen = 2;
+        mateRequest = 1;
         v3Parameters();
         bodyEffectsOff();
     }

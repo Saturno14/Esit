@@ -106,10 +106,6 @@ public class world {
         flatTerrain = flat;
     }
 
-    public static boolean isFlatTerrain(){
-        return flatTerrain;
-    }
-
     /** Aumenta a ogni ricostruzione del terreno: il motore grafico lo usa per rifare la mesh dell'acqua. */
     public static int getTerrainVersion(){
         return terrainVersion;
@@ -128,11 +124,6 @@ public class world {
     /** Indice y della prima cella d'aria sopra l'acqua: la superficie dell'acqua sta a waterLevel - 0.5. */
     public static int getWaterLevel(){
         return waterLevel;
-    }
-
-    /** True se la cella contiene acqua. */
-    public static boolean isWater(int x,int y, int z){
-        return Enviroment[x][y][z].type[2] == 2;
     }
 
     /** Colonna casuale asciutta (per far nascere entita' e mele). Ritorna {x, z}. */
@@ -282,14 +273,6 @@ public class world {
     public static int ground_search(){
         return ground.get();
     }    
-
-    public static String check_cord_type(int x,int y, int z){
-        return Enviroment[x][y][z].get_cellType();
-    }
-
-    public static int[] cord_Type(int x,int y, int z){
-        return Enviroment[x][y][z].get_Type();
-    }
 
     public static void add(int x,int y, int z, String simbol){
         if(simbol.equals("M")){

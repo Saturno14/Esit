@@ -53,21 +53,12 @@ public final class Genome {
                 PhenotypeResolver.resolve("body.foot_length", g, schema));
     }
 
-    /** Copia di questo genoma con un altro piano del corpo (stessi alleli e lineage). */
-    public Genome withBodyPlan(BodyPlan plan) {
-        return new Genome(genes, lineage, schemaVersion, plan);
-    }
-
     public Allele get(String geneId) {
         Allele allele = genes.get(geneId);
         if (allele == null) {
             throw new IllegalArgumentException("Gene non presente nel genoma: " + geneId);
         }
         return allele;
-    }
-
-    public Set<String> geneIds() {
-        return genes.keySet();
     }
 
     public LineageInfo lineage() {
@@ -225,10 +216,6 @@ public final class Genome {
 
         BodyPlan plan = obj.has("body") && !obj.isNull("body") ? BodyPlan.fromJson(obj.getJSONObject("body")) : null;
         return new Genome(genes, lineage, version, plan);
-    }
-
-    public void saveToFile(Path path) throws IOException {
-        Files.writeString(path, toJson().toString(2));
     }
 
     /** Carica un genoma da file e lo migra subito allo schema corrente (punto 6). */

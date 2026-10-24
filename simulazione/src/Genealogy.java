@@ -212,11 +212,6 @@ public final class Genealogy {
         return out;
     }
 
-    /** Tutti gli id della sessione, in ordine di inserimento. */
-    public static synchronized java.util.List<Integer> allIds() {
-        return new java.util.ArrayList<>(nodes.keySet());
-    }
-
     /** Quanti nodi ha l'albero della sessione. */
     public static synchronized int size() {
         return nodes.size();

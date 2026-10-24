@@ -1279,7 +1279,11 @@ Sessione 19, dal log tick per tick:
   tick  9020: vive 18, nascite 240, fame 125, uccise 160, mele 327, salute media 139.1
   tick 10020: vive  9, nascite 241, fame 125, uccise 170, mele 358, salute media 142.9
   tick 14040: vive  1, nascite 243, fame 127, uccise 178, mele 344, salute media 135.9
-Il 57% delle morti e' OMICIDIO, non inedia. La salute media SALE lungo tutta la corsa (120 ->
+Il 57% delle morti e' OMICIDIO, non inedia.
+  *** SBAGLIATO: VEDI LA VOCE 18. Simulation.kill contava le morti di SETE tra gli omicidi
+  *** (la causa "sete" non comincia per "fame", quindi finiva nel ramo "altro"). Contate dalla
+  *** genealogia, le morti vere della sessione 19 sono: fame 127, SETE 126, combattimento 52.
+  *** Gli omicidi erano il 17% delle morti, non il 57%, e il killer vero era la sete. La salute media SALE lungo tutta la corsa (120 ->
 142) mentre le mele salgono a 400: i superstiti stanno benissimo, vengono ammazzati sani. E tra
 il tick 9020 e il 10020 c'e' UNA nascita e DIECI omicidi. Sotto la ventina la riproduzione si
 spegne: dopo il 10020 sono due nascite in quattromila tick.
@@ -1424,3 +1428,138 @@ esiste. Dove la modifica si puo' esprimere come interruttore senza inventare un 
 preferire l'interruttore.
 Resta inoltre NON misurato l'effetto della mira e della nuova percezione: nei dodici semi di
 questo lotto ci sono in entrambi i bracci.
+
+==========================================================================================
+18. CONTROLLO DEL CODICE: LA SETE ERA CONTATA COME OMICIDIO (23/10/2026)
+==========================================================================================
+
+Rilettura di tutto il codice per percorso di esecuzione, cercando zone morte e bug rimasti da
+modifiche vecchie. Il raccolto, in ordine di gravita'.
+
+------------------------------------------------------------------------------------------
+1. IL BUG CHE HA FATTO SBAGLIARE LA DIAGNOSI DI IERI
+------------------------------------------------------------------------------------------
+Simulation.kill:
+    if (cause.startsWith("fame")) deathsStarved++; else deathsKilled++;
+Le cause che la simulazione produce sono tre: "fame", "sete", "ucciso da #N". "sete" non comincia
+per "fame", quindi OGNI MORTE DI SETE VENIVA CONTATA COME UN OMICIDIO - nel log (deaths_killed),
+nella riga di console "morti(fame/combattimento)" e in ogni ragionamento fatto sopra quei numeri.
+History.morte le tre cause le distingueva correttamente da sempre: era solo questo conteggio.
+
+QUANTO PESAVA. Contate dalla genealogia della sessione 19 (che registra la causa per entita'):
+    fame 127     SETE 126     combattimento 52     viva 1
+Il log diceva "178 uccise contro 127 di fame" e ci avevo costruito sopra la diagnosi "il 57% delle
+morti e' omicidio, la popolazione viene falciata". FALSO: gli omicidi sono 52 su 306, il 17%.
+LA SETE UCCIDE QUANTO LA FAME, e non si vedeva per due motivi insieme: era mascherata dagli
+omicidi, e avg_thirst non era nel log (aggiunto solo nella voce 17).
+Corretto: tre contatori, colonna deaths_thirst nel log, riga di console "morti(fame/sete/lotta)".
+Verificato su una corsa nuova contro la genealogia: log 76/42/2, genealogia 76/43/2 (una morte di
+sete caduta tra l'ultimo campione e la fine).
+NOTA SU COSA NE SEGUE: la mira nel cono (voce 17) era stata motivata con i 178 omicidi. Resta una
+correzione giusta in se' - colpire il piu' debole a 360 gradi senza guardare era sbagliato - ma
+l'urgenza era attribuita alla causa sbagliata. Il problema grosso di questo mondo e' l'ACQUA.
+
+------------------------------------------------------------------------------------------
+2. LE OTTO CELLE ERANO SOPRAVVISSUTE NELLA MASCHERA DELLE AZIONI
+------------------------------------------------------------------------------------------
+Togliere il senso a 360 gradi dalla vista non era bastato: con ActionWeights.maskActions la rete
+sceglie solo tra le azioni che POSSONO RIUSCIRE, quindi la maschera e' informazione quanto la
+vista. E la maschera diceva "posso bere" per una pozza in una qualunque delle otto celle intorno,
+"posso mangiare" per qualunque cibo entro la portata anche dietro le spalle, e "posso riprodurmi"
+per un partner in un disco di raggio 3 a 360 gradi (findPartnerNoRandom). Cioe' lo stesso difetto
+in un posto meno visibile.
+Regola unica, ActionWeights.maskSeen: un bersaglio conta se sta sotto i piedi o dentro il cono.
+La realta' fisica non cambia (drink beve ancora da una cella adiacente): quello che non arriva
+piu' e' l'avviso.
+
+MISURATO, due varianti, 12 semi appaiati, 6000 tick:
+  maskSeen = 1 (tatto = solo la propria cella)
+      nascite  87 contro 256   2 semi su 12   p = 0.039    CINQUE CORSE ESTINTE su 12 contro 0
+      vivi      4 contro  50   3 semi su 12   p = 0.146
+  maskSeen = 2 (tatto = celle adiacenti, cono per il resto)
+      nascite 145 contro 257   1 seme su 11   p = 0.012
+      vivi     19 contro  41   1 seme su 10   p = 0.021
+Il principio costa, e stavolta il test dei segni lo dice. La variante 1 era semplicemente mal
+posta: chiedeva di FISSARE l'acqua che si ha sotto il braccio e la compagna a una cella.
+E la variante 2 dice una cosa piu' interessante: in questo mondo tutto cio' su cui si puo' agire
+e' a distanza di contatto (il morso arriva a ~1.2 m, l'acqua si bere da una cella adiacente),
+TRANNE IL PARTNER, che vale fino a 3 celle. Quindi l'unico posto dove il principio ha davvero i
+denti e' la riproduzione - e li' costa le nascite in modo significativo.
+Decisione aperta: accettare il prezzo, o esentare il partner (PARTNER_RANGE = 3 era gia' un
+compromesso dichiarato nel codice "perche' le nascite sono il collo di bottiglia", e chiedere di
+guardarsi lo trasforma in una penalita').
+
+------------------------------------------------------------------------------------------
+3. ALTRI BUG DA MODIFICHE VECCHIE
+------------------------------------------------------------------------------------------
+L'ATTACCO NON ATTRAVERSAVA I GRADINI. attack() filtrava con "p[1] != y", cioe' solo chi sta
+esattamente alla propria quota, mentre vista, cadaveri e ricerca del partner passano tutti da
+reachableLevel da quando il terreno a gradini e' stato sistemato (voce 12). Era rimasto indietro:
+un'entita' su un gradino alto 30 cm era intoccabile. Adesso usa reachableLevel come tutto il
+resto.
+
+LE DUE RICERCHE DEL PARTNER NON DICEVANO LA STESSA COSA. findPartnerNoRandom (la maschera) e
+findPartner (quella che fa il figlio) applicavano filtri diversi: la maschera poteva promettere
+un figlio che reproduce() non faceva, o al contrario reproduce() poteva accoppiare un partner che
+l'entita' non percepisce. Allineate.
+
+IL DOLORE DEL BISOGNO SI PAGAVA PER AZIONE. needPain (voce 17) stava in step(), cioe' si pagava a
+ogni AZIONE, mentre fame e sete scendono per TICK. Un'entita' lenta ne pagava quindi meno a
+parita' di tempo di mondo pur consumando lo stesso cibo: era la torpore della voce 11 che
+rientrava dalla finestra, stavolta nel segnale di apprendimento invece che nel cibo. Spostato in
+metabolism(), dove si paga a tempo.
+
+UNA CORSA SENZA LOG ANDAVA AVANTI ZITTA. StatsLog.open, se non riusciva ad aprire il file,
+stampava una riga e metteva file = null: la corsa continuava per 6000 tick senza produrre dati. E'
+successo davvero (24 JVM insieme, "risorse di sistema insufficienti" da Windows) e il seme 5 e'
+SPARITO da un lotto appaiato senza che nessuno se ne accorgesse - l'ho visto solo perche'
+l'analisi ha stampato "manca una delle due corse". Un lotto a cui manca un braccio non e' un
+lotto a dodici semi. Adesso l'errore e' dichiarato come tale e segnalato anche in chiusura.
+
+COMMENTI CHE MENTIVANO. "L'ingresso self + 12 (la luce del giorno)": dopo l'aggiunta della dieta
+la luce e' self + 13. E l'intestazione di Vision descriveva ancora le altre entita' come una
+categoria come le mele.
+
+------------------------------------------------------------------------------------------
+4. ZONE MORTE RIMOSSE
+------------------------------------------------------------------------------------------
+INTERRUTTORI DI ActionWeights SENZA NESSUN LETTORE: eatNeuronWeight, mateBias, restBias,
+seedVersion. Erano i parametri degli istinti "legacy": le varie versioni del cablaggio sono state
+unificate in un solo seedInstincts() e i vecchi nomi sono rimasti a prendere valori che nessuno
+legge. seedVersion e' il caso peggiore: si poteva mettere a 0 o a 4 credendo di cambiare il
+cablaggio, e non cambiava niente.
+
+IL METABOLISMO PER AZIONE. L'interruttore timeMetabolism non valeva zero in nessun profilo (tutti
+passano da rewardsLegacy, che lo mette a 1), quindi il ramo del vecchio consumo per azione in
+step() era irraggiungibile: 17 righe che duplicavano la logica di metabolism() con altre costanti
+(danno 3 invece di 0.75 per tick, soglia di guarigione ripetuta a mano), pronte a divergere senza
+che nessuno le provasse mai. Via il ramo e via l'interruttore. Il perche' del metabolismo a tempo
+resta scritto in metabolism() e nelle voci 12 e 13.
+
+IL TRAPIANTO DEI CERVELLI SALVATI (148 righe). Scritto in questa stessa sessione e rimosso su
+decisione: i cervelli vecchi erano stati salvati per ANALIZZARLI, e con la rete in
+ristrutturazione far ripartire un cervello di un altro tracciato non serve a niente. Resta nella
+storia di git. Nota tecnica che vale la pena ricordare se un giorno si rifa': il trapianto va
+fatto per SIGNIFICATO e non per posizione, perche' i sensi nuovi sono stati infilati in mezzo e
+non in coda - copiare i primi N pesi non da' "lo stesso cervello un po' cieco", da' un cervello
+con i fili incrociati (l'albero finiva dove prima c'erano le entita').
+
+METODI CHE NESSUNO CHIAMAVA (una sola occorrenza in tutto l'albero, la dichiarazione):
+  Entity_manager.getRandomPartner, Entity_manager.get_EntityN, DayNight.isNight,
+  Corpse.getMeat, Genealogy.allIds, Flora.treeAt, Flora.averageTreeHeight,
+  world.isFlatTerrain, world.isWater, world.check_cord_type, world.cord_Type,
+  brain.Reproduction.createChild, Genome.saveToFile, Genome.withBodyPlan, Genome.geneIds
+Alcuni sono resti della prima versione del mondo a celle (world.cord_Type, check_cord_type),
+altri di meccanismi sostituiti (getRandomPartner e' il vecchio accoppiamento a caso senza
+distanza, createChild e' la partenogenesi prima di Reproduction).
+Tenuto GenomeSchema.allWithPrefix, che e' usato davvero.
+
+METODO DI CONTROLLO, da rifare uguale: un metodo si tocca solo se il suo nome appare UNA volta in
+tutto l'albero, commenti esclusi. Il primo giro di controllo, fatto contando solo le chiamate da
+ALTRI file, dava falsi positivi grossi (Flora.mature e' chiamato tre volte dentro Flora).
+E le sostituzioni con espressioni regolari su righe con piu' assegnazioni hanno fatto due danni
+("n_restBias = 2.5" sbranato da una regex su "restBias", la riga della classe Reproduction
+mangiata insieme al metodo): la differenza va riletta riga per riga, non basta che compili.
+
+Stato finale: compila, 632/632 verifiche della vista superate, corsa di prova a 2500 tick con 65
+vive e morti 76 fame / 42 sete / 2 lotta.

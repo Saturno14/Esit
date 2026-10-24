@@ -121,6 +121,13 @@ public class entity {
     private static final int REPRO_PARTNER_FOOD_MIN = 60;
     private static final int REPRO_FOOD_COST = 40;
     private static final int REPRO_COOLDOWN = 40;
+    /**
+     * Quanto dura una richiesta di accoppiamento, in tick. Deve bastare all'altra per GIRARE LA
+     * TESTA e accorgersene: con una vista a cono, una richiesta che scade subito non si vede mai.
+     */
+    private static final int RICHIESTA_TTL = 30;
+    /** Costo in stamina di una richiesta: chiedere non e' gratis, ma costa meno che fare un figlio. */
+    private static final double RICHIESTA_COST = 2;
     private static final double BITE_MEAT = 60;
     private static final int PARTNER_RANGE = 3;          // celle entro cui un partner puo' essere raggiunto
 
@@ -163,6 +170,11 @@ public class entity {
      * si tramanda e' il gusto di partenza, non l'abitudine acquisita.
      */
     private double dietBias;
+    /** Chi mi ha chiesto di accoppiarsi, e quando: -1 = nessuno. Vedi ActionWeights.mateRequest. */
+    private volatile int richiestaDa = -1;
+    private volatile long richiestaTick = Long.MIN_VALUE;
+    /** Quando ho chiesto io: finche' e' fresca, il mio segnale A dice "sto chiedendo". */
+    private volatile long haChiestoTick = Long.MIN_VALUE;
     /**
      * I DUE CANALI DI SEGNALE, per ora MUTI (sempre 0).
      *
@@ -176,12 +188,19 @@ public class entity {
      * significato innato, quindi niente lo seleziona finche' non correla con qualcosa di utile.
      * Il posto e' pronto, la domanda e' aperta.
      */
-    private volatile double signalA = 0;
-    private volatile double signalB = 0;
+    /**
+     * IL PRIMO CANALE NON E' PIU' MUTO: dice "sto chiedendo di accoppiarmi".
+     *
+     * Non e' un campo che qualcuno aggiorna, e' lo stato letto al momento: vale 1 finche' la mia
+     * richiesta e' fresca. Chi mi guarda lo vede nel suo settore (Vision.ENT_SIGNAL_A) e puo'
+     * rispondere. Il secondo canale resta libero, per la prossima parola.
+     */
+    public double getSignalA(){
+        if(ActionWeights.mateRequest <= 0){ return 0; }
+        return Simulation.getTick() - haChiestoTick <= RICHIESTA_TTL ? 1.0 : 0.0;
+    }
 
-    public double getSignalA(){ return signalA; }
-
-    public double getSignalB(){ return signalB; }
+    public double getSignalB(){ return 0; }
     private double Netreward = 0;
     private double actionPoints = 0;
     private boolean sleeping = false;
@@ -331,54 +350,18 @@ public class entity {
         if(Arrays.equals(n.getTopology(), BRAIN_TOPOLOGY)){
             return n;
         }
-        return trapianta(n);
-    }
-
-    /**
-     * TRAPIANTO DI UN CERVELLO VECCHIO IN UNA TESTA NUOVA.
-     *
-     * Allargare la percezione cambia il numero di ingressi, e un cervello salvato con il
-     * tracciato vecchio non ci entra piu'. Prima in quel caso si buttava e si ripartiva da zero:
-     * un salvataggio di venti sessioni diventava carta straccia a ogni ritocco della vista.
-     *
-     * Qui invece si costruisce una rete della topologia attuale e si copiano i pesi che
-     * COMBACIANO: i primi ingressi di ogni neurone del primo strato, e tutti gli strati
-     * successivi, che non sono cambiati. I sensi nuovi restano a peso zero, cioe' il vecchio
-     * cervello si risveglia esattamente com'era, solo cieco a quello che prima non esisteva - e
-     * liberissimo di imparare a usarlo. Se a cambiare e' qualcosa di piu' di un allargamento
-     * degli ingressi (strati diversi, uscite diverse) non c'e' niente da trapiantare e si riparte.
-     */
-    private static NeuralNetwork trapianta(NeuralNetwork vecchio){
-        int[] vt = vecchio.getTopology();
-        if(vt.length != BRAIN_TOPOLOGY.length){
-            System.out.println("Cervello salvato con strati diversi " + Arrays.toString(vt)
-                    + ": ne uso uno nuovo.");
-            return null;
-        }
-        for(int l = 1; l < vt.length; l++){
-            if(vt[l] != BRAIN_TOPOLOGY[l]){
-                System.out.println("Cervello salvato con strati diversi " + Arrays.toString(vt)
-                        + ": ne uso uno nuovo.");
-                return null;
-            }
-        }
-        NeuralNetwork nuovo = new NeuralNetwork(BRAIN_TOPOLOGY);
-        for(int l = 0; l < BRAIN_TOPOLOGY.length - 1; l++){
-            brain.Layer vl = vecchio.getLayer(l);
-            brain.Layer nl = nuovo.getLayer(l);
-            for(int j = 0; j < nl.size(); j++){
-                brain.Neuron vn = vl.getNeuron(j);
-                brain.Neuron nn = nl.getNeuron(j);
-                double[] pesi = new double[nn.inputSize()];
-                double[] vecchi = vn.getWeight();
-                System.arraycopy(vecchi, 0, pesi, 0, Math.min(pesi.length, vecchi.length));
-                nn.setWeights(pesi);
-                nn.setBias(vn.getBias());
-            }
-        }
-        System.out.println("Cervello salvato con " + vt[0] + " ingressi trapiantato in "
-                + BRAIN_TOPOLOGY[0] + ": i sensi nuovi partono muti.");
-        return nuovo;
+        /*
+         * UN CERVELLO DI UN ALTRO TRACCIATO NON SI RECUPERA, e per adesso va bene cosi'.
+         *
+         * C'era un trapianto che rimappava i pesi vecchi sui sensi nuovi - per SIGNIFICATO e non
+         * per posizione, altrimenti sono fili incrociati. Funzionava ed era verificato, ed e'
+         * stato tolto su decisione: finche' la rete e' in ristrutturazione i salvataggi vecchi
+         * servono per guardarci dentro, non per farli ripartire. Se servira', e' nella storia di
+         * git alla voce 17 del diario.
+         */
+        System.out.println("Cervello salvato con " + n.getTopology()[0] + " ingressi (adesso sono "
+                + INPUT_SIZE + "): tracciato diverso, ne uso uno nuovo.");
+        return null;
     }
 
     // ------------------------------------------------------------------ getter
@@ -587,6 +570,7 @@ public class entity {
         // attributi: l'istinto di partenza non sa niente di mole, vigore o sguardo, e nemmeno di
         // chi sia l'altro. Deve impararlo.
         final int eBase = Vision.IDX_ENT + Vision.ENT_NEAR * Vision.SECTORS;
+        final int sBase = Vision.IDX_ENT + Vision.ENT_SIGNAL_A * Vision.SECTORS;
         final int hereApple = Vision.IDX_HERE + Vision.CAT_APPLE;
         final int hereWater = Vision.IDX_HERE + Vision.CAT_WATER;
         final int hereCorpse = Vision.IDX_HERE + Vision.CAT_CORPSE;
@@ -598,8 +582,8 @@ public class entity {
         // sull'altra (per la luce vedi il commento qui sotto; per la dieta vale lo stesso
         // ragionamento - un peso di partenza deciderebbe noi quello che deve decidere la fame)
         /*
-         * NESSUN ISTINTO SULLA LUCE. L'ingresso self + 12 (la luce del giorno) esiste e la rete lo
-         * riceve, ma il cablaggio di partenza non gli da' alcun peso.
+         * NESSUN ISTINTO SULLA LUCE. L'ingresso della luce del giorno (self + 13) esiste e la
+         * rete lo riceve, ma il cablaggio di partenza non gli da' alcun peso.
          *
          * PERCHE'. Un peso innato "col buio fermati" sembra ragionevole e invece decide in partenza
          * la cosa che volevamo far decidere alla selezione: con quel peso ogni entita' nasce
@@ -675,7 +659,14 @@ public class entity {
         double[] mate = new double[INPUT_SIZE];
         mate[inFood] = ActionWeights.n_mateFood;
         mate[inMature] = ActionWeights.n_mateMature;
-        for(int sct = 0; sct < Vision.SECTORS; sct++){ mate[eBase + sct] = ActionWeights.n_mateEntity; }
+        for(int sct = 0; sct < Vision.SECTORS; sct++){
+            mate[eBase + sct] = ActionWeights.n_mateEntity;
+            // "quello li' sta chiedendo": l'istinto di RISPONDERE a una richiesta. Serve perche'
+            // senza di esso una richiesta non ha nessun significato innato, e due entita'
+            // potrebbero non accoppiarsi mai pur essendo entrambe disponibili. Il peso e' un
+            // punto di partenza: chi accetta chiunque e chi e' selettivo partono da qui.
+            mate[sBase + sct] = ActionWeights.n_mateSignal;
+        }
         setNeuron(0, 8, mate, ActionWeights.n_mateBias);
 
         // --- Strato 2: h2 = sigmoid(4*h1 - 2), spinta graduata tra ~0.12 e ~0.88
@@ -805,7 +796,8 @@ public class entity {
 
     /**
      * Fame, sete, danno da inedia e guarigione legati al TEMPO, non alle azioni (vedi
-     * ActionWeights.timeMetabolism).
+     * STATO_LAVORO.txt voce 12: finche' il tempo non costa, la strategia vincente e' la torpore -
+     * la 120 ha vissuto 27000 tick facendo 3672 azioni e mangiando 33 mele).
      *
      * La taratura tiene la media di prima: il consumo era di 1 per azione e un'entita' media fa
      * speed/SPEED_DIVISOR = 1.75/7 = 0.25 azioni per tick, quindi 0.25 per tick e' lo stesso
@@ -816,9 +808,6 @@ public class entity {
      * cosi' essere massicci ha un prezzo continuo, non solo il costo del passo.
      */
     private void metabolism(){
-        if(ActionWeights.timeMetabolism <= 0){
-            return;
-        }
         double rate = BASAL_PER_TICK;
         if(ActionWeights.bodyMassStats > 0){
             rate *= getTraits().massFactor();
@@ -829,6 +818,24 @@ public class entity {
                     stamina + stats.maxStamina * WAKE_REGEN_FRACTION);
         }
         // dormire dimezza il consumo di cibo e azzera quello d'acqua, come nel vecchio ciclo
+        /*
+         * IL PREMIO VIENE DAL CORPO, NON DA UN ORACOLO, E SI PAGA A TEMPO.
+         *
+         * Al posto del vecchio "+0.5 per un passo sopravvissuto" (denso ma IDENTICO in ogni
+         * finestra, quindi incapace di distinguere una finestra buona da una vuota) c'e' il
+         * bisogno che fa male: piu' si ha fame e sete, piu' costa esistere. Segnale denso, viene
+         * dal proprio stato, e NON INDICA NESSUNA DIREZIONE - sentire la fame non dice dov'e'
+         * la mela.
+         *
+         * STA QUI E NON IN step() PERCHE' SI PAGA PER TICK, come il metabolismo. Messo per
+         * azione, un'entita' lenta ne pagava meno a parita' di tempo di mondo pur consumando lo
+         * stesso cibo: era la torpore della voce 11 che rientrava dalla finestra, stavolta nel
+         * segnale di apprendimento invece che nel cibo.
+         */
+        double fameRel = 1.0 - Math.min(1.0, food / (double) maxFood);
+        double seteRel = 1.0 - Math.min(1.0, thirst / (double) MAX_THIRST);
+        Netreward -= ActionWeights.needPain * (fameRel + seteRel);
+
         foodDrain += sleeping ? rate * 0.5 : rate;
         thirstDrain += sleeping ? 0 : rate;
         while(foodDrain >= 1.0){ foodDrain -= 1.0; food--; }
@@ -871,47 +878,15 @@ public class entity {
         applyAgeDrift();
         if(reproCooldown > 0){ reproCooldown--; }
         sleeping = false;
-        /*
-         * IL PREMIO VIENE DAL CORPO, NON DA UN ORACOLO.
-         *
-         * Qui prima c'era "Netreward += 0.5, un passo sopravvissuto": denso ma IDENTICO in ogni
-         * finestra, quindi inutile a distinguere una finestra buona da una inutile (vedi la
-         * finestra di valutazione piu' sotto). Al suo posto c'e' il bisogno che fa male: piu' si
-         * ha fame e sete, piu' ogni passo costa. E' un segnale denso, viene dal proprio stato e
-         * NON INDICA NESSUNA DIREZIONE - sentire la fame non dice dov'e' la mela.
-         *
-         * Dormire attenua un poco questo dolore (il consumo e' dimezzato), ed e' giusto: stare
-         * fermi quando non si ha niente da mangiare e' una strategia vera. Non riporta la torpore
-         * di una volta perche' il metabolismo e' legato al tempo e non alle azioni, quindi
-         * rallentare non regala piu' vita.
-         */
-        double fameRel = 1.0 - Math.min(1.0, food / (double) maxFood);
-        double seteRel = 1.0 - Math.min(1.0, thirst / (double) MAX_THIRST);
-        Netreward -= ActionWeights.needPain * (fameRel + seteRel);
 
         double[] output = Brain.predict(get_NetInput());
         perform(chooseAction(output));
         if(!life.get()){ return; }
 
-        // Fame, sete e salute: col metabolismo legato al tempo stanno in metabolism(), chiamato a
-        // ogni tick. Qui resta il vecchio consumo per AZIONE, usato solo con timeMetabolism = 0.
-        if(ActionWeights.timeMetabolism <= 0){
-            if(!sleeping || age % 2 == 0){
-                food -= 1;
-            }
-            if(!sleeping){
-                thirst -= 1;
-            }
-            if(food < 0){ food = 0; }
-            if(thirst < 0){ thirst = 0; }
-            if(food <= 0){
-                takeDamage(3, "fame");
-            }else if(thirst <= 0){
-                takeDamage(3, "sete");
-            }else if(food >= 85 && thirst >= 85 && healt < maxHealthInt()){
-                healt++;
-            }
-        }
+        // Fame, sete e salute stanno in metabolism(), che il ciclo centrale chiama a ogni tick.
+        // Qui c'era anche il VECCHIO consumo per AZIONE, dietro un interruttore che nessun
+        // profilo metteva a zero: un ramo morto che duplicava la stessa logica con altre
+        // costanti (danno 3 invece di 0.75 al tick), pronto a divergere senza che si notasse.
 
         // Finestra di valutazione: tengo la mutazione del cervello solo se ha fatto uguale o meglio
         windowTick++;
@@ -1031,14 +1006,38 @@ public class entity {
         for(int dx = -1; dx <= 1 && !water; dx++){
             for(int dz = -1; dz <= 1; dz++){
                 int wx = x + dx, wz = z + dz;
-                if(wx >= 0 && wx < dim && wz >= 0 && wz < dim && world.isWaterColumn(wx, wz)){ water = true; break; }
+                if(wx < 0 || wx >= dim || wz < 0 || wz >= dim){ continue; }
+                // l'acqua si raggiunge da una cella adiacente, ma la si deve VEDERE (o avere
+                // sotto i piedi): vedi percepibile()
+                if(world.isWaterColumn(wx, wz) && percepibile(wx, wz)){ water = true; break; }
             }
         }
         ok[ACT_DRINK] = stamina >= 1 && water;
         // Attaccare e' sempre possibile (con stamina sufficiente): anche senza nessuno nei dintorni, il colpo va a vuoto
         ok[ACT_ATTACK] = ActionWeights.allowAttack > 0 && stamina >= ATTACK_COST;
-        ok[ACT_REPRODUCE] = stamina >= REPRODUCE_COST && age >= MATURITY_AGE && reproCooldown <= 0 && food >= REPRO_FOOD_MIN
-                && Entity_manager.Entity_count() < Simulation.maxPopulation() && findPartnerNoRandom();
+        /*
+         * ACCOPPIARSI: con ActionWeights.mateRequest l'azione vale sia per CHIEDERE sia per
+         * ACCETTARE, quindi e' fattibile se c'e' qualcuno a cui chiedere OPPURE qualcuno che ha
+         * chiesto a me. La stamina richiesta e' quella della richiesta, piu' bassa: accettare
+         * costa di piu' ma chi accetta sta per fare un figlio, non una domanda.
+         */
+        boolean puoRiprodursi = age >= MATURITY_AGE && reproCooldown <= 0 && food >= REPRO_FOOD_MIN
+                && Entity_manager.Entity_count() < Simulation.maxPopulation();
+        if(ActionWeights.mateRequest > 0){
+            // RISPONDERE non e' INIZIARE. Chi accetta fa la parte del partner: gli basta
+            // canMate (60 di cibo) e non paga ne' stamina ne' ricerca, perche' il costo lo paga
+            // chi ha chiesto. Prima questa riga chiedeva puoRiprodursi (80 di cibo) anche a chi
+            // doveva solo dire si', e per via del corto circuito di && la richiesta non veniva
+            // nemmeno GUARDATA da chi non era in condizione di chiedere: la domanda arrivava a
+            // un'entita' sorda. Vedi STATO_LAVORO.txt voce 19.
+            boolean puoAccettare = canMate()
+                    && Entity_manager.Entity_count() < Simulation.maxPopulation()
+                    && richiedente() != null;
+            ok[ACT_REPRODUCE] = puoAccettare
+                    || (puoRiprodursi && stamina >= RICHIESTA_COST && findPartnerNoRandom());
+        }else{
+            ok[ACT_REPRODUCE] = puoRiprodursi && stamina >= REPRODUCE_COST && findPartnerNoRandom();
+        }
         return ok;
     }
 
@@ -1056,7 +1055,9 @@ public class entity {
         double range = partnerRange();
         for(entity o : Entity_manager.snapshotAlive()){
             if(o == this || o.sex == this.sex || !o.canMate()){ continue; }
-            if(reachableLevel(y, o.getPos()[1]) && distanceTo(o) <= range){ return true; }
+            int[] op = o.getPos();
+            if(reachableLevel(y, op[1]) && distanceTo(o) <= range
+                    && percepibile(op[0], op[2])){ return true; }
         }
         return false;
     }
@@ -1083,7 +1084,16 @@ public class entity {
                 sleep();
                 break;
             case ACT_REPRODUCE:
-                reproduce();
+                if(ActionWeights.mateRequest > 0){
+                    entity chiedente = richiedente();
+                    if(chiedente != null){
+                        accetta(chiedente);
+                    }else{
+                        chiedi();
+                    }
+                }else{
+                    reproduce();
+                }
                 break;
             case ACT_DRINK:
                 drink();
@@ -1188,9 +1198,9 @@ public class entity {
         if(ActionWeights.bodyMassStats > 0){
             cost *= getTraits().massFactor();
         }
-        if(ActionWeights.timeMetabolism > 0){
-            cost *= stepLength() / CELL_METERS;
-        }
+        // il costo del passo e' proporzionale alla distanza coperta: il metabolismo va a
+        // tempo, quindi camminare bene fa risparmiare tempo, e il tempo costa
+        cost *= stepLength() / CELL_METERS;
         return cost;
     }
 
@@ -1428,6 +1438,7 @@ public class entity {
                 if(z < 0 || z >= dim){ continue; }
                 double d = distanceToCell(x, z);
                 if(d > range){ continue; }
+                if(!percepibile(x, z)){ continue; }   // non la vedo, non la raccolgo
                 Flora.Apple a = Flora.pickFrom(x, z, y, height);
                 if(a == null){ continue; }
                 // a parita' di distanza vince la mela piu' matura, e una mela matura vale la pena
@@ -1440,6 +1451,47 @@ public class entity {
             }
         }
         return best;
+    }
+
+    /**
+     * LA MASCHERA NON DEVE RIVELARE QUELLO CHE NON SI VEDE.
+     *
+     * Con ActionWeights.maskActions la rete scegliera' solo tra le azioni che possono riuscire:
+     * la maschera e' quindi INFORMAZIONE, esattamente come la vista. Finche' "posso bere" era
+     * vero per una pozza in una qualunque delle otto celle intorno, un'entita' sapeva dell'acqua
+     * che aveva di fianco senza averla mai guardata - cioe' le otto celle erano state togliute
+     * dalla vista e sopravvivevano qui, che e' lo stesso difetto in un posto meno visibile.
+     * Lo stesso valeva per il cibo a portata e per il partner (findPartnerNoRandom cercava in un
+     * disco di raggio 3 a 360 gradi).
+     *
+     * Adesso un bersaglio e' PERCEPIBILE se sta sotto i piedi (quello e' tatto, e si sente a
+     * occhi chiusi) oppure dentro il cono dello sguardo. Si guarda solo l'angolo e non la
+     * distanza, perche' qui si parla sempre di roba a portata di braccio.
+     *
+     * La REALTA' FISICA non cambia: drink() beve ancora da una cella adiacente e attack()
+     * colpisce chi ha davanti. Quello che cambia e' che l'entita' non viene piu' avvisata.
+     */
+    private boolean percepibile(int x, int z){
+        if(ActionWeights.maskSeen <= 0){ return true; }
+        int dx = x - position[0].get();
+        int dz = z - position[2].get();
+        /*
+         * IL TATTO ARRIVA A CIO' CHE TI STA ACCANTO, non solo sotto i piedi.
+         *
+         * Nella prima versione il tatto era la sola cella propria, e il risultato misurato su
+         * dodici semi appaiati e' stato un disastro: nascite 87 contro 256 (p = 0.039) e CINQUE
+         * CORSE ESTINTE su dodici contro zero. Il motivo e' che chiedeva di FISSARE l'acqua che
+         * si ha sotto il braccio (drink beve dalle celle adiacenti) e la compagna a una cella di
+         * distanza: non e' percezione realistica, e' una penalita'.
+         *
+         * Con maskSeen = 2 il contatto copre le celle adiacenti - cioe' esattamente la portata
+         * con cui si bere e si incontra qualcuno - e il cono serve per tutto il resto, che e' il
+         * punto: di una cosa lontana non si puo' sapere niente senza averla guardata.
+         */
+        if(Math.abs(dx) <= 1 && Math.abs(dz) <= 1 && ActionWeights.maskSeen >= 2){ return true; }
+        if(dx == 0 && dz == 0){ return true; }
+        return Vision.offAxis(dx, dz, getGazeDirection(),
+                Math.toRadians(stats.fieldOfView) / 2.0) >= 0;
     }
 
     /** True se un oggetto alla quota "other" e' raggiungibile da chi ha i piedi alla quota "mine". */
@@ -1459,6 +1511,7 @@ public class entity {
         for(Corpse c : Simulation.corpsesSnapshot()){
             if(c.isConsumed() || !reachableLevel(y, c.getY())){ continue; }
             double d = distanceToCell(c.getX(), c.getZ());
+            if(!percepibile(c.getX(), c.getZ())){ continue; }
             if(d <= range && d < bestD){
                 bestD = d;
                 best = c;
@@ -1603,7 +1656,11 @@ public class entity {
         for(entity o : Entity_manager.snapshotAlive()){
             if(o == this || !o.isAlive()){ continue; }
             int[] p = o.getPos();
-            if(p[1] != y){ continue; }
+            // ERA "p[1] != y", cioe' solo chi sta ESATTAMENTE alla propria quota. Vista,
+            // cadaveri e ricerca del partner passano tutti da reachableLevel da quando il
+            // terreno a gradini e' stato sistemato (vedi STATO_LAVORO voce 12): l'attacco era
+            // rimasto indietro, e un'entita' su un gradino alto 30 cm era intoccabile.
+            if(!reachableLevel(y, p[1])){ continue; }
             double d;
             if(ActionWeights.bodyReach > 0){
                 d = distanceTo(o);
@@ -1661,7 +1718,12 @@ public class entity {
         double range = partnerRange();
         for(entity o : Entity_manager.snapshotAlive()){
             if(o == this || o.sex == this.sex || !o.canMate()){ continue; }
-            if(reachableLevel(y, o.getPos()[1]) && distanceTo(o) <= range){
+            int[] op = o.getPos();
+            // STESSO FILTRO DELLA MASCHERA (findPartnerNoRandom): le due ricerche devono dire la
+            // stessa cosa, altrimenti la maschera promette un figlio e reproduce() non lo fa, o
+            // peggio il contrario - un partner che non si percepisce.
+            if(reachableLevel(y, op[1]) && distanceTo(o) <= range
+                    && percepibile(op[0], op[2])){
                 candidates.add(o);
             }
         }
@@ -1670,6 +1732,76 @@ public class entity {
     }
 
     /** Due genitori: l'entita' che sceglie di riprodursi cerca un partner vicino di sesso opposto. */
+    /**
+     * Chi mi ha chiesto di accoppiarsi, se la richiesta e' ancora fresca, se e' ancora viva, se
+     * puo' ancora farlo e se la percepisco. Null in tutti gli altri casi.
+     *
+     * La richiesta non e' un contratto: tra la domanda e la risposta l'altra puo' essere morta,
+     * aver mangiato l'ultima mela o essersi allontanata. Si ricontrolla tutto al momento del si'.
+     */
+    private entity richiedente(){
+        if(richiestaDa < 0 || Simulation.getTick() - richiestaTick > RICHIESTA_TTL){
+            return null;
+        }
+        for(entity o : Entity_manager.snapshotAlive()){
+            if(o.getId() != richiestaDa){ continue; }
+            int[] op = o.getPos();
+            if(o.sex == this.sex || !o.canMate()){ return null; }
+            if(!reachableLevel(position[1].get(), op[1])){ return null; }
+            if(distanceTo(o) > partnerRange()){ return null; }
+            if(!percepibile(op[0], op[2])){ return null; }
+            return o;
+        }
+        return null;
+    }
+
+    /**
+     * CHIEDO. Il bersaglio e' il partner possibile piu' CENTRATO nel cono (a parita' il piu'
+     * vicino): si chiede a chi si sta guardando, come si colpisce chi si sta guardando.
+     * Chiedere non fa nascere niente: mette la richiesta in capo all'altra e accende il proprio
+     * segnale. Se non c'e' nessuno a cui chiedere, la domanda va a vuoto e costa come un colpo
+     * a vuoto.
+     */
+    private void chiedi(){
+        int y = position[1].get();
+        double gaze = getGazeDirection();
+        double half = Math.toRadians(stats.fieldOfView) / 2.0;
+        entity scelta = null;
+        double bestScarto = Double.MAX_VALUE, bestD = Double.MAX_VALUE;
+        for(entity o : Entity_manager.snapshotAlive()){
+            if(o == this || o.sex == this.sex || !o.canMate()){ continue; }
+            int[] op = o.getPos();
+            if(!reachableLevel(y, op[1])){ continue; }
+            double d = distanceTo(o);
+            if(d > partnerRange() || !percepibile(op[0], op[2])){ continue; }
+            double scarto = Vision.offAxis(op[0] - position[0].get(), op[2] - position[2].get(),
+                    gaze, half);
+            if(scarto < 0){ scarto = 0; }   // e' a contatto: conta come inquadrata
+            if(scarto < bestScarto || (scarto == bestScarto && d < bestD)){
+                bestScarto = scarto;
+                bestD = d;
+                scelta = o;
+            }
+        }
+        if(scelta == null){
+            Netreward -= 1.0;
+            return;
+        }
+        if(!spend(RICHIESTA_COST)){ return; }
+        scelta.richiestaDa = this.EntityID;
+        scelta.richiestaTick = Simulation.getTick();
+        this.haChiestoTick = Simulation.getTick();
+    }
+
+    /** ACCETTO: da qui in poi e' il vecchio accoppiamento, con il richiedente come partner. */
+    private void accetta(entity chiedente){
+        chiedente.haChiestoTick = Long.MIN_VALUE;   // la domanda ha avuto risposta
+        this.richiestaDa = -1;
+        // chi ha chiesto e' il primo genitore, chi accetta il secondo: il figlio nasce dov'e'
+        // chi ha accettato, e la ricompensa piu' grande va a chi si e' mosso per primo
+        chiedente.generaFiglioCon(this);
+    }
+
     private void reproduce(){
         if(age < MATURITY_AGE || reproCooldown > 0 || food < REPRO_FOOD_MIN
                 || Entity_manager.Entity_count() >= Simulation.maxPopulation()){
@@ -1678,6 +1810,21 @@ public class entity {
         }
         entity partner = findPartner();
         if(partner == null){
+            Netreward -= 1.0;
+            return;
+        }
+        generaFiglioCon(partner);
+    }
+
+    /**
+     * Il figlio di due genitori, dato che sono d'accordo: il cuore dell'accoppiamento, chiamato
+     * sia dal vecchio modo immediato sia dal protocollo richiesta-risposta.
+     */
+    private void generaFiglioCon(entity partner){
+        // Tra la domanda e il si' passano fino a RICHIESTA_TTL tick: le condizioni si ricontrollano
+        // qui, che e' l'unico punto da cui nasce un figlio in tutti e due i modi.
+        if(!canMate() || !partner.canMate()
+                || Entity_manager.Entity_count() >= Simulation.maxPopulation()){
             Netreward -= 1.0;
             return;
         }

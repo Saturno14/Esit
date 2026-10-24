@@ -19,6 +19,12 @@ public final class StatsLog {
 
     private static final Path DIR = Path.of("logs");
     private static Path file;
+    /** True se open() non ce l'ha fatta: chi lancia corse in serie deve fermarsi (vedi SimRunner). */
+    private static volatile boolean aperturaFallita = false;
+
+    public static boolean aperturaFallita() {
+        return aperturaFallita;
+    }
 
     private StatsLog() {
     }
@@ -33,6 +39,9 @@ public final class StatsLog {
                     "tick,population,apples,corpses,births,deaths_starved,deaths_killed,"
                             + "avg_generation,max_generation,avg_health,avg_speed,avg_sight,avg_stamina,"
                             + "avg_attack,herbivores,omnivores,carnivores,avg_fitness,avg_fov,avg_nightvision,daylight,"
+                            // deaths_thirst non c'era e la sete finiva in deaths_killed: vedi
+                            // Simulation.kill
+                            + "deaths_thirst,"
                             + "males,females,mature_males,mature_females,deaths_m,deaths_f,"
                             // il cibo e la sete non erano registrati: si ragionava sulla fame
                             // senza averne una misura. avg_diet_bias dice dove sta andando
@@ -40,13 +49,23 @@ public final class StatsLog {
                             + "avg_food,avg_thirst,avg_diet_bias\n");
             }
         } catch (IOException e) {
-            System.out.println("Errore apertura log statistiche: " + e.getMessage());
+            /*
+             * SENZA LOG LA CORSA NON VALE NIENTE, e tacere e' peggio che fermarsi.
+             * E' successo davvero: in un lotto da 24 processi uno ha trovato "risorse di sistema
+             * insufficienti", ha continuato zitto per 6000 tick e il suo seme e' SPARITO dal
+             * confronto appaiato senza che nessuno se ne accorgesse - l'ho visto solo perche'
+             * l'analisi ha stampato "manca una delle due corse". Un lotto appaiato a cui manca
+             * un braccio di un seme non e' un lotto a dodici semi.
+             */
+            System.out.println("ERRORE: non riesco ad aprire il log statistiche ("
+                    + e.getMessage() + "). La corsa non produrrebbe dati: la fermo qui.");
             file = null;
+            aperturaFallita = true;
         }
     }
 
     public static synchronized void record(long tick, int apples, int corpses, int births,
-                                            int deathsStarved, int deathsKilled,
+                                            int deathsStarved, int deathsThirst, int deathsKilled,
                                             int deathsMale, int deathsFemale) {
         if (file == null) {
             return;
@@ -89,11 +108,12 @@ public final class StatsLog {
         }
         double d = Math.max(1, n);
         String line = String.format(Locale.ROOT,
-                "%d,%d,%d,%d,%d,%d,%d,%.2f,%d,%.1f,%.2f,%.2f,%.1f,%.1f,%d,%d,%d,%.3f,%.0f,%.3f,%.2f,"
+                "%d,%d,%d,%d,%d,%d,%d,%.2f,%d,%.1f,%.2f,%.2f,%.1f,%.1f,%d,%d,%d,%.3f,%.0f,%.3f,%.2f,%d,"
                         + "%d,%d,%d,%d,%d,%d,%.1f,%.1f,%.3f%n",
                 tick, n, apples, corpses, births, deathsStarved, deathsKilled,
                 gen / d, (int) maxGen, health / d, speed / d, sight / d, stamina / d, attack / d,
                 herb, omni, carn, fitness / d, fov / d, night / d, DayNight.daylight(tick),
+                deathsThirst,
                 maschi, femmine, maschiMaturi, femmineMature, deathsMale, deathsFemale,
                 cibo / d, sete / d, dietBias / d);
         try {

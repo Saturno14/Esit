@@ -30,12 +30,28 @@ public class SimRunner {
                 // dal gene, cioe' la dieta resta l'etichetta fissa di prima. Qualunque altro
                 // valore e' quanto un singolo pasto sposta l'abitudine (normale: 0.02).
                 ActionWeights.dietAdapt = Double.parseDouble(args[i].substring(6));
+            } else if (args[i].startsWith("richiesta=")) {
+                // richiesta=0: il vecchio accoppiamento immediato, senza il si' dell'altra parte
+                ActionWeights.mateRequest = Double.parseDouble(args[i].substring(10));
+            } else if (args[i].startsWith("vedere=")) {
+                // vedere=0: la maschera delle azioni non chiede di vedere il bersaglio (come
+                // prima, con le otto celle intorno per l'acqua e il partner a 360 gradi)
+                ActionWeights.maskSeen = Double.parseDouble(args[i].substring(7));
             }
         }
         System.out.println("---- Opzioni: dieta=" + ActionWeights.dietAdapt
+                + " vedere=" + ActionWeights.maskSeen
+                + " richiesta=" + ActionWeights.mateRequest
                 + " riserva=" + entity.getMaxFood());
 
         Simulation.setSeed(seed);
+        // vedi StatsLog.open: una corsa senza log non va misurata, e soprattutto non va
+        // silenziosamente conteggiata in un lotto appaiato
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            if (StatsLog.aperturaFallita()) {
+                System.out.println("ERRORE: questa corsa non ha prodotto log, non usarla.");
+            }
+        }));
         Simulation.setTimeScale(scale);
         console.startSimulation(true);
 

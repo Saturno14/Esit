@@ -63,8 +63,10 @@ public final class Vision {
      *
      * Qui invece ogni settore riporta l'entita' piu' vicina con cio' che di lei si vede: quanto
      * e' vicina, quanto e' grossa, quanto sta in forze, se sta guardando verso di me, se si sta
-     * muovendo. Niente sesso, niente dieta, niente parentela. Se un'entita' deve distinguere una
-     * compagna da un rivale, deve impararlo da questi indizi - e, un giorno, da cosa l'altro dice.
+     * muovendo, e di che sesso e' (il dimorfismo si vede: vedi ENT_SEX). Niente dieta, niente
+     * parentela, e soprattutto nessun "quello li' e' un partner valido": maturita', sazieta' e
+     * attesa non si vedono, quindi non si passano. Se un'entita' deve distinguere una compagna da
+     * un rivale deve impararlo da questi indizi - e, un giorno, da cosa l'altro dice.
      *
      * I DUE CANALI DI SEGNALE NASCONO MUTI (sempre 0) e sono riservati al dialogo: quando le
      * entita' potranno emettere un segnale saranno due USCITE in piu' che riempiono due ingressi
@@ -72,7 +74,7 @@ public final class Vision {
      * ogni cambio del tracciato degli ingressi invalida i cervelli salvati, e vale la pena
      * pagarlo una volta sola.
      */
-    public static final int ENT_ATTRS = 7;
+    public static final int ENT_ATTRS = 8;
     /** Vicinanza, da 1 (addosso) verso 0 (al limite della vista). 0 = nessuno in quel settore. */
     public static final int ENT_NEAR = 0;
     /** Mole: l'altezza apparente del corpo, normalizzata. Si vede. */
@@ -83,10 +85,24 @@ public final class Vision {
     public static final int ENT_LOOKS = 3;
     /** 1 se si sta muovendo. */
     public static final int ENT_MOVES = 4;
+    /**
+     * IL SESSO: 1 femmina, 0.5 maschio (deciso, non derivato - vedi sotto).
+     *
+     * E' l'unico attributo "di identita'" che si passa, e si passa per scelta: nel mondo vero il
+     * dimorfismo sessuale SI VEDE, quindi non e' barare come lo sarebbe un canale "questo e' un
+     * partner valido" (sesso opposto, maturo, sazio, senza attesa), che darebbe alla rete la
+     * risposta invece degli indizi. Qui si dice solo com'e' fatto l'altro: che quello sia o no un
+     * partner possibile resta da capire, perche' maturita', sazieta' e attesa non si passano.
+     *
+     * PERCHE' 0.5 E NON 0 PER IL MASCHIO: in questo blocco lo zero ha gia' un significato, ed e'
+     * "in questo settore non c'e' nessuno" (tutti gli attributi restano a zero). Con il maschio a
+     * 0 un maschio davanti e il vuoto davanti darebbero lo stesso ingresso su questo canale.
+     */
+    public static final int ENT_SEX = 5;
     /** Primo canale di segnale: per ora sempre 0. */
-    public static final int ENT_SIGNAL_A = 5;
+    public static final int ENT_SIGNAL_A = 6;
     /** Secondo canale di segnale: per ora sempre 0. */
-    public static final int ENT_SIGNAL_B = 6;
+    public static final int ENT_SIGNAL_B = 7;
 
     /** Inizio del blocco degli oggetti: indice = IDX_OBJ + categoria * SECTORS + settore. */
     public static final int IDX_OBJ = 0;
@@ -230,6 +246,7 @@ public final class Vision {
             out[IDX_ENT + ENT_VIGOR * SECTORS + sct] = vigore(o);
             out[IDX_ENT + ENT_LOOKS * SECTORS + sct] = miGuarda(o, px, pz);
             out[IDX_ENT + ENT_MOVES * SECTORS + sct] = o.isWalking() ? 1.0 : 0.0;
+            out[IDX_ENT + ENT_SEX * SECTORS + sct] = o.getSex() == 2 ? 1.0 : 0.5;
             out[IDX_ENT + ENT_SIGNAL_A * SECTORS + sct] = o.getSignalA();
             out[IDX_ENT + ENT_SIGNAL_B * SECTORS + sct] = o.getSignalB();
         }
