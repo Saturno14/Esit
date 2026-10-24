@@ -2372,3 +2372,159 @@ PalcoSelfTest 71/71 (quattro verifiche nuove sulla svolta: la ricerca trova una 
 l'ha gira piu' di chi ha lo sterzo a zero, chi non chiede di girare non accumula radianti, i
 radianti consumati non si riconsumano), BodySelfTest 335/335, VisionSelfTest 632/632,
 PhysicsSmokeTest OK su tutti e tre i casi. BodyPlanTest resta rosso da prima (10 su 2421, voce 20).
+
+==========================================================================================
+26. UN SOLO MONDO: VIA IL PALCO, VIA IL TETTO, VIA I PREMI (25/10/2026)
+==========================================================================================
+
+I tre passi che restavano della fase decisa con l'utente: un mondo solo (3), via il tetto di
+popolazione (4), via ogni premio tranne quello della riproduzione (5). Il filo e' uno: tutte e
+tre le modifiche TOLGONO qualcosa che decideva da fuori, e nessuna aggiunge un apparato.
+
+------------------------------------------------------------------------------------------
+1. IL PALCO ERA UN DISTRIBUTORE DI METRI
+------------------------------------------------------------------------------------------
+Il palco: pavimento piatto, corsie a 8 metri, un corpo per corsia, tapis roulant a 400 m. La
+simulazione gli chiedeva "quanti metri ha camminato la 17" e spostava la 17 di quei metri. La
+fisica era un ORACOLO SPOSTATO NEL TEMPO - misurava in tempo reale invece che una volta per vita,
+ma misurava ancora una proprieta' del corpo e non un fatto del mondo.
+
+Adesso c'e' MondoFisico: un mondo solo, il terreno della simulazione come campo di altezze, i
+tronchi come cilindri statici, l'acqua delle colonne allagate con la sua spinta, e TUTTE le entita'
+vive dentro. Quello che cambia nel modello si riassume in due righe di entity:
+
+    walk()  segna l'intenzione, paga il fiato, NON SPOSTA NIENTE
+    turn()  segna l'intenzione, paga il fiato, NON SCRIVE PIU' facing
+
+e una riga nuova, leggiDalCorpo(), che a ogni tick legge dal corpo dove e' finito e da che parte
+guarda. L'ordine del tick e' diventato: il mondo avanza, OGNI ENTITA' LEGGE IL PROPRIO CORPO, poi
+le entita' guardano e scelgono. In quest'ordine perche' un'entita' deve decidere guardando il
+mondo da dove il suo corpo l'ha portata, non da dove credeva di essere.
+
+VIA ANCHE I TRE RIFIUTI SCRITTI A MANO nella maschera delle azioni ("fuori dalla mappa",
+"nell'acqua non si va", "un albero non si attraversa"). Nel mondo unico quei tre sono fatti fisici:
+il bordo e' un muro, il tronco e' un cilindro solido, l'acqua ha la sua resistenza. Dirli due volte
+rende il secondo un ORACOLO - un'entita' saprebbe che l'acqua non si attraversa senza averci mai
+provato.
+
+VIA IL BUDGET E LA CAPIENZA. Il palco calcolava quante ragdoll stavano nel tempo di un tick e
+lasciava le altre al passo geometrico. Era necessario finche' la fisica distribuiva metri; in un
+mondo unico e' una contraddizione - due entita' nella stessa radura, una che inciampa nelle buche e
+l'altra che le attraversa, non vivono nello stesso mondo e non si possono confrontare. Quindi o ci
+sono tutte o la fisica e' spenta per tutte. IL PREZZO E' DICHIARATO: circa 1 ms per corpo per
+tick, quindi con 300 entita' un tick di fisica costa 300 ms su 500 disponibili, e a velocita' alte
+il mondo RALLENTA invece di togliere corpi dalla fisica. Rallentare e' la cosa onesta.
+
+------------------------------------------------------------------------------------------
+2. DUE RINUNCE MISURATE, E PERCHE' NON SONO COMODITA'
+------------------------------------------------------------------------------------------
+Portando le verifiche dal palco al mondo, due di esse si sono rotte. Non per un difetto: perche'
+affermavano cose che sul palco erano vere e nel mondo non lo sono.
+
+"CHI CAMMINA VA PIU' LONTANO DI CHI RIPOSA" e' FALSO: 1.43 m contro 1.60 m in dieci secondi. Un
+corpo fermo nella gravita' CROLLA, e crollando SCIVOLA - tanto quanto uno che cammina. Il palco non
+lo vedeva perche' consegnava metri solo a chi era in piedi (il filtro "plausibile"), e quel filtro
+era un giudizio sulla postura: chi striscia si muove davvero, e il mondo non deve decidere quale
+modo di muoversi conta.
+
+"CHI E' A TERRA NON AVANZA" e' falso per la stessa ragione: un corpo crollato scivola di 1.6 m in
+venti secondi. Resta GIU' - questo si verifica, ed e' quello che importa, perche' un'entita' per
+terra non raggiunge quello che ha visto.
+
+Quindi che cosa verifica il mondo? Non la bravura: quella si misura all'ORACOLO, dove il pavimento
+e' piatto e non ci sono pendii, perche' e' una proprieta' del corpo. Il mondo garantisce una cosa
+sola, CHE LA SCELTA DELL'ENTITA' ARRIVI AI MOTORI, e la verifica in una forma che non si puo'
+soddisfare per caso: lo stesso corpo, nella stessa cella, con sterzo +1, -1 e 0, deve spostare la
+direzione DA PARTI OPPOSTE rispetto al non chiedere niente. Misurato: +0.85 rad e -0.76 rad. E'
+precisamente l'assunzione dichiarata in Gait.sterzoByDof (girare a sinistra e' lo specchio di
+girare a destra), verificata invece che assunta.
+
+E QUI UNA COSA CHE NON SI POTEVA VERIFICARE PRIMA: la prima stesura confrontava quanto la direzione
+cambiava con e senza sterzo, e il corpo SENZA sterzo girava PIU' di quello con la svolta (2.47
+contro 1.77 rad). Non e' un difetto: e' la spirale della voce 25. Le andature di oggi non vanno
+dritte, e con una lettura all'inizio e una alla fine la spirale non si separa dalla svolta.
+
+------------------------------------------------------------------------------------------
+3. TRE ERRORI MIEI, TUTTI SULLO STESSO TEMA
+------------------------------------------------------------------------------------------
+Tutti e tre di MISURA, e tutti e tre nascosti dalla stessa cosa: su un pavimento piatto il POSTO
+non conta, e io stavo ancora scrivendo verifiche da palco.
+
+I DUE CORPI DEL CONFRONTO IN DUE CELLE DIVERSE. E' cosi' che e' uscito "un corpo fermo copre piu'
+strada di uno che cammina": stava su un pendio. Sul palco due corsie erano equivalenti, nel mondo
+no. Adesso ogni confronto e' APPAIATO E SEQUENZIALE - un corpo per volta, sempre nella stessa
+cella, con il mondo chiuso e riaperto in mezzo - e la cella e' scelta PIANA (le nove celle intorno
+alla stessa quota, asciutte, senza tronchi).
+
+LA QUOTA DELLA POSA NON E' LA QUOTA DEL MONDO. Verificando che un corpo su una collina sta piu' in
+alto di uno in una valle ho letto la quota dalla POSA, e ho ottenuto -0.90 m di differenza per 4 m
+di dislivello: la posa ha il perno sottratto, e il perno contiene la quota del terreno di quella
+cella (il motore grafico la somma di nuovo). Nella posa due corpi su due colline stanno entrambi
+intorno a zero. La quota del mondo e' Posizione.quota. Con quella: 27.22 m contro 24.88 m.
+
+HO RICOMPILATO MENTRE UN LOTTO CORREVA. Le classi si caricano quando servono, quindi una classe
+toccata per la prima volta dopo la ricompilazione e' un'altra versione: il lotto e' stato buttato e
+rifatto da uno SNAPSHOT delle classi. E' la stessa famiglia dell'archivio condiviso della voce 24 -
+una corsa di misura deve essere isolata da tutto, non solo dalla cartella di lavoro.
+
+------------------------------------------------------------------------------------------
+4. IL TETTO DI POPOLAZIONE ERA UN LIMITE MESSO PRIMA DELLA FAME
+------------------------------------------------------------------------------------------
+maxPopulation = densita' delle mele = 375 entita' su 50x50. E maxApples = LA STESSA FORMULA: il
+tetto di popolazione era esattamente il numero massimo di mele. Un limite a quel valore impedisce
+alla popolazione di arrivare dove il cibo non basta, e quindi impedisce la cosa che si voleva
+vedere: LA FAME NON LIMITAVA NIENTE, PERCHE' C'ERA UN LIMITE PRIMA DELLA FAME.
+
+Via. Resta limiteDiSicurezza, un'entita' per cella di terreno (2500 a 50x50), e non e' un tetto
+ecologico travestito: a quella densita' i corpi non ci starebbero fisicamente in piedi, e a 1 ms
+per corpo la simulazione sarebbe diventata inguardabile molto prima. Due scelte che contano:
+ - si controlla in UN SOLO POSTO, generaFiglioCon, che e' l'unico punto da cui nasce un figlio;
+ - NELLA MASCHERA DELLE AZIONI NON C'E'. Un'entita' non deve sapere che il mondo e' pieno, perche'
+   sarebbe l'ennesima informazione regalata al posto di una percepita.
+E se il limite viene toccato si STAMPA, perche' un limite raggiunto in silenzio sembra un
+equilibrio.
+
+------------------------------------------------------------------------------------------
+5. IL PREMIO ERA L'ULTIMA DIREZIONE COMPORTAMENTALE IMPOSTA
+------------------------------------------------------------------------------------------
+Mangiare valeva 3, bere 6, dormire stanchi valeva la stanchezza, avere fame costava mezzo punto per
+tick, e una dozzina di punizioni scritte a mano - nessuna dietro a un peso - dicevano "non stare
+fermo" (-0.5), "non andare in acqua" (-2), "non sbagliare il colpo" (-1).
+
+Nessuno di quei numeri descrive il mondo. Descrivono quello che CHI HA SCRITTO IL PROGRAMMA pensa
+che convenga fare. L'utente l'ha detto meglio: "tanto tutte le statistiche l'entita' le percepisce
+nella rete neurale, quindi quando ha mancanze o abbondanze come fame o sete se ne accorge da se'".
+La fame e la sete sono fra gli ingressi della rete: dirle anche "avere fame e' brutto" e'
+insegnarle la risposta.
+
+Via tutto. RESTA LA RIPRODUZIONE, e non e' una contraddizione: non e' un consiglio su come vivere,
+e' la definizione di cosa conta in una simulazione evolutiva. E resta implicito il premio piu'
+grande di tutti, che non e' un numero: chi sbaglia muore, e i morti non hanno figli.
+
+LE PUNIZIONI SPARSE PASSANO ADESSO DA UN SOLO POSTO (entity.penalita, pesata da
+ActionWeights.penalitaAzioni, che il profilo in uso mette a ZERO). Non e' una manopola di taratura:
+serve perche' il braccio di controllo del confronto appaiato debba costare un flag e non tredici
+righe. Il flag e' premi=1.
+
+QUELLO CHE COSTA, DICHIARATO PRIMA DI MISURARLO. L'apprendimento in vita (entity.step) confronta il
+punteggio di una finestra con la migliore e tiene la mutazione solo se e' MAGGIORE. Senza premi
+densi quasi tutte le finestre valgono ZERO, quindi quasi tutte le mutazioni del cervello vengono
+ANNULLATE e il cervello resta quello con cui si e' nati. L'apprendimento si sposta quasi tutto
+sull'EVOLUZIONE fra generazioni. Non e' un effetto collaterale che ho scoperto dopo: e' la
+conseguenza diretta di "conta solo sopravvivere", e andava misurata invece che supposta.
+
+------------------------------------------------------------------------------------------
+6. VERIFICHE
+------------------------------------------------------------------------------------------
+MondoFisicoSelfTest 85/85, erede di PalcoSelfTest (cancellato con il palco). Dentro ci sono le
+verifiche vecchie portate nel mondo vero e quattro nuove che prima non si potevano scrivere:
+ - la quota di un corpo SEGUE IL TERRENO sotto di lui (27.22 m sulla cella piu' alta, 24.88 sulla
+   piu' bassa, per 4 m di dislivello della mappa);
+ - un corpo in una colonna allagata resta un corpo del mondo con una posizione leggibile (quanta
+   strada faccia in acqua si STAMPA e non si verifica: dipende da com'e' fatta la colonna che
+   quel seme ha prodotto, e una verifica che dipende dal seme non e' una verifica);
+ - i due versi dello sterzo girano da parti opposte rispetto al non chiedere niente;
+ - chi cammina e chi riposa finiscono in due posti diversi.
+BodySelfTest 335/335, VisionSelfTest 632/632, PhysicsSmokeTest OK su tutti e tre i casi
+(pavimento, terreno con gli assi giusti, acqua che frena la caduta). BodyPlanTest resta rosso da
+prima (10 su 2421, voce 20).
