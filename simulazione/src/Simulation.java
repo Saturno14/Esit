@@ -104,6 +104,18 @@ public class Simulation {
     }
 
     public static synchronized void stop() {
+        /*
+         * CHI E' ANCORA VIVO E' PROPRIO QUELLO CHE INTERESSA. Un mondo che finisce con qualcuno
+         * in piedi finisce con i migliori camminatori della sessione ancora vivi: registrando
+         * solo i morti, l'archivio raccoglierebbe per definizione chi non ce l'ha fatta.
+         */
+        if (running) {
+            for (entity e : Entity_manager.snapshotAlive()) {
+                e.registraMovimento();
+            }
+        }
+        src.body.GaitArchive.salva();
+        src.body.Palco.chiudi();
         running = false;
         generation++; // invalida un eventuale thread ancora in uscita
         if (thread != null) {
@@ -172,6 +184,11 @@ public class Simulation {
         }
         e.markDead(cause, tickCount);
         Entity_manager.Entity_remuve(e);
+        // quello che questo corpo aveva imparato a fare con le sue gambe resta all'archivio: e'
+        // il solo momento in cui si sa quanta strada ha fatto davvero (src.body.GaitArchive)
+        e.registraMovimento();
+        // e scende dal palco, se ci stava: una ragdoll senza entita' e' solo calcolo
+        src.body.Palco.esce(e.getId());
         // nessuno verra' piu' a ritirare le prove di allenamento di questa entita'
         src.body.Locomotion.forget(e.getId());
 
@@ -272,6 +289,14 @@ public class Simulation {
         tickCount++;
 
         List<entity> alive = Entity_manager.snapshotAlive();
+        /*
+         * LA FISICA VIVA, PRIMA DELLE AZIONI. Il palco avanza di un tick di mondo e mette da
+         * parte quanti metri ha camminato davvero chi ci sta sopra; poi le entita' agiscono, e
+         * chi e' sul palco spende quei metri invece della falcata geometrica (vedi entity.walk).
+         * In quest'ordine perche' altrimenti un'entita' spenderebbe i metri del tick precedente.
+         */
+        allestisciPalco(alive);
+        src.body.Palco.avanza(TICK_MS / 1000.0);
         Collections.shuffle(alive, rng); // ordine casuale: nessuna entita' e' sempre "prima"
         for (entity e : alive) {
             if (e.isAlive()) {
@@ -310,7 +335,36 @@ public class Simulation {
         }
         if (tickCount % 100 == 0) {
             Genealogy.save();
+            // non riscrive niente se nessuno ha battuto un primato: vedi GaitArchive.salva
+            src.body.GaitArchive.salva();
         }
+    }
+
+    /**
+     * Chi sale sul palco: prima l'entita' selezionata nella finestra 3D (si guarda camminare per
+     * davvero), poi le piu' GIOVANI - sono quelle che stanno ancora imparando, cioe' quelle per
+     * cui la differenza tra una formula e la fisica vera conta di piu'.
+     */
+    private static void allestisciPalco(List<entity> alive) {
+        int capienza = (int) ActionWeights.fisicaViva;
+        if (capienza <= 0) {
+            return;
+        }
+        List<entity> ordinate = new ArrayList<>(alive);
+        int selezionata = src.gui.Gui.entitaSelezionata();
+        ordinate.sort((a, b) -> {
+            boolean sa = a.getId() == selezionata, sb = b.getId() == selezionata;
+            if (sa != sb) {
+                return sa ? -1 : 1;
+            }
+            return Integer.compare(a.getAge(), b.getAge());
+        });
+        List<src.body.Palco.Candidato> candidati = new ArrayList<>(capienza);
+        for (int i = 0; i < ordinate.size() && candidati.size() < capienza; i++) {
+            entity e = ordinate.get(i);
+            candidati.add(new src.body.Palco.Candidato(e.getId(), e.getAdultBody(), e.getGait()));
+        }
+        src.body.Palco.allestisci(capienza, candidati);
     }
 
     private static void flushBirths() {

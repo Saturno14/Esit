@@ -129,6 +129,30 @@ public final class Commands {
      * L'entita' con quell'ID. Attenzione: per ID, non per posizione nella lista - il comando
      * vecchio usava Entity_get(indice) e mostrava l'entita' sbagliata appena qualcuna moriva.
      */
+    /**
+     * L'archivio delle andature: cosa si e' conservato delle sessioni precedenti. Ordinato per
+     * merito (metri percorsi piu' le mele raggiunte), che e' il criterio con cui si scelgono i
+     * punti di partenza - vedi src.body.GaitArchive.
+     */
+    private static String andature() {
+        StringBuilder sb = new StringBuilder(src.body.GaitArchive.stats());
+        java.util.List<src.body.GaitArchive.Voce> voci =
+                new java.util.ArrayList<>(src.body.GaitArchive.voci());
+        if (voci.isEmpty()) {
+            sb.append(String.format("%n(nessuna andatura registrata: e' la prima sessione, o l'archivio e' spento)"));
+            return sb.toString();
+        }
+        voci.sort((x, y) -> Double.compare(y.merito(), x.merito()));
+        sb.append(String.format("%n%-16s %5s %5s %7s %7s %5s %7s %8s %6s",
+                "classe", "appog", "dof", "gamba", "metri", "mele", "merito", "m/s", "sess"));
+        for (src.body.GaitArchive.Voce v : voci) {
+            sb.append(String.format("%n%-16s %5d %5d %7.2f %7.1f %5d %7.1f %8.3f %6d",
+                    v.classe(), v.appoggi(), v.dof(), v.gamba(), v.distanza(), v.mele(),
+                    v.merito(), v.velocita(), v.sessione()));
+        }
+        return sb.toString();
+    }
+
     private static entity byId(String[] a, int i) {
         int id = intArg(a, i, "l'id dell'entita'");
         for (entity e : Entity_manager.snapshotAll()) {
@@ -417,6 +441,10 @@ public final class Commands {
         add("corpo", new String[]{"body"}, "corpo <id>",
                 "Misure del corpo e andatura di un'entita'", "entita", a -> corpo(byId(a, 0)));
 
+        add("andature", new String[]{"archivio"}, "andature",
+                "Il registratore di movimento: quali andature sono state conservate e da chi",
+                "entita", a -> andature());
+
         add("tree", new String[]{"genealogia"}, "tree [id]",
                 "Riepilogo della genealogia, oppure gli antenati di un'entita'", "entita",
                 a -> a.length > 0 ? Genealogy.describe(intArg(a, 0, "l'id"))
@@ -456,6 +484,7 @@ public final class Commands {
                         return "La finestra di controllo non e' aperta: prima 'gui on'";
                     }
                     src.gui.Gui.selezionaEntita(e.getId());
+                    src.gui.Gui.apriScheda(e.getId());
                     return "Scheda di #" + e.getId() + " aperta";
                 });
 

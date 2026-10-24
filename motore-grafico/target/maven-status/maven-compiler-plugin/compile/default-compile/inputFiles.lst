@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\main.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\ActionWeights.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\Automaton.java
@@ -14,12 +13,14 @@ C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\si
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\Dof.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\EvolvedBodies.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\Gait.java
+C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\GaitArchive.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\GaitEvaluator.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\Gaze.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\Joint.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\JoltRagdoll.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\Link.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\Locomotion.java
+C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\Palco.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\PhysicsBench.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\PhysicsNatives.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\..\simulazione\src\body\PhysicsSmokeTest.java
@@ -96,70 +97,3 @@ C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\src\m
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\world\VoxelMaterial.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\world\WaterSurface.java
 C:\Users\anton\Documents\Roba\Materiale\pj\wip\ESIT v2\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\world\WorldGrid.java
-=======
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\ConsoleInput.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\main.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\ActionWeights.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\body\Automaton.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\body\BodyCollision.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\body\BodyExport.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\body\BodyParams.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\body\BodyPlanTest.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\body\BodyPose.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\body\BodySelfTest.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\body\BodyTool.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\body\Dof.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\body\Joint.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\body\Link.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\body\Rot.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\body\V3.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\brain.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\BrainIO.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\console.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\Corpse.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\entity.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\Entity_manager.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\Experiment.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\Genealogy.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\genetics\Allele.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\genetics\BodyPlan.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\genetics\DietType.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\genetics\DominanceResolver.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\genetics\EntityStats.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\genetics\GeneDefinition.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\genetics\Genome.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\genetics\GenomeSchema.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\genetics\LineageInfo.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\genetics\MutationService.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\genetics\PhenotypeFormula.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\genetics\PhenotypeResolver.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\Saving.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\SimRunner.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\Simulation.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\StatsLog.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\TerrainGenerator.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\TrainedBrains.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\utils.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\Vision.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\..\simulazione\src\world.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\apple\AppleField.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\apple\AppleMesh.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\apple\AppleTexture.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\engine\Camera.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\engine\Shader.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\engine\Window.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\entity\EntityInstance.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\entity\EntityManagerBridge.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\entity\GenomeMeshApplier.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\entity\skeleton\Bone.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\entity\skeleton\BoneRig.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\Main.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\mesh\Mesh.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\mesh\MeshData.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\mesh\SurfaceNetsMesher.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\render\Renderer.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\world\ConsoleLauncher.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\world\GridToWorld.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\world\SimulationWorldBridge.java
-C:\Users\anton\Desktop\dump\Code\github\Esit\motore-grafico\src\main\java\com\saturno14\esit\graphics\world\WorldGrid.java
->>>>>>> 244b246cd3da6842c3502cf88e5ab449eb7083a0

@@ -1,6 +1,6 @@
 # Da fare
 
-Aggiornato il 22/10/2026. Le voci chiuse stanno in STATO_LAVORO.txt, non qui.
+Aggiornato il 24/10/2026. Le voci chiuse stanno in STATO_LAVORO.txt, non qui.
 
 ## Corpo e locomozione
 
@@ -53,14 +53,31 @@ Aggiornato il 22/10/2026. Le voci chiuse stanno in STATO_LAVORO.txt, non qui.
 - [ ] **embodied contro structured.** Vedi l'ultima voce di STATO_LAVORO.txt per i numeri.
 - [ ] **Attacchi liberi**: a 15000 tick portavano all'estinzione 4 seed su 4 tra quelli bassi
       (voce del 03/10/2026). Non ancora ricontrollato con il corpo che conta.
-- [ ] **drink() resta a raggio di una cella**, non usa la portata delle braccia: la sete e' il 3%
-      delle morti e non valeva la pena spostare un equilibrio gia' misurato. Scelta, non
-      dimenticanza.
+- [ ] **L'ACQUA E' IL COLLO DI BOTTIGLIA.** Contato su 24 corse da 6000 tick (voce 19): la sete
+      e' il **37.5%** delle morti (1511 su 4033), contro 56.7% di fame e 5.8% di combattimento,
+      e per corsa va dal 26% al 52%. Il vecchio "la sete e' il 3% delle morti" era scritto sopra
+      il conteggio sbagliato di Simulation.kill (voce 18): quel 3% non e' mai esistito. Da
+      affrontare: `drink()` a raggio di una cella che non usa la portata delle braccia, e
+      l'acqua che non viene mai disegnata (quindi non si vede nemmeno dove sia il problema).
+- [ ] **La richiesta di accoppiamento dimezza le nascite** (voce 19): 12 semi appaiati, nascite
+      2079 -> 976 e vivi 440 -> 94, p = 0.006. Manca il primo pezzo del protocollo deciso: ci si
+      AVVICINA, poi si chiede. Interruttore `ActionWeights.n_moveMate` pronto e spento: da
+      misurare. Se non basta: allungare RICHIESTA_TTL, esentare il partner da maskSeen, o
+      allargare PARTNER_RANGE.
+- [ ] **Svezzamento da chiudere**: `svezzamento=0.75` da' +82% di nascite e tre volte i vivi su 12
+      semi, ma p = 0.146. Lotto a 24 semi in corso; se non si chiude, il valore va tarato
+      (0.75 e' scelto a occhio, come la soglia di meta' REFERENCE_SPEED).
+- [ ] **Il palco (fisica viva) resta spento**: con il controllore di oggi quattro entita' in
+      fisica vera camminano a ~0.05 m/s contro 0.27 di riferimento, con 339 cadute in 600 tick.
+      Serve prima il controllore di passo (prima voce di questo file). Poi: terreno vero nel
+      mondo fisico invece del pavimento piatto, e rialzarsi da soli.
 
 ## Pulizia
 
-- [ ] `Entity_manager.getRandomPartner()` e' codice morto e usa un `new Random()` non seminato
-      (romperebbe la riproducibilita' se qualcuno lo richiamasse).
+- [x] ~~`Entity_manager.getRandomPartner()` e' codice morto~~ - rimosso con le altre zone morte
+      (voce 18).
+- [ ] **`src.body.BodyPlanTest` e' rosso da prima**: 10 verifiche su 2421 ("JSON stabile gen N").
+      Verificato sui binari di HEAD: non e' una rottura nuova, e' un test che nessuno guardava.
 - [ ] `EntityManagerBridge.sync()` itera per indice su una lista che cambia sotto: oggi se la cava
       con un try/catch, meglio uno snapshot.
 - [ ] Costi per frame e per tick: scansioni dell'intero mondo per le mele e dei cadaveri per

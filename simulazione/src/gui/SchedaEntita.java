@@ -165,7 +165,7 @@ class SchedaEntita extends JFrame {
                 }
                 Object o = ((DefaultMutableTreeNode) path.getLastPathComponent()).getUserObject();
                 if (o instanceof Parente parente) {
-                    Gui.selezionaEntita(parente.id());
+                    Gui.apriScheda(parente.id());
                 }
             }
         });

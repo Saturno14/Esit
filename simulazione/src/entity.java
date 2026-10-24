@@ -466,14 +466,47 @@ public class entity {
         return t;
     }
 
-    /** Andatura: ereditata dai genitori, o seminata per le fondatrici. */
+    /**
+     * Andatura: ereditata dai genitori, ripresa dall'archivio delle sessioni precedenti, o
+     * seminata a tavolino per chi non ha ne' l'una ne' l'altra.
+     *
+     * L'archivio viene PRIMA del seme a tavolino e DOPO i genitori: un figlio ha un'eredita' piu'
+     * vicina di quella di uno sconosciuto di un'altra partita, mentre una fondatrice fino a ieri
+     * non aveva nessuna eredita' e doveva ricominciare da un'andatura inventata (vedi
+     * src.body.GaitArchive).
+     */
     public src.body.Gait getGait(){
         src.body.Gait g = gait;
         if(g == null){
-            g = src.body.Gait.seed(getAdultBody(), rng());
+            if(ActionWeights.gaitArchive > 0){
+                g = src.body.GaitArchive.andaturaPer(getAdultBody(), rng());
+                /*
+                 * NON si segna come EREDITATA, anche se e' un'eredita'. gaitInherited vale
+                 * "l'andatura e' gia' stata ottimizzata su un corpo come questo, in questa
+                 * sessione" e fa scendere il budget di prove da trialsPerBody (24) a
+                 * trialsPerChild (8). Un'andatura dell'archivio invece viene da un'altra partita
+                 * e magari da una classe di corpo vicina ma non identica: e' un punto di
+                 * PARTENZA migliore, non un lavoro gia' fatto, e togliergli due terzi delle
+                 * prove lo trasformerebbe in un peggioramento travestito da miglioramento.
+                 */
+            }
+            if(g == null){
+                g = src.body.Gait.seed(getAdultBody(), rng());
+            }
             gait = g;
         }
         return g;
+    }
+
+    /**
+     * Lascia all'archivio come si muoveva questa entita' e quanta strada ha fatto. Si chiama a
+     * fine vita (Simulation.kill) e per chi e' ancora vivo a fine sessione.
+     */
+    void registraMovimento(){
+        if(ActionWeights.gaitArchive <= 0){ return; }
+        src.body.Locomotion.Profile p = locomotion;
+        src.body.GaitArchive.registra(getAdultBody(), gait, distanzaPercorsa, applesEaten,
+                age, p == null ? 0 : p.speed(), EntityID, src.Genealogy.getSession());
     }
 
     /** Un figlio parte dall'andatura incrociata dei genitori (come per il cervello). */
@@ -526,6 +559,17 @@ public class entity {
         }
         double ratio = getWalkSpeed() / src.body.Locomotion.REFERENCE_SPEED;
         return CELL_METERS * Math.max(MIN_STEP_RATIO, Math.min(MAX_STEP_RATIO, ratio));
+    }
+
+    /**
+     * Vero se questo corpo cammina gia': il suo passo arriva almeno alla frazione
+     * ActionWeights.svezzamentoSoglia del corpo di riferimento. Chi cammina gia' non ha bisogno
+     * di essere svezzato.
+     */
+    private boolean camminaGia(){
+        if(ActionWeights.bodyGaitSpeed <= 0){ return true; }
+        return getWalkSpeed() >= ActionWeights.svezzamentoSoglia
+                * src.body.Locomotion.REFERENCE_SPEED;
     }
 
     /** Un corpo che non cammina striscia a un terzo di passo; il migliore arriva al doppio. */
@@ -613,6 +657,14 @@ public class entity {
         // l'unica cosa che decide se davanti ci sara' qualcosa: guardare lo fa la testa, che e'
         // gratis. Senza questo peso un'entita' in un mondo con il cibo concentrato sugli alberi
         // passa la vita a girarsi dove e' nata.
+        // CI SI AVVICINA, POI SI CHIEDE: qualcuno davanti e' un motivo per camminare (vedi
+        // ActionWeights.n_moveMate). Senza questo, la richiesta di accoppiamento aspetta che il
+        // caso porti l'altra entro le tre celle della portata.
+        if(ActionWeights.n_moveMate != 0){
+            for(int sct : middle){
+                fwd[eBase + sct] = ActionWeights.n_moveMate;
+            }
+        }
         fwd[nothing] = ActionWeights.n_moveNothing;
         setNeuron(0, 0, fwd, ActionWeights.n_moveBias);
 
@@ -621,9 +673,9 @@ public class entity {
         // l'entita' oscillava di mezzo passo d'angolo avanti e indietro - nel primo mondo con gli
         // alberi erano 7900 giri del corpo su 13000 azioni, e 450 passi. Asimmetrica, la spinta
         // diventa un ARCO: insieme al passo avanti e' una traiettoria che copre terreno nuovo.
-        setNeuron(0, 1, turnNeuron(right, left, aBase, cBase, wBase, nothing, inThirst,
+        setNeuron(0, 1, turnNeuron(right, left, aBase, cBase, wBase, eBase, nothing, inThirst,
                 ActionWeights.n_turnNothing), ActionWeights.n_moveBias);
-        setNeuron(0, 2, turnNeuron(left, right, aBase, cBase, wBase, nothing, inThirst, 0),
+        setNeuron(0, 2, turnNeuron(left, right, aBase, cBase, wBase, eBase, nothing, inThirst, 0),
                 ActionWeights.n_moveBias);
 
         // girare la testa: se non vedo niente, guardo da dove mi resta collo
@@ -720,18 +772,23 @@ public class entity {
      * cambiare strada solo quando serve bere, che e' anche l'unico momento in cui ha senso.
      */
     private double[] turnNeuron(int[] mySide, int[] otherSide, int aBase, int cBase, int wBase,
-                                int nothing, int inThirst, double nothingWeight){
+                                int eBase, int nothing, int inThirst, double nothingWeight){
         double[] w = new double[INPUT_SIZE];
         double gain = ActionWeights.n_moveGain;
+        double mate = ActionWeights.n_moveMate;
         for(int sct : mySide){
             w[aBase + sct] = gain;
             w[cBase + sct] = gain;
             w[wBase + sct] = gain / 2;
+            // le altre entita' entrano nella DIFFERENZA come tutto il resto: una scena simmetrica
+            // non deve produrre nessuna rotazione (vedi l'intestazione di questo metodo)
+            w[eBase + sct] = mate;
         }
         for(int sct : otherSide){
             w[aBase + sct] = -gain;
             w[cBase + sct] = -gain;
             w[wBase + sct] = -gain / 2;
+            w[eBase + sct] = -mate;
         }
         w[nothing] = nothingWeight;
         w[inThirst] = ActionWeights.n_turnSated;
@@ -835,6 +892,16 @@ public class entity {
         double fameRel = 1.0 - Math.min(1.0, food / (double) maxFood);
         double seteRel = 1.0 - Math.min(1.0, thirst / (double) MAX_THIRST);
         Netreward -= ActionWeights.needPain * (fameRel + seteRel);
+
+        /*
+         * SVEZZAMENTO: finche' non sa camminare, e finche' e' un cucciolo, il mondo lo nutre.
+         * Vedi ActionWeights.svezzamento per il perche': un corpo che deve ancora imparare a
+         * camminare muore di fame prima di averlo imparato, e il tempo per imparare non glielo
+         * puo' dare altro che il non morire.
+         */
+        if(ActionWeights.svezzamento > 0 && age < MATURITY_AGE && !camminaGia()){
+            rate *= 1.0 - Math.min(1.0, ActionWeights.svezzamento);
+        }
 
         foodDrain += sleeping ? rate * 0.5 : rate;
         thirstDrain += sleeping ? 0 : rate;
@@ -1122,7 +1189,30 @@ public class entity {
      */
     private void walk(double sign){
         int dim = world.getDim();
-        double step = stepLength() * sign;
+        /*
+         * SE E' SUL PALCO, IL PASSO LO DECIDE LA FISICA. Non la formula
+         * (velocita' misurata / velocita' di riferimento) ma i metri che la sua ragdoll ha
+         * davvero coperto in questo tick di mondo: se e' caduta, il passo e' zero e l'entita'
+         * resta dov'e'. Il tetto e' la falcata geometrica, cosi' il credito dei tick in cui non
+         * si e' mossa non diventa un salto (vedi src.body.Palco.consuma).
+         *
+         * Indietro vale quanto avanti: la ragdoll cammina in una sola direzione, e un controllore
+         * che sa anche tornare indietro non c'e'. E' una approssimazione dichiarata, non una
+         * misura.
+         */
+        double passo = stepLength();
+        if(ActionWeights.fisicaViva > 0){
+            double reale = src.body.Palco.consuma(EntityID, passo);
+            if(reale >= 0){
+                passo = reale;
+            }
+        }
+        double step = passo * sign;
+        if(step == 0){
+            // non si e' mosso di un centimetro: il tentativo e' comunque costato fiato
+            spend(moveCost());
+            return;
+        }
         double tx = exactX + Math.sin(facing) * step;
         double tz = exactZ + Math.cos(facing) * step;
         int nx = cellOf(tx);
@@ -1154,6 +1244,7 @@ public class entity {
          *
          * Via anche il "+0.5 per un passo": camminare non e' buono in se'.
          */
+        distanzaPercorsa += Math.abs(step);
         exactX = tx;
         exactZ = tz;
         // facing NON si tocca: la direzione e' uno stato che cambia solo girandosi (vedi turn).
@@ -1263,6 +1354,16 @@ public class entity {
 
     /** Secondi di cammino accumulati: e' la fase del ciclo dell'andatura. */
     private volatile double gaitPhase;
+    /**
+     * I METRI DAVVERO PERCORSI IN VITA. Non la velocita' misurata dalla fisica su un pavimento
+     * piatto: quanto terreno questo corpo ha coperto in questo mondo, con gli alberi in mezzo e
+     * con il suo cervello a decidere dove andare. E' la prova che il registratore di movimento
+     * conserva (vedi src.body.GaitArchive).
+     */
+    private volatile double distanzaPercorsa;
+
+    /** Metri percorsi in tutta la vita. */
+    public double getDistanzaPercorsa(){ return distanzaPercorsa; }
     private volatile long lastMoveTick = Long.MIN_VALUE;
 
     public double getGaitPhase(){ return gaitPhase; }

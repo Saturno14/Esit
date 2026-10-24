@@ -93,15 +93,59 @@ public final class Gui {
     }
 
     /**
-     * Apre (o porta davanti) la scheda di un'entita'.
+     * L'entita' su cui si e' cliccato nella scena 3D, -1 se nessuna.
      *
-     * La chiama sia la lista, sia il clic nella scena 3D: il motore grafico la invoca dal thread
-     * del rendering, quindi il passaggio a Swing avviene qui e non la' - chi fa il picking non
-     * deve sapere niente di thread degli eventi.
+     * PERCHE' IL CLIC NON APRE PIU' LA SCHEDA. Prima un clic faceva comparire subito una finestra
+     * con tabelle e geni: per capire chi si era preso bisognava leggere un numero, e per guardare
+     * un'altra entita' bisognava prima chiudere una finestra. Un clic adesso vuol dire soltanto
+     * "questa qui": l'entita' si marca nel mondo (la vede il motore grafico, vedi
+     * Renderer.disegnaIndicatore) e in fondo alla finestra di controllo compare la riga con il
+     * tasto per aprirne la scheda. La scheda e' una SECONDA decisione, non una conseguenza.
+     *
+     * E' volatile perche' la scrive il thread degli eventi (o del rendering) e la legge il ciclo
+     * di disegno a ogni frame.
+     */
+    private static volatile int selezionata = -1;
+
+    /**
+     * Segna un'entita' come selezionata: la marca nella scena e mostra la riga in basso.
+     *
+     * La chiama il clic nella scena 3D dal thread del rendering, quindi il passaggio a Swing
+     * avviene qui e non la' - chi fa il picking non deve sapere niente di thread degli eventi.
      */
     public static void selezionaEntita(int id) {
         // se la finestra di controllo e' chiusa la si riapre: un clic su un'entita' nella scena
-        // deve mostrare la scheda, non cadere nel vuoto
+        // deve portare da qualche parte, non cadere nel vuoto
+        selezionata = id;
+        start();
+        SwingUtilities.invokeLater(() -> {
+            if (frame != null) {
+                frame.mostraSelezione(id);
+            }
+        });
+    }
+
+    /** Toglie la selezione: via l'indicatore dal mondo e via la riga in basso. */
+    public static void deseleziona() {
+        selezionata = -1;
+        SwingUtilities.invokeLater(() -> {
+            if (frame != null) {
+                frame.mostraSelezione(-1);
+            }
+        });
+    }
+
+    /** Chi e' selezionata adesso (-1 = nessuna). La legge il motore grafico a ogni frame. */
+    public static int entitaSelezionata() {
+        return selezionata;
+    }
+
+    /**
+     * Apre (o porta davanti) la scheda di un'entita'. Da qui ci passano il tasto della riga di
+     * selezione, il doppio clic nella lista e il comando "scheda <id>": aprire la scheda e'
+     * sempre una richiesta esplicita.
+     */
+    public static void apriScheda(int id) {
         start();
         SwingUtilities.invokeLater(() -> {
             if (frame != null) {

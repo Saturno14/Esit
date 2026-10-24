@@ -43,6 +43,16 @@ class ControlFrame extends JFrame {
     private final PannelloComandi comandi = new PannelloComandi();
     private final JLabel stato = new JLabel(" ");
 
+    /**
+     * LA RIGA DELLA SELEZIONE. Un clic nella scena 3D non apre piu' una finestra: marca l'entita'
+     * nel mondo e accende questa riga, che dice chi e' e offre il tasto per la scheda. Resta
+     * nascosta finche' non c'e' niente di selezionato, cosi' non occupa spazio per niente e la
+     * sua comparsa e' essa stessa il segnale che il clic e' andato a buon fine.
+     */
+    private final JPanel barraSelezione = new JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 8, 4));
+    private final JLabel etichettaSelezione = new JLabel();
+    private int selezionata = -1;
+
     /** Una scheda per entita', riusata: due clic sulla stessa entita' non aprono due finestre. */
     private final Map<Integer, SchedaEntita> aperte = new HashMap<>();
 
@@ -64,10 +74,35 @@ class ControlFrame extends JFrame {
                 BorderFactory.createMatteBorder(1, 0, 0, 0, Tema.GRIGLIA),
                 BorderFactory.createEmptyBorder(5, 10, 5, 10)));
 
+        barraSelezione.setBackground(Tema.SFONDO);
+        barraSelezione.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Tema.GRIGLIA));
+        etichettaSelezione.setFont(Tema.GRASSETTO);
+        barraSelezione.add(etichettaSelezione);
+        javax.swing.JButton apri = new javax.swing.JButton("Apri scheda");
+        apri.setFont(Tema.NORMALE);
+        apri.addActionListener(a -> {
+            if (selezionata >= 0) {
+                apriEntita(selezionata);
+            }
+        });
+        barraSelezione.add(apri);
+        javax.swing.JButton togli = new javax.swing.JButton("Deseleziona");
+        togli.setFont(Tema.NORMALE);
+        togli.addActionListener(a -> src.gui.Gui.deseleziona());
+        barraSelezione.add(togli);
+        barraSelezione.setVisible(false);
+
+        // la riga di selezione sta SOPRA quella di stato: lo stato e' il fondo fisso della
+        // finestra, la selezione e' una cosa che compare e sparisce
+        JPanel basso = new JPanel(new BorderLayout());
+        basso.setBackground(Tema.SFONDO);
+        basso.add(barraSelezione, BorderLayout.NORTH);
+        basso.add(stato, BorderLayout.SOUTH);
+
         JPanel radice = new JPanel(new BorderLayout());
         radice.setBackground(Tema.SFONDO);
         radice.add(schede, BorderLayout.CENTER);
-        radice.add(stato, BorderLayout.SOUTH);
+        radice.add(basso, BorderLayout.SOUTH);
         setContentPane(radice);
 
         Timer timer = new Timer(PERIODO_MS, a -> {
@@ -113,6 +148,9 @@ class ControlFrame extends JFrame {
         sb.append("   ").append(DayNight.phaseName())
           .append(String.format(Locale.ROOT, " (luce %.2f)", DayNight.daylight()));
         stato.setText(sb.toString());
+        if (selezionata >= 0 && barraSelezione.isVisible()) {
+            aggiornaEtichettaSelezione();
+        }
     }
 
     /** Apre la scheda di un'entita' e seleziona la sua riga nelle liste. */
@@ -139,6 +177,47 @@ class ControlFrame extends JFrame {
         s.setLocationRelativeTo(this);
         s.setVisible(true);
         entita.seleziona(id);
+    }
+
+    /**
+     * Mostra (o nasconde, con id negativo) la riga della selezione, e porta in vista la riga
+     * dell'entita' nella lista: cliccare nel mondo e cliccare nell'elenco devono lasciare la
+     * finestra nello stesso stato.
+     */
+    void mostraSelezione(int id) {
+        selezionata = id;
+        if (id < 0) {
+            barraSelezione.setVisible(false);
+            revalidate();
+            return;
+        }
+        aggiornaEtichettaSelezione();
+        barraSelezione.setVisible(true);
+        revalidate();
+        entita.seleziona(id);
+    }
+
+    /**
+     * Rinfresca il testo della riga, senza toccare la selezione della lista: la riga invecchia
+     * (cibo, acqua, eta' cambiano, e un'entita' selezionata puo' morire mentre si guarda) ma
+     * riselezionare la tabella due volte al secondo strapperebbe di mano la riga a chi sta
+     * scorrendo l'elenco.
+     */
+    private void aggiornaEtichettaSelezione() {
+        src.entity e = SchedaEntita.cerca(selezionata);
+        StringBuilder sb = new StringBuilder();
+        sb.append("Selezionata: entita' #").append(selezionata);
+        if (e == null) {
+            sb.append("   (non e' piu' in memoria)");
+        } else {
+            sb.append("   ").append(e.isAlive() ? "viva" : "morta")
+              .append("   gen ").append(e.getGenome().lineage().generation())
+              .append("   eta' ").append(e.getAge())
+              .append("   ").append(e.getSex() == 2 ? "F" : "M")
+              .append("   cibo ").append(e.getFood())
+              .append("   acqua ").append(e.getThirst());
+        }
+        etichettaSelezione.setText(sb.toString());
     }
 
     /** Una riga nell'area dei comandi: ci finiscono anche i messaggi del motore grafico. */

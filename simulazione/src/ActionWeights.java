@@ -99,6 +99,47 @@ public final class ActionWeights {
      */
     public static volatile double mateRequest;
 
+    /**
+     * 1 = IL REGISTRATORE DI MOVIMENTO E' ACCESO (vedi src.body.GaitArchive).
+     *
+     * Le fondatrici, invece di partire dall'andatura inventata a tavolino, partono da come si
+     * muoveva chi si e' mosso meglio con un corpo simile nelle sessioni precedenti. A 0 ogni
+     * partita ricomincia da zero, com'e' sempre stato: e' il braccio di controllo.
+     */
+    public static volatile double gaitArchive;
+
+    /**
+     * SVEZZAMENTO: quanto consumo si risparmia finche' non si sa camminare (0 = niente, 1 = tutto).
+     *
+     * IL PROBLEMA. Imparare a camminare richiede tempo di vita, ma il tempo di vita si paga in
+     * cibo: un corpo che non cammina non arriva al cibo, e muore prima di aver imparato. E'
+     * l'obiezione all'apprendimento durante la vita, e non si risolve dandogli piu' prove di
+     * fisica (quelle costano calcolo, non cibo): si risolve NUTRENDOLO NEL FRATTEMPO.
+     *
+     * Vale solo per chi non e' ancora maturo (age < MATURITY_AGE) E non cammina ancora (passo
+     * sotto {@link #svezzamentoSoglia} della velocita' di riferimento). I due limiti servono
+     * entrambi: senza il primo un corpo che non impara mai sarebbe nutrito a vita e la fame
+     * smetterebbe di selezionare, senza il secondo sarebbe un regalo a tutti i cuccioli e non
+     * avrebbe niente a che vedere con il camminare.
+     *
+     * A 0 e' spento: e' il braccio di controllo.
+     */
+    public static volatile double svezzamento;
+
+    /** Sotto questa frazione di Locomotion.REFERENCE_SPEED un corpo "non cammina ancora". */
+    public static volatile double svezzamentoSoglia;
+
+    /**
+     * QUANTE ENTITA' CAMMINANO IN FISICA VERA, dentro la simulazione (vedi src.body.Palco).
+     * 0 = come prima: la fisica resta un oracolo che misura una volta e poi il passo e' una
+     * formula. Con n > 0 quelle n entita' si muovono di quanto la loro ragdoll si e' mossa
+     * davvero in quel mezzo secondo di mondo - e se cade, non si muove.
+     *
+     * Resta a 0 finche' un confronto appaiato non dice che conviene: cambia il significato del
+     * passo, e il passo e' il parametro da cui dipende tutto il resto del bilanciamento.
+     */
+    public static volatile double fisicaViva;
+
     /** Peso innato dell'ingresso "quello li' sta chiedendo" sul neurone dell'accoppiamento. */
     public static volatile double n_mateSignal;
 
@@ -149,6 +190,28 @@ public final class ActionWeights {
     public static volatile double n_restGain, n_restBias;
     public static volatile double n_mateFood, n_mateMature, n_mateEntity, n_mateBias;
     public static volatile double n_idleBias;         // bias delle uscite IDLE e ATTACK (quasi spente)
+
+    /**
+     * AVVICINARSI A CHI SI VEDE: quanto un'altra entita' nel cono spinge a camminare verso di lei
+     * (e a girarsi dalla sua parte, come il cibo).
+     *
+     * PERCHE' SERVE. L'accoppiamento e' una richiesta (vedi {@link #mateRequest}) e una richiesta
+     * si fa a qualcuno che si VEDE e che e' a portata: tre celle. Ma nel cablaggio degli istinti
+     * le altre entita' non entravano ne' nel neurone del passo ne' in quelli della rotazione -
+     * solo in quello di accoppiarsi. Risultato: un'entita' matura che vedeva un partner a dieci
+     * metri non aveva nessun motivo innato per andargli incontro, e poteva solo sperare che il
+     * caso la portasse entro le tre celle. Mancava il primo pezzo del protocollo che avevamo
+     * deciso - ci si avvicina, POI si chiede.
+     *
+     * COSA NON E'. Non e' una ricompensa di avvicinamento (quelle sono state togliute perche'
+     * erano oracoli: dicevano "quella direzione e' giusta" al posto della vista). E' un peso
+     * iniziale del cervello come gli altri istinti: dice "qualcuno davanti e' un motivo per
+     * muoversi", vale per chiunque si veda - partner, preda o rivale - e l'evoluzione puo'
+     * spegnerlo o rovesciarlo in una generazione.
+     *
+     * A 0 e' spento: e' il braccio di controllo.
+     */
+    public static volatile double n_moveMate;
 
     static {
         embodied();
@@ -210,6 +273,8 @@ public final class ActionWeights {
         n_mateFood = 2; n_mateMature = 2; n_mateEntity = 3; n_mateBias = -5.5;
         n_mateSignal = 4;
         n_idleBias = -3;
+        // spento: va misurato prima di diventare un istinto (vedi n_moveMate)
+        n_moveMate = 0;
     }
 
     /** Valori originali, istinti sfasati compresi. */
@@ -221,6 +286,9 @@ public final class ActionWeights {
         needPain = 0;     windowDecay = 0;   // il braccio vecchio: nessun dolore del bisogno
         maskSeen = 0;
         mateRequest = 0;
+        fisicaViva = 0;
+        gaitArchive = 0;
+        svezzamento = 0;   svezzamentoSoglia = 0.5;
         v3Parameters();
         bodyEffectsOff();
     }
@@ -247,6 +315,8 @@ public final class ActionWeights {
         needPain = 0.5;   windowDecay = 0.1;
         maskSeen = 2;
         mateRequest = 1;
+        gaitArchive = 0;
+        svezzamento = 0;   svezzamentoSoglia = 0.5;
         v3Parameters();
         bodyEffectsOff();
     }
@@ -259,6 +329,10 @@ public final class ActionWeights {
      */
     public static void embodied() {
         structured();
+        // il corpo conta: quindi conta anche saper camminare, e queste due cose hanno senso solo
+        // qui (con bodyGaitSpeed = 0 l'andatura non sposta di un centimetro il passo)
+        gaitArchive = 1;
+        svezzamento = 0.75;
         bodyGaitSpeed = 1;
         bodyMassStats = 1;
         bodyReach = 1;

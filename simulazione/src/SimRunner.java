@@ -33,6 +33,21 @@ public class SimRunner {
             } else if (args[i].startsWith("richiesta=")) {
                 // richiesta=0: il vecchio accoppiamento immediato, senza il si' dell'altra parte
                 ActionWeights.mateRequest = Double.parseDouble(args[i].substring(10));
+            } else if (args[i].startsWith("archivio=")) {
+                // archivio=0: le fondatrici ripartono dal seme a tavolino, senza il registratore
+                // di movimento delle sessioni precedenti (vedi src.body.GaitArchive)
+                ActionWeights.gaitArchive = Double.parseDouble(args[i].substring(9));
+                src.body.GaitArchive.enabled = ActionWeights.gaitArchive > 0;
+            } else if (args[i].startsWith("avvicina=")) {
+                // avvicina=n: peso dell'istinto "qualcuno davanti e' un motivo per camminare"
+                // (vedi ActionWeights.n_moveMate). 0 = spento, come prima.
+                ActionWeights.n_moveMate = Double.parseDouble(args[i].substring(9));
+            } else if (args[i].startsWith("fisica=")) {
+                // fisica=n: n entita' camminano in fisica vera dentro la simulazione (src.body.Palco)
+                ActionWeights.fisicaViva = Double.parseDouble(args[i].substring(7));
+            } else if (args[i].startsWith("svezzamento=")) {
+                // svezzamento=0: chi non sa ancora camminare paga il consumo pieno, come prima
+                ActionWeights.svezzamento = Double.parseDouble(args[i].substring(12));
             } else if (args[i].startsWith("vedere=")) {
                 // vedere=0: la maschera delle azioni non chiede di vedere il bersaglio (come
                 // prima, con le otto celle intorno per l'acqua e il partner a 360 gradi)
@@ -42,6 +57,10 @@ public class SimRunner {
         System.out.println("---- Opzioni: dieta=" + ActionWeights.dietAdapt
                 + " vedere=" + ActionWeights.maskSeen
                 + " richiesta=" + ActionWeights.mateRequest
+                + " archivio=" + ActionWeights.gaitArchive
+                + " svezzamento=" + ActionWeights.svezzamento
+                + " fisica=" + ActionWeights.fisicaViva
+                + " avvicina=" + ActionWeights.n_moveMate
                 + " riserva=" + entity.getMaxFood());
 
         Simulation.setSeed(seed);
@@ -61,6 +80,12 @@ public class SimRunner {
 
         System.out.println("---- Fine: tick " + Simulation.getTick());
         System.out.println(Genealogy.summary());
+        System.out.println(src.body.Locomotion.stats());
+        System.out.println(src.body.Locomotion.practiceStats());
+        System.out.println(src.body.GaitArchive.stats());
+        if (ActionWeights.fisicaViva > 0) {
+            System.out.println(src.body.Palco.stats());
+        }
         System.out.println("Entita' vive: " + Entity_manager.Entity_count());
 
         if (saveLoad) {

@@ -1563,3 +1563,166 @@ mangiata insieme al metodo): la differenza va riletta riga per riga, non basta c
 
 Stato finale: compila, 632/632 verifiche della vista superate, corsa di prova a 2500 tick con 65
 vive e morti 76 fame / 42 sete / 2 lotta.
+
+==========================================================================================
+19. LA RICHIESTA DI ACCOPPIAMENTO COSTA META' DELLE NASCITE, E LA SETE E' DUE MORTI SU CINQUE
+    (24/10/2026)
+==========================================================================================
+
+Il protocollo "chiedi e l'altra accetta" (ActionWeights.mateRequest, entity.chiedi/accetta/
+richiedente, il canale di segnale A acceso) era stato scritto in una sessione precedente e NON
+era mai stato misurato ne' scritto qui: i commenti nel codice rimandano a una "voce 19" che non
+esisteva. Questa e' quella voce.
+
+------------------------------------------------------------------------------------------
+1. IL CONFRONTO APPAIATO: 12 SEMI, 6000 TICK, richiesta=0 CONTRO richiesta=1
+------------------------------------------------------------------------------------------
+                          richiesta=0      richiesta=1    semi a favore di 1     p
+    nascite                    2079              976          1 su 12         0.006
+    vivi alla fine              440               94          1 su 12         0.006
+Il protocollo DIMEZZA le nascite e riduce la popolazione finale a un quinto, in undici semi su
+dodici. (Le morti sono meno nel braccio 1 solo perche' nasce meno gente: fame 1415 contro 873.)
+Due semi su dodici finiscono a zero vivi con la richiesta, nessuno senza.
+
+PERCHE'. Chiedere e' un atto verso qualcuno che si VEDE e che e' entro tre celle, e due "si'"
+devono capitare entro RICHIESTA_TTL = 30 tick. Ma nel cablaggio degli istinti le altre entita'
+NON entravano ne' nel neurone del passo ne' in quelli della rotazione: solo in quello di
+accoppiarsi. Cioe' mancava il primo pezzo del protocollo che avevamo deciso - CI SI AVVICINA, poi
+si chiede. Un'entita' matura che vedeva un partner a dieci metri non aveva nessun motivo innato
+per andargli incontro: poteva solo sperare che il caso la portasse a portata.
+Aggiunto l'interruttore ActionWeights.n_moveMate ("qualcuno davanti e' un motivo per camminare",
+e per girarsi dalla sua parte come per il cibo), spento per difetto e DA MISURARE. Non e' una
+ricompensa di avvicinamento - quelle erano oracoli e sono state togliute - e' un peso iniziale
+del cervello come gli altri istinti: vale per chiunque si veda, partner, preda o rivale, e
+l'evoluzione lo puo' spegnere in una generazione.
+
+Decisione aperta, da prendere con i numeri: se con l'avvicinamento le nascite tornano, il
+protocollo resta cosi'; se non tornano, le strade sono allungare il TTL, esentare il partner da
+maskSeen, o allargare PARTNER_RANGE.
+
+------------------------------------------------------------------------------------------
+2. LA SETE, CONTATA SU 24 CORSE
+------------------------------------------------------------------------------------------
+Con il contatore giusto (vedi voce 18), su 4033 morti nelle 24 corse di questo lotto:
+    fame 2288 (56.7%)     SETE 1511 (37.5%)     combattimento 234 (5.8%)
+Due morti su cinque sono di sete. La riga del TODO che diceva "drink() resta a raggio di una
+cella, la sete e' il 3% delle morti e non valeva la pena spostare un equilibrio gia' misurato"
+era scritta sopra il conteggio sbagliato: quel 3% non e' mai esistito. Corretta.
+La sete per corsa va dal 25.8% al 52.5% delle morti: non e' un caso isolato, e' il mondo.
+
+==========================================================================================
+20. IL MONDO COMINCIA A RICORDARSI COME SI CAMMINA (24/10/2026)
+==========================================================================================
+
+Quattro cose, su richiesta dell'utente: il clic che seleziona invece di aprire, il registratore
+di movimento che attraversa le sessioni, lo svezzamento di chi non sa ancora camminare, e la
+fisica viva dentro la simulazione per poche entita' alla volta.
+
+------------------------------------------------------------------------------------------
+1. IL CLIC SELEZIONA, NON APRE
+------------------------------------------------------------------------------------------
+Prima un clic nella scena 3D faceva comparire subito la scheda dell'entita': per sapere chi si
+era preso bisognava leggere un numero in una finestra nuova, e per guardarne un'altra bisognava
+prima chiudere quella. Adesso un clic vuol dire soltanto "questa qui":
+ - nel mondo compare un'ASTA GIALLA sopra la testa, con una pallina che pulsa, e il corpo si
+   schiarisce (Renderer.disegnaIndicatore). L'asta e non un contorno attorno al corpo: un
+   contorno vero vorrebbe dire ridisegnare tutta la posa un'altra volta con un altro shader,
+   mentre l'asta si vede anche di spalle, in mezzo ad altre e da lontano - che e' tutto quello
+   che serve per rispondere a "quale ho preso?";
+ - in fondo alla finestra di controllo si accende una riga con chi e' (stato, generazione, eta',
+   sesso, cibo, acqua) e i tasti "Apri scheda" e "Deseleziona". La riga e' nascosta quando non
+   c'e' selezione, quindi la sua comparsa e' essa stessa la conferma che il clic e' arrivato.
+La scheda e' diventata una SECONDA decisione: la aprono il tasto, il doppio clic nella lista e il
+comando "scheda <id>" (Gui.apriScheda), mai il clic nel mondo (Gui.selezionaEntita).
+La selezione sta in Gui come un intero volatile, e la legge il ciclo di disegno a ogni frame:
+e' anche il modo in cui il palco (sotto) sa chi mettere in fisica vera.
+
+------------------------------------------------------------------------------------------
+2. IL REGISTRATORE DI MOVIMENTO (src.body.GaitArchive)
+------------------------------------------------------------------------------------------
+IL PROBLEMA: finita la sessione, finiva tutto. Una fondatrice nasce con un'andatura inventata a
+tavolino, si allena mentre vive, passa ai figli quello che impara - e alla partita dopo si
+ricomincia dallo stesso seme a tavolino. Le prime generazioni rimuoiono senza saper camminare
+esattamente come la volta prima, e il mondo non accumula niente.
+ADESSO ogni entita' lascia scritto, a fine vita, COME si muoveva e QUANTO si e' mossa davvero:
+non il punteggio della fisica, ma i METRI percorsi nel mondo (entity.distanzaPercorsa, sommata in
+walk) e le MELE raggiunte. Il merito e' distanza + 25 * mele: una mela vale venticinque metri,
+perche' muoversi senza arrivare da nessuna parte non e' ancora camminare.
+Si tiene la voce migliore per CLASSE MORFOLOGICA (appoggi, gradi di liberta', lunghezza della
+gamba arrotondata a 8 cm) - non la firma esatta del corpo, che tra due sessioni non si
+ripeterebbe mai e darebbe un archivio che non trova niente. Quando la classe esatta manca si
+prende la piu' vicina a parita' di APPOGGI e si riadatta con Gait.adaptTo. A parita' di appoggi e
+non oltre: adattare l'andatura di un bipede a un corpo con sei zampe non e' un punto di partenza,
+e' rumore.
+File: andature/archivio.json, scritto con il temporaneo-e-sposta (un'interruzione a meta' non deve
+lasciare troncato l'archivio di tutte le sessioni precedenti). Si registra alla morte
+(Simulation.kill) E a fine sessione per chi e' ancora vivo: un mondo che finisce con qualcuno in
+piedi finisce con i migliori camminatori ancora vivi, e registrando solo i morti l'archivio
+raccoglierebbe per definizione chi non ce l'ha fatta.
+Comando "andature" per leggerlo. Interruttore ActionWeights.gaitArchive.
+
+TRAPPOLA EVITATA PER UN PELO: segnando l'andatura dell'archivio come "ereditata" (gaitInherited)
+il budget di prove di ottimizzazione scendeva da trialsPerBody=24 a trialsPerChild=8. Un'andatura
+dell'archivio e' un punto di PARTENZA migliore, non un lavoro gia' fatto su questo corpo in
+questa sessione: togliergli due terzi delle prove lo trasformava in un peggioramento travestito
+da miglioramento (nella prova a 500 tick la mediana misurata era scesa da 0.396 a 0.065 m/s).
+
+PRIMO ARCHIVIO VERO, dalle 24 corse del lotto dello svezzamento: 222 classi di corpo, la migliore
+con 460 m percorsi e 112 mele (0.791 m/s misurati). E' il punto di partenza da cui parte, da ora,
+ogni fondatrice.
+
+------------------------------------------------------------------------------------------
+3. LO SVEZZAMENTO: finche' non sai camminare, il mondo ti nutre
+------------------------------------------------------------------------------------------
+L'obiezione all'imparare vivendo e' che il tempo di vita si paga in cibo: un corpo che non
+cammina non arriva al cibo, e muore prima di aver imparato. Non si risolve dandogli piu' prove di
+fisica (quelle costano calcolo, non cibo): si risolve nutrendolo nel frattempo.
+ActionWeights.svezzamento e' la frazione di consumo risparmiata, e vale solo per chi non e' ancora
+maturo (age < MATURITY_AGE) E non cammina ancora (passo sotto meta' della velocita' di
+riferimento). I due limiti servono entrambi: senza il primo un corpo che non impara mai sarebbe
+nutrito a vita e la fame smetterebbe di selezionare; senza il secondo sarebbe un regalo a tutti i
+cuccioli e non avrebbe niente a che vedere con il camminare.
+
+MISURATO, 12 semi appaiati, 6000 tick, svezzamento=0 contro 0.75:
+    nascite  756 contro 1379    9 semi su 12 a favore    p = 0.146
+    vivi      61 contro  211    8 semi su 12             p = 0.388
+La direzione e' netta e la grandezza grossa (+82% di nascite, tre volte i vivi), ma il test dei
+segni a dodici semi NON la dichiara: p = 0.146. Lotto esteso a 24 semi per chiudere la domanda.
+
+------------------------------------------------------------------------------------------
+4. IL PALCO: la fisica viva per poche entita' alla volta (src.body.Palco)
+------------------------------------------------------------------------------------------
+Fino a qui la fisica era un ORACOLO: un corpo nuovo veniva fatto camminare in Jolt una volta, in
+un mondo a parte, e dalla misura usciva un numero con cui poi la simulazione lo muoveva a passi
+geometrici. Il corpo contava, ma non camminava mai. Tutte insieme non si possono fare: 380 corpi
+con i giunti comandati costano 1.93 ms per passo di fisica, cioe' ~116 ms per tick contro i 10
+disponibili a x50.
+Il palco e' la via di mezzo: un mondo fisico sempre vivo che ospita n entita' alla volta - quella
+SELEZIONATA (cosi' la si guarda camminare per davvero) e le piu' GIOVANI, che sono quelle che
+stanno ancora imparando. Per chi e' sul palco il passo non e' piu' una formula: e' la distanza
+che la sua ragdoll ha coperto in quel mezzo secondo di mondo, con il tetto della falcata
+geometrica perche' il credito dei tick fermi non diventi un salto. Se cade, non avanza - e il
+tentativo costa comunque fiato.
+Interruttore ActionWeights.fisicaViva (0 = spento, ed e' il valore predefinito).
+
+PROVATO a 600 tick con quattro entita' sul palco: 37920 passi di fisica, 63.8 m camminati
+davvero, 339 CADUTE. Fanno circa 0.05 m/s effettivi contro gli 0.27 di REFERENCE_SPEED: con il
+controllore di equilibrio di oggi, "fisica viva" significa "si muove cinque volte meno". E' lo
+stesso limite della voce 9 (il corpo tiene la posa un secondo e poi cede di lato) visto dall'altra
+parte: finche' non c'e' un controllore di PASSO, la fisica viva e' una penalita', non un
+realismo. Per questo l'interruttore resta a 0: il palco e' pronto e misurabile, ma accenderlo
+adesso vorrebbe dire far morire di fame tutti quanti.
+
+COSA NON FA ANCORA, scritto perche' non si scopra dopo: il pavimento del palco e' PIATTO (il
+terreno vero non e' ancora nel mondo fisico, quindi il palco dice come un corpo cammina, non come
+affronta un gradino); un corpo caduto non si rialza da solo, dopo sei tick lo rimette in piedi il
+mondo; e le entita' sul palco camminano su corsie parallele distanti 8 m, quindi non si
+incontrano mai - del mondo vero il palco riproduce il corpo e la gravita', non la geografia.
+
+------------------------------------------------------------------------------------------
+5. UN GUASTO CHE C'ERA GIA'
+------------------------------------------------------------------------------------------
+src.body.BodyPlanTest falliva 10 verifiche su 2421 ("JSON stabile gen N") GIA' PRIMA di questa
+sessione: verificato rilanciandolo sui binari di HEAD, stesse dieci. Non e' di questo lavoro, ma
+e' un test rosso che nessuno stava guardando.
+VisionSelfTest 632/632 e BodySelfTest 335/335 passano.

@@ -15,6 +15,7 @@ import com.saturno14.esit.graphics.world.WaterSurface;
 import src.genetics.GenomeSchema;
 import src.entity;
 import com.saturno14.esit.graphics.mesh.Mesh;
+import com.saturno14.esit.graphics.mesh.Primitives;
 import com.saturno14.esit.graphics.world.GridToWorld;
 import com.saturno14.esit.graphics.world.SimulationWorldBridge;
 import com.saturno14.esit.graphics.world.WorldGrid;
@@ -84,6 +85,21 @@ public class Renderer {
         Matrix4f appleModel = new Matrix4f();
         EntityManagerBridge entityBridge = new EntityManagerBridge(genomeSchema);
         PoseRenderer poseRenderer = new PoseRenderer();
+
+        /*
+         * L'INDICATORE DELL'ENTITA' SELEZIONATA: un'asta sottile sopra la testa con una pallina
+         * in cima, che pulsa. Due forme unitarie riusate con una matrice, come gli alberi: non
+         * costa niente, perche' di selezionata ce n'e' una sola.
+         *
+         * PERCHE' SOPRA LA TESTA e non un contorno attorno al corpo. Un contorno vero (stencil,
+         * secondo passaggio con il corpo gonfiato) vorrebbe dire ridisegnare tutta la posa una
+         * seconda volta e un altro shader; l'asta si vede anche quando l'entita' e' in mezzo ad
+         * altre, anche di spalle, e anche se e' piccola, che e' tutto quello che serve per
+         * rispondere a "quale ho preso?".
+         */
+        Mesh indicatoreAsta = new Mesh(Primitives.cylinder(8));
+        Mesh indicatorePallina = new Mesh(Primitives.sphere(10, 14));
+        Matrix4f indicatoreModel = new Matrix4f();
 
         TerrainRenderer terrainRenderer = new TerrainRenderer(worldGrid);
 
@@ -178,8 +194,22 @@ public class Renderer {
                     b = b * 0.25f + 0.18f;
                 }
 
+                // L'entita' selezionata si schiarisce: l'asta dice QUALE, il colore dice che e'
+                // quella anche guardando solo il corpo
+                boolean selezionata = instance.entityId == src.gui.Gui.entitaSelezionata();
+                if (selezionata) {
+                    r = Math.min(1f, r * 0.55f + 0.45f);
+                    g = Math.min(1f, g * 0.55f + 0.45f);
+                    b = Math.min(1f, b * 0.55f + 0.25f);
+                }
+
                 shader.setUniformVec3("uBaseColor", r, g, b);
                 poseRenderer.draw(shader, instance.pose(extraSeconds), entityBase, extra);
+
+                if (selezionata) {
+                    disegnaIndicatore(shader, indicatoreModel, indicatoreAsta, indicatorePallina,
+                            entityBase, altezzaDi(instance), (float) now);
+                }
             }
 
             shader.unbind();
@@ -301,6 +331,8 @@ public class Renderer {
         appleTexture.destroy();
         appleShader.destroy();
         entityBridge.destroyAll();
+        indicatoreAsta.destroy();
+        indicatorePallina.destroy();
         poseRenderer.destroy();
         shader.destroy();
         voxelShader.destroy();
@@ -357,6 +389,29 @@ public class Renderer {
         } else {
             src.gui.Gui.messaggio("Nessuna entita' sotto il puntatore.");
         }
+    }
+
+    /**
+     * L'asta e la pallina sopra la testa dell'entita' selezionata.
+     *
+     * Pulsa (sale e scende di una decina di centimetri) perche' un oggetto fermo in mezzo a un
+     * mondo che si muove si legge come parte della scena: e' il movimento che lo fa leggere come
+     * un segno messo sopra la scena.
+     */
+    private static void disegnaIndicatore(Shader shader, Matrix4f model, Mesh asta, Mesh pallina,
+                                          Vector3f base, float altezza, float tempo) {
+        float pulsazione = (float) (0.10 * Math.sin(tempo * 3.0));
+        float piede = base.y + altezza + 0.18f + pulsazione;
+        float lunghezza = 0.45f;
+
+        shader.setUniformVec3("uBaseColor", 1.0f, 0.86f, 0.15f);
+        model.identity().translate(base.x, piede, base.z).scale(0.035f, lunghezza, 0.035f);
+        shader.setUniformMat4("uModel", model);
+        asta.render();
+
+        model.identity().translate(base.x, piede + lunghezza, base.z).scale(0.11f);
+        shader.setUniformMat4("uModel", model);
+        pallina.render();
     }
 
     private static float altezzaDi(EntityInstance instance) {
