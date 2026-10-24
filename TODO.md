@@ -1,32 +1,51 @@
 # Da fare
 
-Aggiornato il 24/10/2026. Le voci chiuse stanno in STATO_LAVORO.txt, non qui.
+Aggiornato il 25/10/2026. Le voci chiuse stanno in STATO_LAVORO.txt, non qui.
 
 ## Corpo e locomozione
 
-- [ ] **LA FASE IN CORSO (decisa con l'utente il 25/10/2026): un mondo fisico, autonomo e non
-      controllato.** Cinque passi, in ordine. 1 FATTO (la svolta, voce 25), 2 a META' (i mattoni
-      del terreno e dell'acqua ci sono e sono provati; manca metterli nel mondo), 3-4-5 da fare.
-      - [x] **1. Girare e' un'abilita' scoperta dal corpo** (voce 25). 73 corpi su 78 sbagliano
-            meno con la svolta trovata che senza, guadagno mediano 2.32 rad. Nel mondo: -18%
-            nascite su 3 semi, +20% di orologio. Da chiudere a 12 semi.
-      - [~] **2. Terreno e acqua nella fisica.** `PhysicsWorld.addHeightField`,
-            `addStaticCylinder` (i tronchi) e `galleggia` (spinta e resistenza dell'acqua) sono
-            scritti e verificati dal PhysicsSmokeTest. Da usare: ci vuole il passo 3, perche' con
-            le corsie del palco un terreno non vuol dire niente.
-      - [ ] **3. Un solo mondo.** `src.body.MondoFisico` E' SCRITTO MA NON COLLEGATO: compila e
-            nessuno lo chiama ancora. Quello che resta da fare e' la parte che tocca tutto il
-            resto: `entity.walk` non deve piu' spostare l'entita' (solo segnare l'intenzione e
-            pagare la fatica), `syncCell` deve LEGGERE la posizione dal corpo
-            (`MondoFisico.posizioneDi`), `facing` deve venire da `yawRoot`, e vanno via i rifiuti
-            scritti a mano in `walk` (l'acqua non si attraversa, un albero non si attraversa):
-            adesso l'acqua ha la sua fisica e un tronco e' un cilindro statico. Poi si cancella
-            `Palco` e il suo credito di metri e radianti.
-      - [ ] **4. Via il tetto di popolazione** (`Simulation.maxPopulation`, 375 a 50x50, gate in
-            4 punti di entity.java). Il limite diventa il cibo. Conseguenza da misurare, non da
-            nascondere: il costo della fisica non ha piu' un tetto.
-      - [ ] **5. Via ogni premio tranne quello della riproduzione.** Vedi la voce dedicata qui
-            sotto.
+- [x] **LA FASE DECISA CON L'UTENTE IL 25/10/2026: un mondo fisico, autonomo e non
+      controllato.** TUTTI E CINQUE I PASSI FATTI (voci 25 e 26). Quello che resta sono le misure
+      da chiudere, non il lavoro: le voci qui sotto.
+      - [x] 1. Girare e' un'abilita' scoperta dal corpo (voce 25).
+      - [x] 2. Il terreno vero e l'acqua nella fisica (voci 25 e 26).
+      - [x] 3. Un solo mondo: `Palco` cancellato, `MondoFisico` collegato (voce 26).
+      - [x] 4. Via il tetto di popolazione: resta `Simulation.limiteDiSicurezza` (voce 26).
+      - [x] 5. Via ogni premio tranne quello della riproduzione (voce 26).
+
+- [ ] **CHE COSA IMPARA UN'ENTITA' SENZA PREMI DENSI.** E' la domanda aperta piu' grossa che il
+      passo 5 lascia, ed e' prevista, non scoperta: l'apprendimento in vita tiene una mutazione
+      del cervello solo se la finestra ha fatto MEGLIO, e senza premi quasi tutte le finestre
+      valgono zero - quindi quasi tutte le mutazioni vengono annullate e il cervello resta quello
+      con cui si e' nati. L'apprendimento si sposta sull'evoluzione fra generazioni.
+      Da guardare, in ordine: (a) quante mutazioni vengono tenute per vita, adesso contro
+      `premi=1`; (b) se la finestra ha ancora senso come meccanismo o se va sostituita da
+      qualcosa che guarda il TEMPO VISSUTO invece del punteggio (sopravvivere e' il segnale che
+      resta); (c) se la riproduzione da sola, che e' sparsa ma non nulla, basta a muovere il
+      cervello in una direzione.
+      Il braccio di controllo esiste e costa un flag: `premi=1` in SimRunner.
+
+- [ ] **SE LA POPOLAZIONE ARRIVA DOVE IL CIBO NON BASTA.** Il tetto non c'e' piu', ma a 3000 tick
+      la popolazione non ci arrivava nemmeno prima (100-250 contro un tetto di 375): quindi
+      togliere il tetto NON si vede in una corsa corta, e la competizione per il cibo e' ancora
+      da osservare. Serve una corsa lunga (9000+ tick) e guardare se la popolazione si ferma
+      sulla fame, sul limite di sicurezza (2500, e allora si stampa) o su niente.
+
+- [ ] **IL TERRENO E' UNA SCALINATA DI GRADINI DA UN METRO.** `world.surfaceY` e' un INDICE di
+      cella, cioe' un intero: il campo di altezze che la fisica riceve ha gradini verticali da un
+      metro esatto dove il terreno cambia quota. Un corpo alto 40 cm non ci sale. E' fedele a
+      quello che il motore grafico DISEGNA (cubi), quindi non e' un difetto da correggere di
+      nascosto: e' una scelta, e l'alternativa (mediare le quote delle quattro celle attorno a
+      ogni nodo, cioe' rampe a 45 gradi) renderebbe il terreno fisico diverso da quello disegnato
+      di mezzo metro. Da decidere con l'utente, non da sistemare. Il numero da portare alla
+      decisione: nel mondo un corpo che all'oracolo fa 0.2+ m/s copre 1.43 m in dieci secondi,
+      cioe' 0.14 m/s.
+
+- [ ] **GLI INCONTRI SONO ANCORA NELLA GRIGLIA.** La fisica muove i corpi e i corpi si urtano
+      (un gruppo di collisione per entita', quindi due entita' che si incontrano si incontrano
+      davvero), ma mangiare, bere, attaccare e accoppiarsi guardano ancora le celle e le portate.
+      Non e' urgente e non e' una contraddizione - e' il prossimo confine fra il mondo fisico e
+      il mondo a griglia.
 
 - [ ] **LA RICERCA, NON IL CONTROLLO: il riflesso ha 350 pesi e la salita della collina non li
       sa cercare.** E' quello che resta aperto dopo il rifacimento del movimento (voce 21).
@@ -117,7 +136,8 @@ Aggiornato il 24/10/2026. Le voci chiuse stanno in STATO_LAVORO.txt, non qui.
       e la popolazione finale triplica senza passare il test dei segni (p = 0.093). In piu' le
       corse estinte sono 3 contro 1: piu' nascite non vuol dire meno estinzioni, e il perche'
       (popolazione piu' grande = consumo piu' grande) va guardato.
-- [x] ~~Il palco (fisica viva) resta spento~~ - ACCESO il 24/10/2026 (voce 22). Tutte le entita'
+- [x] ~~Il palco (fisica viva) resta spento~~ - ACCESO il 24/10/2026 (voce 22), e dal 25/10 il
+      palco NON ESISTE PIU': c'e' un mondo solo (voce 26). Tutte le entita'
       che stanno nel budget di tempo del tick camminano in fisica vera, e la posa disegnata sono
       gli angoli veri dei giunti. Costa: 6 semi appaiati, nascite 625 -> 509 (-19%), vivi
       242 -> 152 (-37%), cinque semi su sei peggio, p = 0.22 (da chiudere a 12 semi). La velocita'
@@ -148,13 +168,17 @@ Aggiornato il 24/10/2026. Le voci chiuse stanno in STATO_LAVORO.txt, non qui.
       premi il TORNARE alti senza premiare lo STARE alti sarebbe di nuovo UPRIGHT_BONUS (l'errore
       della voce 22): la strada giusta e' probabilmente un SECONDO COMPITO - prove che partono
       da terra, punteggio separato - invece di un altro addendo nello stesso punteggio.
-      NON RIMETTERE IL RIMONTAGGIO: PalcoSelfTest ha tre verifiche che lo vietano, e il motivo e'
-      nella voce 24 (una pezza che aiuta i corpi scadenti decide da fuori chi ha diritto di
-      funzionare, come Balance e come UPRIGHT_BONUS).
-- [ ] **Terreno vero nel mondo fisico.** Il pavimento del palco e' PIATTO, quindi la fisica dice
-      come un corpo cammina, non come affronta un gradino. E gli urti fra entita' (il
-      combattimento) e le mele restano nella simulazione a griglia: la fisica muove le gambe, non
-      risolve gli incontri.
+      NON RIMETTERE IL RIMONTAGGIO: MondoFisicoSelfTest ha le verifiche che lo vietano, e il
+      motivo e' nella voce 24 (una pezza che aiuta i corpi scadenti decide da fuori chi ha diritto
+      di funzionare, come Balance e come UPRIGHT_BONUS).
+      NOTA DALLA VOCE 26: nel mondo unico "chi e' a terra non avanza" NON e' piu' vero - un corpo
+      crollato scivola di 1.6 m in venti secondi, perche' il filtro che dava i metri solo a chi
+      era in piedi era un giudizio sulla postura ed e' andato via col palco. Resta GIU', e questo
+      si verifica.
+- [x] ~~**Terreno vero nel mondo fisico.**~~ FATTO (voci 25 e 26): il terreno della simulazione
+      e' un campo di altezze in Jolt, i tronchi sono cilindri statici, l'acqua delle colonne
+      allagate ha spinta e resistenza. Quello che resta e' nella voce "il terreno e' una scalinata"
+      qui sopra, e negli incontri che vivono ancora nella griglia.
 - [ ] **Giunti a tre assi: l'angolo misurato sfora i limiti** fino a 1.8 rad (mai sulle cerniere -
       vedi voce 22). Oggi e' tamponato dove conta (il disegno taglia sui limiti, il canale
       dell'angolo e' tagliato a +-2), ma la decomposizione esatta di un giunto a tre assi in Jolt
