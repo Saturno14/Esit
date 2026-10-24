@@ -91,12 +91,27 @@ Aggiornato il 24/10/2026. Le voci chiuse stanno in STATO_LAVORO.txt, non qui.
       e la popolazione finale triplica senza passare il test dei segni (p = 0.093). In piu' le
       corse estinte sono 3 contro 1: piu' nascite non vuol dire meno estinzioni, e il perche'
       (popolazione piu' grande = consumo piu' grande) va guardato.
-- [ ] **Il palco (fisica viva) resta spento**: con il controllore di oggi quattro entita' in
-      fisica vera camminano a ~0.05 m/s contro 0.27 di riferimento, con 339 cadute in 600 tick.
-      Da rimisurare quando la ricerca del riflesso funziona (prima voce di questo file): e' il
-      banco di prova vero, perche' nel palco il passo non e' una formula ma la distanza coperta
-      davvero. Poi: terreno vero nel mondo fisico invece del pavimento piatto, e rialzarsi da
-      soli.
+- [x] ~~Il palco (fisica viva) resta spento~~ - ACCESO il 24/10/2026 (voce 22). Tutte le entita'
+      che stanno nel budget di tempo del tick camminano in fisica vera, e la posa disegnata sono
+      gli angoli veri dei giunti. Costa: 6 semi appaiati, nascite 625 -> 509 (-19%), vivi
+      242 -> 152 (-37%), cinque semi su sei peggio, p = 0.22 (da chiudere a 12 semi). La velocita'
+      vera e' 0.15-0.29 m/s contro gli 0.27 che la formula regalava a ogni tick: non e' una
+      penalita' della fisica, e' la fine di un sussidio.
+- [ ] **Chiudere il lotto della fisica viva a 12 semi**: a sei la direzione e' netta (5 su 6 in
+      entrambe le misure) ma p = 0.22 non dichiara niente. Serve anche capire il seme 4, l'unico
+      in cui la fisica viva ha fatto MEGLIO (nascite 134 -> 140, vivi 52 -> 55).
+- [ ] **Rialzarsi da terra.** Nel palco un corpo abbassato e fermo per 6 tick viene rimesso in
+      piedi DAL MONDO. Rialzarsi e' un'abilita' che si potrebbe imparare, ma per impararla deve
+      valere qualcosa nel punteggio, e oggi il punteggio guarda solo l'avanzare: chi e' per terra
+      non ha nessun motivo per muoversi in un modo invece che in un altro.
+- [ ] **Terreno vero nel mondo fisico.** Il pavimento del palco e' PIATTO, quindi la fisica dice
+      come un corpo cammina, non come affronta un gradino. E gli urti fra entita' (il
+      combattimento) e le mele restano nella simulazione a griglia: la fisica muove le gambe, non
+      risolve gli incontri.
+- [ ] **Giunti a tre assi: l'angolo misurato sfora i limiti** fino a 1.8 rad (mai sulle cerniere -
+      vedi voce 22). Oggi e' tamponato dove conta (il disegno taglia sui limiti, il canale
+      dell'angolo e' tagliato a +-2), ma la decomposizione esatta di un giunto a tre assi in Jolt
+      resta da fare, e finche' non c'e' il riflesso legge un angolo approssimato.
 
 ## Pulizia
 

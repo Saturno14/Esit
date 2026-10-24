@@ -78,6 +78,10 @@ public final class EvolvedBodies {
         Gait.REFLEX_FRACTION = prop("riflesso.frazione", Gait.REFLEX_FRACTION);
         Gait.REFLEX_SHARE = prop("riflesso.quota", Gait.REFLEX_SHARE);
         Reflex.MAX_CORRECTION = prop("riflesso.tetto", Reflex.MAX_CORRECTION);
+        // e le due manopole della posa nel punteggio, per rifare la misura di prima del
+        // 24/10/2026 (-Dpostura.strisciare=0.35 -Dpostura.premio=0.25)
+        GaitEvaluator.CRAWL_WEIGHT = prop("postura.strisciare", GaitEvaluator.CRAWL_WEIGHT);
+        GaitEvaluator.UPRIGHT_BONUS = prop("postura.premio", GaitEvaluator.UPRIGHT_BONUS);
 
         PhysicsNatives.require();
         GenomeSchema schema = GenomeSchema.loadFromClasspath("/gene_schema.json");

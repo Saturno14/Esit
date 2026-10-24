@@ -1896,3 +1896,123 @@ quota di prove piu' bassa) erano in corsa quando sono state fermate per memoria:
    quella entita'.
  - BodySelfTest 335/335, VisionSelfTest 632/632, PhysicsSmokeTest OK. BodyPlanTest resta rosso
    da prima (10 su 2421, voce 20).
+
+==========================================================================================
+22. LA FISICA ENTRA NEL MONDO (24/10/2026)
+==========================================================================================
+
+L'utente, dopo la voce 21: "se continui a rimandare la fisica viva finiremo per perderci nella
+continua del progetto. Ti ripeto che la fisica deve esserci durante la simulazione, le gambe e le
+braccia si devono muovere veramente. Ultima cosa, la classe con solo un appoggio puo' trascinarsi
+con il singolo arto che hanno".
+
+Aveva ragione su tutte e due, e la seconda ha scoperto un errore mio che era nascosto in un posto
+dove non avevo guardato.
+
+------------------------------------------------------------------------------------------
+1. "SI TRASCINA" NON VUOL DIRE "E' CADUTO"
+------------------------------------------------------------------------------------------
+Nella voce 21 avevo scritto che gli 8 corpi con un solo arto di appoggio "non stanno su mai, in
+nessun braccio: zero su otto ogni volta - quella classe morfologica e' condannata". Era sbagliato.
+Guardando le velocita' corpo per corpo, quegli otto corpi AVANZAVANO:
+
+    con il premio alla postura   -0.33  0.79  0.84  0.78  1.41  1.38  0.91  0.78  m/s
+    cieco alla posa               0.51  0.79  0.95  0.31  1.54  0.96  0.92  0.74  m/s
+
+Mediana 0.84 m/s, cioe' TRE VOLTE la velocita' di riferimento della simulazione (0.27). Si
+trascinavano, esattamente come diceva l'utente. Erano contati "caduti 8 su 8" perche' stanno
+sempre bassi, e io avevo letto quel contatore come un fallimento.
+
+E il contatore non era innocente: entrava nel PUNTEGGIO. GaitEvaluator.Result.score() valeva
+
+    avanzamento * (caduto ? 0.35 : 1.0) + 0.25 * quanto_sei_stato_eretto
+
+cioe' trascinarsi valeva un terzo di camminare, piu' un premio per stare in piedi che per un corpo
+lento era piu' del suo stesso avanzare. E' lo STESSO ERRORE della vecchia classe Balance - una
+strategia imposta da fuori, buona per un bipede e senza senso per chi striscia - solo nascosto nel
+giudizio invece che nel controllo. Balance l'avevo cancellata ieri e questa me l'ero persa.
+
+ADESSO CRAWL_WEIGHT = 1 e UPRIGHT_BONUS = 0: il punteggio e' quanto si avanza, e come lo si fa e'
+affare del corpo. Misurato su 78 corpi appaiati, 48 prove:
+    mediana  +0.903 -> +1.010 m/s  (+12%, 37 corpi su 63 a favore, p = 0.21)
+    un arto di appoggio  +0.839 -> +0.916
+    "cadute"  45 -> 65
+Le cadute salgono perche' molti corpi SCELGONO di stare bassi, ora che non vengono piu' pagati per
+stare in piedi. Quel contatore adesso descrive una posa, non un fallimento - ed e' documentato nel
+codice perche' non lo rilegga male qualcun altro (compreso me).
+La stessa correzione e' nel palco: i metri si contano a chiunque avanzi, in qualunque posa, e "a
+terra" vuol dire ABBASSATO E FERMO. Un collasso e' mancanza di progresso, non una postura.
+
+------------------------------------------------------------------------------------------
+2. PERCHE' LA FISICA VIVA ERA "FUORI PORTATA" (e non lo era)
+------------------------------------------------------------------------------------------
+Il numero che l'ha tenuta spenta per tre voci di diario e' questo: 380 corpi con tutti i giunti
+comandati costano ~116 ms di fisica per tick, contro i 10 ms disponibili a x50. Vero. Ma 10 ms
+sono il tempo di un tick A x50: un tick vale MEZZO SECONDO di mondo, quindi a velocita' normale ha
+500 ms di tempo vero, e 116 ms ci stanno dentro quattro volte.
+
+Avevo confrontato il costo della fisica con il budget della velocita' massima, non con quello della
+velocita' a cui si guarda. Era un errore di contabilita', non un limite della macchina.
+
+ADESSO: il palco prende il budget di tempo del tick (Simulation.QUOTA_FISICA, 60%) e ci mette
+dentro quante entita' ci stanno, al costo che MISURA tick per tick (media esponenziale, ~1.0-1.6 ms
+per corpo su questa macchina) invece di una costante scritta a mano. A x1 ci sta il mondo intero; a
+x50 ci stanno l'entita' selezionata e le piu' giovani, e le altre continuano col passo geometrico.
+L'interruttore ActionWeights.fisicaViva non e' piu' "quante entita'" ma 0/1, ed e' ACCESO in
+embodied(): in un profilo dove il corpo conta, il passo deve venire dal corpo che si muove.
+Nelle corse senza finestra (SimRunner, i lotti di semi) il budget si spegne del tutto
+(Palco.senzaBudget): non c'e' nessuno a cui stare dietro, e misurare un lotto col budget acceso
+vorrebbe dire misurare sei entita' in fisica su trecento, cioe' non misurare la fisica.
+
+E SI VEDE. La posa disegnata, per chi e' in fisica viva, sono gli angoli VERI dei giunti letti dal
+mondo fisico (Palco.angoliDi -> entity.jointAngles), non il ciclo dell'oscillatore. Prima un corpo
+crollato nel mondo fisico sullo schermo avrebbe continuato a muovere le gambe come se camminasse.
+
+------------------------------------------------------------------------------------------
+3. QUANTO COSTA, MISURATO
+------------------------------------------------------------------------------------------
+6 semi appaiati, 3000 tick, fisica=0 contro fisica=1 (tutte le entita' in fisica vera):
+
+    seme   nascite        vivi        m/s camminati davvero
+      1   103 ->  84    62 -> 40     0.203
+      2    85 ->  75    22 -> 11     0.218
+      3   112 ->  59    35 ->  6     0.287
+      4   134 -> 140    52 -> 55     0.148
+      5    98 ->  69    46 -> 18     0.156
+      6    93 ->  82    25 -> 22     0.160
+    tot   625 -> 509   242 -> 152
+
+Nascite -19%, vivi -37%, cinque semi su sei peggio in entrambi: p = 0.22, cioe' la direzione e'
+netta ma sei semi non la dichiarano. Resta da fare il lotto a dodici.
+
+COSA DICE DAVVERO QUEL -19%. La velocita' vera camminata e' 0.15-0.29 m/s (mediana ~0.18) contro
+gli 0.27 che la formula geometrica regalava a ogni entita' a ogni tick. La fisica viva non e' una
+penalita': e' la fine di un SUSSIDIO. Prima la simulazione dava a tutti la velocita' che il corpo
+aveva ottenuto nella sua prova migliore, ogni tick, per sempre - senza cadute, senza inciampare,
+senza i tick in cui un corpo e' per terra. Adesso quello che non si riesce a fare non si fa.
+La strada per riprendere la popolazione non e' spegnere la fisica: e' far camminare meglio i corpi,
+cioe' la ricerca di cui parla la voce 21.
+
+------------------------------------------------------------------------------------------
+4. DUE COSE CHE LA FISICA VIVA HA FATTO EMERGERE
+------------------------------------------------------------------------------------------
+NON SI PUO' FAR ATTRAVERSARE LE ENTITA'. Avevo provato a mettere tutte le entita' del palco nello
+stesso gruppo di collisione, perche' si attraversassero e il pavimento potesse restare piccolo
+invece di crescere con la popolazione. Jolt rifiuta: la tabella dei gruppi non ammette di spegnere
+la coppia (i, i) - "subgroups must be distinct" - quindi due parti con lo stesso numero di
+sottogruppo si urtano sempre, e due entita' nello stesso gruppo si prenderebbero a spallate a
+seconda di come il piano del corpo ha numerato i cluster. Quindi un gruppo per entita', corsie
+larghe 8 m, e il pavimento che cresce con la capienza: e' una scatola statica, non costa niente.
+
+GLI ANGOLI DEI GIUNTI A TRE ASSI SFORANO I LIMITI, e ora che vengono disegnati e' un problema.
+Il nuovo src.body.PalcoSelfTest (53 verifiche) l'ha trovato alla prima corsa: sforo fino a 1.8 rad,
+e SEMPRE su giunti a tre gradi di liberta', mai su una cerniera. E' l'approssimazione gia' nota
+(in Jolt un giunto a tre assi diventa un solo vincolo a sei gradi con gli assi ortogonalizzati, e
+proiettare la rotazione relativa su un asse non e' una decomposizione esatta), non un difetto della
+fisica. Separati i due usi: i sensi (MotorSense) leggono il valore grezzo - tagliato a +-2 sulla
+corsa, altrimenti la normalizzazione che quella classe promette salterebbe proprio sui giunti piu'
+importanti - e il DISEGNO riceve la posa tagliata sui limiti del giunto, perche' un arto piegato
+dove non si piega e' un'entita' rotta sullo schermo.
+
+PalcoSelfTest 53/53, BodySelfTest 335/335, VisionSelfTest 632/632, PhysicsSmokeTest OK.
+BodyPlanTest resta rosso da prima (10 su 2421, voce 20).

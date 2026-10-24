@@ -218,7 +218,17 @@ public final class MotorSense {
     public double channel(int dof, int c) {
         switch (c) {
             case C_BIAS: return 1.0;
-            case C_ANGLE: return angoli == null ? 0 : angoli[dof] / span[dof];
+            /*
+             * L'angolo sulla propria corsa, TAGLIATO a +-2. Per i giunti a tre assi l'angolo
+             * misurato e' una proiezione e non una decomposizione esatta, e puo' uscire di molto
+             * dalla corsa del giunto (misurato fino a 1.8 rad su una corsa di 0.6, cioe' un
+             * canale a -4 invece che a -1). Senza il taglio la normalizzazione che tutta questa
+             * classe promette - ogni canale in un intorno di 1 - salterebbe proprio sui giunti
+             * piu' importanti, e la mutazione dei pesi, che ha la stessa sigma per tutti i
+             * canali, diventerebbe storta.
+             */
+            case C_ANGLE: return angoli == null ? 0
+                    : Math.max(-2.0, Math.min(2.0, angoli[dof] / span[dof]));
             case C_RATE: return velocita == null ? 0 : velocita[dof] / RATE_REF;
             case C_CONTACT_OWN: return ownLimb[dof] >= 0 && contattoArto[ownLimb[dof]] ? 1 : 0;
             case C_CONTACT_OTHER: return otherLimb[dof] >= 0 && contattoArto[otherLimb[dof]] ? 1 : 0;

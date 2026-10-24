@@ -90,6 +90,13 @@ public final class PhysicsWorld implements AutoCloseable {
         // Una tabella sola, condivisa: ogni parte di un'entita' ha il suo sottogruppo e tutte le
         // coppie sono spente, quindi due parti con lo stesso id entita' non si urtano mai.
         this.selfFilter = new GroupFilterTable(MAX_PARTS_PER_BODY);
+        /*
+         * SOLO LE COPPIE i<j, e non e' una scelta: Jolt rifiuta disableCollision(i, i) con
+         * "subgroups must be distinct". Quindi due parti con lo STESSO sottogruppo si urtano
+         * sempre, e due entita' non possono condividere un gruppo per attraversarsi - provato il
+         * 24/10/2026 per tenere il pavimento del palco piccolo, non si puo' fare. Dentro un corpo
+         * non cambia niente, perche' un sottogruppo non si ripete mai.
+         */
         for (int i = 0; i < MAX_PARTS_PER_BODY; i++) {
             for (int j = i + 1; j < MAX_PARTS_PER_BODY; j++) {
                 this.selfFilter.disableCollision(i, j);

@@ -346,10 +346,19 @@ public class Simulation {
      * cui la differenza tra una formula e la fisica vera conta di piu'.
      */
     private static void allestisciPalco(List<entity> alive) {
-        int capienza = (int) ActionWeights.fisicaViva;
-        if (capienza <= 0) {
+        if (ActionWeights.fisicaViva <= 0) {
+            // spenta: il palco si svuota da solo quando il budget e' zero
+            src.body.Palco.allestisci(java.util.List.of(), 0);
             return;
         }
+        /*
+         * IL BUDGET, non una capienza scritta a mano. Un tick vale mezzo secondo di mondo, quindi
+         * a velocita' normale ha 500 ms di tempo vero e la fisica di tutta la popolazione (~116 ms
+         * per 380 corpi) ci sta dentro. A x50 il tick ha 10 ms e ci sta solo qualcuno: ci salgono
+         * la selezionata e le piu' giovani, e le altre continuano col passo geometrico. La
+         * capienza la calcola il palco dal costo che MISURA, non da una costante.
+         */
+        double budgetMs = TICK_MS / timeScale * QUOTA_FISICA;
         List<entity> ordinate = new ArrayList<>(alive);
         int selezionata = src.gui.Gui.entitaSelezionata();
         ordinate.sort((a, b) -> {
@@ -359,13 +368,20 @@ public class Simulation {
             }
             return Integer.compare(a.getAge(), b.getAge());
         });
-        List<src.body.Palco.Candidato> candidati = new ArrayList<>(capienza);
-        for (int i = 0; i < ordinate.size() && candidati.size() < capienza; i++) {
-            entity e = ordinate.get(i);
+        List<src.body.Palco.Candidato> candidati = new ArrayList<>(ordinate.size());
+        for (entity e : ordinate) {
             candidati.add(new src.body.Palco.Candidato(e.getId(), e.getAdultBody(), e.getGait()));
         }
-        src.body.Palco.allestisci(capienza, candidati);
+        src.body.Palco.allestisci(candidati, budgetMs);
     }
+
+    /**
+     * Quanta parte del tempo di un tick puo' prendersi la fisica viva. Il resto serve alle azioni
+     * delle entita', alla flora e al campionamento: se la fisica si prendesse tutto, la
+     * simulazione andrebbe piu' lenta della velocita' richiesta e il mondo rallenterebbe invece
+     * di mettere meno corpi in fisica.
+     */
+    public static volatile double QUOTA_FISICA = 0.6;
 
     private static void flushBirths() {
         List<entity> born;

@@ -31,16 +31,41 @@ public final class GaitEvaluator implements AutoCloseable {
     public static final double DEFAULT_SECONDS = 2.0;
     /** Prove dell'ottimizzazione: ogni prova e' una corsa di fisica. */
     public static final int DEFAULT_TRIALS = 24;
-    /** Quanto vale lo spostamento di un corpo caduto rispetto a uno in piedi. */
-    public static final double CRAWL_WEIGHT = 0.35;
     /**
-     * Sotto questa frazione dell'altezza iniziale il corpo e' caduto. Si guarda il MINIMO lungo
-     * tutta la prova, non il valore finale: altrimenti un corpo che si tuffa in avanti e rotola
-     * fino a rialzarsi conta come uno che ha camminato.
+     * Quanto vale lo spostamento di un corpo ABBASSATO rispetto a uno eretto.
+     *
+     * ERA 0.35, cioe' trascinarsi valeva un terzo di camminare. Ed era un errore della stessa
+     * famiglia della vecchia classe Balance, solo nascosto nel PUNTEGGIO invece che nel
+     * controllo: non diceva al corpo come muoversi, gli diceva che una morfologia che si
+     * trascina non ha diritto di funzionare. Un corpo con UN SOLO ARTO DI APPOGGIO non puo'
+     * stare eretto - si sposta tirandosi con l'arto che ha - e con 0.35 piu' il premio di
+     * eretto il suo punteggio migliore restava sotto quello di un bipede qualunque: nelle misure
+     * del 24/10/2026 gli 8 corpi a un solo appoggio risultavano "caduti" 8 volte su 8, in TUTTI
+     * i bracci. Non stavano fallendo: erano contati come falliti per definizione.
+     * A 1.0 il punteggio guarda solo QUANTO SI AVANZA, e come lo si fa e' affare del corpo.
+     */
+    public static volatile double CRAWL_WEIGHT = 1.0;
+    /**
+     * Sotto questa frazione dell'altezza iniziale il corpo si e' ABBASSATO. Si guarda il MINIMO
+     * lungo tutta la prova, non il valore finale: altrimenti un corpo che si tuffa in avanti e
+     * rotola fino a rialzarsi conta come uno che ha camminato.
+     *
+     * ATTENZIONE A COSA VUOL DIRE: e' una DESCRIZIONE della posa, non un giudizio. Chi striscia
+     * e chi si trascina sta sotto questa soglia per tutta la vita e sta funzionando benissimo.
+     * Finche' questo numero entrava nel punteggio (vedi CRAWL_WEIGHT e UPRIGHT_BONUS) decideva
+     * quali morfologie potessero esistere; adesso serve solo a raccontare come si e' mosso un
+     * corpo.
      */
     public static final double FALL_RATIO = 0.6;
-    /** Premio per essere rimasto in piedi (m/s equivalenti a corpo perfettamente eretto). */
-    public static final double UPRIGHT_BONUS = 0.25;
+    /**
+     * Premio per essere rimasto eretto (m/s equivalenti a corpo perfettamente in piedi).
+     *
+     * ERA 0.25, e per un corpo lento era piu' del suo stesso avanzare: valeva piu' alzarsi che
+     * muoversi. E' l'altra meta' dello stesso errore di {@link #CRAWL_WEIGHT}: stare in piedi
+     * non e' uno scopo, e' una STRATEGIA - buona per un bipede, inutile per chi striscia. A 0 lo
+     * scopo torna a essere uno solo, avanzare, che e' quello che serve per arrivare al cibo.
+     */
+    public static volatile double UPRIGHT_BONUS = 0.0;
     /**
      * Oltre questa velocita' (m/s) non si tratta di un'andatura ma di un corpo esploso: un giunto
      * instabile accumula energia e sparata via la ragdoll a decine di m/s. Misurato: una corsa su
@@ -58,8 +83,13 @@ public final class GaitEvaluator implements AutoCloseable {
          * Quanto vale questa andatura: quanto avanza NELLA DIREZIONE IN CUI GUARDA (+Z), non
          * quanto si sposta in generale. Serve che le due cose coincidano, altrimenti nel mondo
          * l'entita' andrebbe in una direzione mentre l'animazione la mostra sbilenca di lato.
-         * La deriva laterale e' una penalita' leggera; chi e' caduto prende solo una frazione
-         * (trascinarsi vale meno che camminare) e restare eretto da' un piccolo premio.
+         * La deriva laterale e' una penalita' leggera, e serve a tenere insieme il mondo e il
+         * corpo: la simulazione muove l'entita' nella direzione in cui guarda, quindi un corpo
+         * che avanza di traverso andrebbe in una direzione e sarebbe disegnato in un'altra.
+         *
+         * NON C'E' PIU' NESSUN PREMIO ALLA POSA. CRAWL_WEIGHT vale 1 e UPRIGHT_BONUS vale 0: il
+         * punteggio e' quanto si avanza, e basta. Chi si trascina e arriva al cibo ha ragione
+         * quanto chi ci cammina. Le due manopole restano per poter rifare la misura di prima.
          */
         public double score() {
             if (exploded()) {
@@ -67,6 +97,7 @@ public final class GaitEvaluator implements AutoCloseable {
             }
             double useful = forwardSpeed - 0.3 * drift;
             return useful * (fell ? CRAWL_WEIGHT : 1.0) + UPRIGHT_BONUS * uprightRatio;
+            // con i valori predefiniti (1.0 e 0.0) questa riga e' esattamente "useful"
         }
 
         /**

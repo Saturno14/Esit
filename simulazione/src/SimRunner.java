@@ -51,8 +51,13 @@ public class SimRunner {
                 // (vedi ActionWeights.n_moveMate). 0 = spento, come prima.
                 ActionWeights.n_moveMate = Double.parseDouble(args[i].substring(9));
             } else if (args[i].startsWith("fisica=")) {
-                // fisica=n: n entita' camminano in fisica vera dentro la simulazione (src.body.Palco)
+                // fisica=0: la fisica torna a essere un oracolo e il passo una formula. 1 =
+                // accesa, e quante entita' ci stanno lo decide il budget di tempo del tick
+                // (vedi src.body.Palco e Simulation.QUOTA_FISICA)
                 ActionWeights.fisicaViva = Double.parseDouble(args[i].substring(7));
+                // qui nessuno guarda: la fisica se la prende tutta, altrimenti un lotto di semi
+                // misurerebbe sei entita' in fisica su trecento (vedi Palco.senzaBudget)
+                src.body.Palco.senzaBudget = ActionWeights.fisicaViva > 0;
             } else if (args[i].startsWith("svezzamento=")) {
                 // svezzamento=0: chi non sa ancora camminare paga il consumo pieno, come prima
                 ActionWeights.svezzamento = Double.parseDouble(args[i].substring(12));

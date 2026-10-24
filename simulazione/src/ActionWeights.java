@@ -130,13 +130,19 @@ public final class ActionWeights {
     public static volatile double svezzamentoSoglia;
 
     /**
-     * QUANTE ENTITA' CAMMINANO IN FISICA VERA, dentro la simulazione (vedi src.body.Palco).
-     * 0 = come prima: la fisica resta un oracolo che misura una volta e poi il passo e' una
-     * formula. Con n > 0 quelle n entita' si muovono di quanto la loro ragdoll si e' mossa
-     * davvero in quel mezzo secondo di mondo - e se cade, non si muove.
+     * LA FISICA VIVA: 1 = accesa, 0 = spenta (vedi src.body.Palco).
      *
-     * Resta a 0 finche' un confronto appaiato non dice che conviene: cambia il significato del
-     * passo, e il passo e' il parametro da cui dipende tutto il resto del bilanciamento.
+     * Accesa, le entita' si muovono di quanto la loro ragdoll si e' mossa DAVVERO in quel mezzo
+     * secondo di mondo: le gambe e le braccia spingono contro il pavimento, e chi non riesce a
+     * muoversi non si muove. Spenta, la fisica torna a essere un oracolo che misura un corpo una
+     * volta e poi il passo e' una formula.
+     *
+     * NON E' PIU' UN NUMERO DI ENTITA'. Prima questo interruttore diceva "quante" ci stanno, e
+     * quel numero era scelto a mano perche' la fisica per tutti sembrava fuori portata: 380 corpi
+     * costano ~116 ms per tick, contro i 10 ms di un tick a x50. Ma un tick vale mezzo secondo di
+     * mondo, quindi a velocita' normale ha 500 ms e ci stanno tutti. Adesso la capienza la calcola
+     * il palco dal tempo che il tick ha davvero e dal costo che misura: a x1 ci sta il mondo
+     * intero, a x50 ci stanno la selezionata e le piu' giovani.
      */
     public static volatile double fisicaViva;
 
@@ -339,6 +345,12 @@ public final class ActionWeights {
         // qui (con bodyGaitSpeed = 0 l'andatura non sposta di un centimetro il passo)
         gaitArchive = 1;
         svezzamento = 0.75;
+        /*
+         * LA FISICA E' VIVA. Non e' un interruttore sperimentale: in un profilo dove il corpo
+         * conta, il passo deve venire dal corpo che si muove, non da una formula che descrive un
+         * corpo che non si muove mai. Quanto costa al bilanciamento sta nella voce 22 del diario.
+         */
+        fisicaViva = 1;
         bodyGaitSpeed = 1;
         bodyMassStats = 1;
         bodyReach = 1;

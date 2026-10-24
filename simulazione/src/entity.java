@@ -1399,6 +1399,23 @@ public class entity {
      */
     private double[] jointAngles(src.body.Automaton b, double extraSeconds){
         double[] q = new double[b.dofCount()];
+        /*
+         * SE QUESTA ENTITA' E' IN FISICA VIVA, LA POSA DISEGNATA E' QUELLA VERA: gli angoli che i
+         * motori e il pavimento hanno prodotto in questo istante, non il ciclo dell'oscillatore.
+         * E' la differenza fra vedere la fisica e sentirsi dire che c'e': con il ciclo, un corpo
+         * che e' crollato nel mondo fisico sullo schermo continuerebbe a muovere le gambe come se
+         * stesse camminando. Chi non e' sul palco resta disegnato col ciclo, che per lui e' la
+         * verita' - il suo passo e' una formula.
+         */
+        float[] reali = ActionWeights.fisicaViva > 0
+                ? src.body.Palco.angoliDi(EntityID, null) : null;
+        if(reali != null){
+            for(int i = 0; i < q.length && i < reali.length; i++){
+                q[i] = reali[i];
+            }
+            applyGaze(q);
+            return q;
+        }
         if(ActionWeights.bodyGaitSpeed > 0 && isWalking()){
             float[] f = getGait().anglesAt(b, gaitPhase + extraSeconds, null);
             for(int i = 0; i < q.length && i < f.length; i++){

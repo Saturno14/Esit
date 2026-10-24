@@ -1,5 +1,6 @@
 com\saturno14\esit\graphics\world\VoxelMaterial.class
 src\gui\SchedaEntita$Parente.class
+src\body\PalcoSelfTest.class
 src\Commands$1.class
 src\gui\PannelloComandi$6.class
 com\saturno14\esit\graphics\flora\FloraField.class
