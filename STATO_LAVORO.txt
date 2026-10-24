@@ -2475,8 +2475,14 @@ tetto di popolazione era esattamente il numero massimo di mele. Un limite a quel
 alla popolazione di arrivare dove il cibo non basta, e quindi impedisce la cosa che si voleva
 vedere: LA FAME NON LIMITAVA NIENTE, PERCHE' C'ERA UN LIMITE PRIMA DELLA FAME.
 
-Via. Resta limiteDiSicurezza, un'entita' per cella di terreno (2500 a 50x50), e non e' un tetto
-ecologico travestito: a quella densita' i corpi non ci starebbero fisicamente in piedi, e a 1 ms
+ATTENZIONE: QUESTA FRASE L'HO SCRITTA PRIMA DI MISURARE, ED E' SBAGLIATA. Il tetto non limitava
+niente perche' NON VENIVA MAI RAGGIUNTO: la popolazione si ferma intorno a 90, cioe' a un quarto
+di 375, e poi crolla. Il numero e la correzione stanno nella sezione 7. Toglierlo resta giusto -
+un limite scritto a mano non deve stare fra la fame e la popolazione - ma non cambia NESSUN numero,
+e dire che "impediva la competizione" era una deduzione dal codice spacciata per una misura.
+
+Via comunque. Resta limiteDiSicurezza, un'entita' per cella di terreno (2500 a 50x50), e non e' un
+tetto ecologico travestito: a quella densita' i corpi non ci starebbero fisicamente in piedi, e a 1 ms
 per corpo la simulazione sarebbe diventata inguardabile molto prima. Due scelte che contano:
  - si controlla in UN SOLO POSTO, generaFiglioCon, che e' l'unico punto da cui nasce un figlio;
  - NELLA MASCHERA DELLE AZIONI NON C'E'. Un'entita' non deve sapere che il mondo e' pieno, perche'
@@ -2528,3 +2534,53 @@ verifiche vecchie portate nel mondo vero e quattro nuove che prima non si poteva
 BodySelfTest 335/335, VisionSelfTest 632/632, PhysicsSmokeTest OK su tutti e tre i casi
 (pavimento, terreno con gli assi giusti, acqua che frena la caduta). BodyPlanTest resta rosso da
 prima (10 su 2421, voce 20).
+
+------------------------------------------------------------------------------------------
+7. QUELLO CHE IL LOTTO HA DETTO, E DOVE MI SONO SBAGLIATO
+------------------------------------------------------------------------------------------
+Tre semi appaiati, 3000 tick, stesso codice e stesso seme: cambia solo il flag premi.
+
+    premi di prima    146 nascite   31 vivi    generazione max 4-6
+    senza premi       166 nascite   35 vivi    generazione max 4-6
+
+TOGLIERE TUTTI I PREMI NON E' COSTATO NIENTE DI MISURABILE. Nascite per seme: 37>34, 62<67, 67>45,
+cioe' due semi su tre a favore di "senza premi" - con tre semi il test dei segni da' p = 1.0 e non
+dichiara nulla, ne' in un verso ne' nell'altro. Ma la previsione che avevo scritto prima di
+misurare (sezione 5: senza premi densi quasi tutte le mutazioni del cervello vengono annullate,
+quindi l'apprendimento in vita si spegne) NON si vede nei numeri del mondo. Due letture possibili e
+nessuna provata: o l'apprendimento in vita contava poco anche prima, o la riproduzione da sola
+basta. La prima e' quella da verificare per prima, perche' sarebbe un pezzo di apparato che non
+paga - ed e' esattamente la domanda che il TODO lascia aperta.
+
+E ADESSO LA CORREZIONE, che e' la cosa piu' importante di questa voce.
+Nella sezione 4 ho scritto che il tetto di popolazione "impediva alla popolazione di arrivare dove
+il cibo non basta". L'ho dedotto dal codice (tetto = numero massimo di mele) e l'ho scritto come se
+l'avessi misurato. Una corsa da 9000 tick dice che e' FALSO:
+
+    tick     0  ->   68 entita'   (le fondatrici)
+    tick  ~600 ->   86 entita'   (il massimo di tutta la corsa)
+    tick 2000 ->   23 entita',  ultima nascita
+    tick 4500 ->    2 entita'
+    tick 9000 ->    1 entita',  36 nascite in tutto, 86 morti di fame, 248 MELE SUL TERRENO
+
+Il tetto era 375 e la popolazione non ha mai passato 86: NON E' MAI STATO RAGGIUNTO, quindi non
+limitava niente - ne' la competizione ne' nient'altro. Era codice morto come forza ecologica.
+Toglierlo resta giusto per la stessa ragione per cui e' giusto togliere un premio (un numero
+scritto a mano non deve stare fra la fame e la popolazione), ma NON CAMBIA NESSUN NUMERO, e la
+competizione per il cibo che l'utente voleva vedere non e' comparsa: non c'e' competizione in un
+mondo dove si muore di fame con 248 mele a terra.
+
+PERCHE' SI MUORE DI FAME IN UN MONDO PIENO DI CIBO. Non e' il cibo, e' il movimento. Nel mondo
+vero un corpo che all'oracolo fa 0.2+ m/s copre 0.14 m/s, e in quella corsa ci sono 7163 collassi:
+un corpo per terra non raggiunge quello che vede, e nessuno lo rialza (ed e' giusto cosi', voce
+24). La catena e' tutta qui - terreno a gradini da un metro, andature che spiraleggiano, nessun
+modo di rialzarsi - e il collo di bottiglia della fase che viene e' RIALZARSI E CAMMINARE SU UN
+TERRENO, non l'ecologia.
+Un numero che lo conferma dal lato opposto: la sete, che era il 37.5% delle morti (voce 19), qui e'
+il 5-21%. Non perche' l'acqua sia migliorata: perche' si muore di fame prima.
+
+UNA COSA BUONA, da leggere con la sua cautela. Gli stessi tre semi con lo stesso resto delle
+opzioni, prima del passo 3 (palco, tetto, premi), facevano 79 nascite e 13 vivi; adesso 166 e 35.
+NON E' UN CONFRONTO APPAIATO - e' codice diverso con un tetto diverso e premi diversi, e fra i due
+lotti ci sono tre modifiche - quindi non attribuisco il raddoppio a nessuna delle tre. Dice solo
+che il mondo unico non ha peggiorato le cose rispetto al palco, che era la paura legittima.

@@ -24,12 +24,26 @@ Aggiornato il 25/10/2026. Le voci chiuse stanno in STATO_LAVORO.txt, non qui.
       resta); (c) se la riproduzione da sola, che e' sparsa ma non nulla, basta a muovere il
       cervello in una direzione.
       Il braccio di controllo esiste e costa un flag: `premi=1` in SimRunner.
+      PRIMA MISURA (3 semi, 3000 tick, appaiati): senza premi 166 nascite e 35 vivi, coi premi di
+      prima 146 e 31 - due semi su tre a favore di "senza premi", p = 1.0, cioe' tre semi non
+      dichiarano niente MA la previsione qui sopra non si vede. Due letture, nessuna provata: o
+      l'apprendimento in vita contava poco anche prima, o la riproduzione da sola basta. La prima
+      e' da verificare per prima, perche' sarebbe apparato che non paga. Da chiudere a 12 semi.
 
-- [ ] **SE LA POPOLAZIONE ARRIVA DOVE IL CIBO NON BASTA.** Il tetto non c'e' piu', ma a 3000 tick
-      la popolazione non ci arrivava nemmeno prima (100-250 contro un tetto di 375): quindi
-      togliere il tetto NON si vede in una corsa corta, e la competizione per il cibo e' ancora
-      da osservare. Serve una corsa lunga (9000+ tick) e guardare se la popolazione si ferma
-      sulla fame, sul limite di sicurezza (2500, e allora si stampa) o su niente.
+- [ ] **LA POPOLAZIONE CROLLA, E QUESTO E' IL PROBLEMA NUMERO UNO** (misurato, voce 26 sezione 7).
+      Una corsa da 9000 tick: 68 fondatrici, massimo 86 entita' intorno al tick 600, ultima
+      nascita al tick 2000, due superstiti dal 4500, uno alla fine - con 248 MELE SUL TERRENO e
+      86 morti di fame. Il tetto di popolazione non c'entrava niente (era 375 e non e' mai stato
+      sfiorato: toglierlo non ha cambiato nessun numero, e la competizione per il cibo NON e'
+      comparsa).
+      LA CAUSA NON E' ECOLOGICA, E' IL MOVIMENTO: un corpo che all'oracolo fa 0.2+ m/s nel mondo
+      ne fa 0.14, e in quella corsa ci sono 7163 collassi - un corpo per terra non raggiunge
+      quello che vede, e nessuno lo rialza (voce 24, ed e' giusto cosi'). Da affrontare in
+      quest'ordine, perche' sono la stessa catena: (1) rialzarsi da terra come abilita' cercata
+      (la voce dedicata qui sotto), (2) il terreno a gradini da un metro (voce qui sopra), (3) le
+      andature che spiraleggiano invece di andare dritte (voce 25).
+      Un numero che conferma dal lato opposto: la sete era il 37.5% delle morti (voce 19), ora e'
+      il 5-21% - non perche' l'acqua sia migliorata, perche' si muore di fame prima.
 
 - [ ] **IL TERRENO E' UNA SCALINATA DI GRADINI DA UN METRO.** `world.surfaceY` e' un INDICE di
       cella, cioe' un intero: il campo di altezze che la fisica riceve ha gradini verticali da un
