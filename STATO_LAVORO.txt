@@ -2158,35 +2158,39 @@ serve.
 ------------------------------------------------------------------------------------------
 2. QUANTO COSTA, MISURATO
 ------------------------------------------------------------------------------------------
-3 semi x 3000 tick, stesso codice a parte il rimontaggio:
+PRIMA: UN LOTTO BUTTATO, e il difetto non era nel codice. `GaitArchive.file` e'
+`andature/archivio.json` RELATIVO ALLA CARTELLA DI LAVORO, e ogni corsa lo legge e lo riscrive:
+lanciando il lotto dalla radice del repo le corse si passavano l'archivio l'una all'altra. Il
+braccio "senza fisica" era partito con 13 classi di corpo in archivio e quello da confrontare con
+222. Il sintomo era stampato a ogni corsa e non l'avevo letto: "[andature] archivio: N classi di
+corpo". Rifatto con OGNI CORSA IN UNA CARTELLA VUOTA PROPRIA, archivio a zero per tutte e nove, e
+il braccio "col rimontaggio" ricompilato dal commit precedente cosi' che il "prima" esista
+davvero.
 
-    braccio                   semi 1/2/3             tot      m/s veri      gen. massima
-    senza fisica              103n/62v 85n/22v 112n/35v  300n 119v   -       5 5 5
-    col rimontaggio            34n/14v 53n/ 3v  81n/27v  168n  44v  .043-.053  5 4 5
-    nessuno viene rialzato     21n/ 7v 61n/18v  23n/ 4v  105n  29v  .020-.032  3 7 3
+3 semi x 3000 tick, stesso codice a parte il rimontaggio, archivio 0/0/0:
 
-Il rimontaggio valeva 105 -> 168 nascite e 29 -> 44 vivi: un terzo della popolazione viveva per
-un intervento del mondo e non per il proprio corpo. Adesso quel terzo non c'e' piu'.
+    braccio                   semi 1/2/3            tot        m/s veri     gen. massima
+    senza fisica              77n/43v 96n/30v 81n/39v  254n 112v   -          5 6 4
+    col rimontaggio           54n/33v 71n/13v 39n/ 9v  164n  55v  .036-.045   6 6 4
+    nessuno viene rialzato    15n/ 5v 50n/ 7v 19n/ 7v   84n  19v  .019-.027   2 6 4
 
-NESSUN SEME SI E' ESTINTO, ed era la cosa da verificare: 7, 18 e 4 vive a tremila tick, con
-popolazioni medie di 38, 44 e 34. La pressione morde, non azzera.
+Il rimontaggio valeva META' DELLA POPOLAZIONE: 84 -> 164 nascite e 19 -> 55 vivi. Piu' di quanto
+dicesse il lotto sporco (che diceva un terzo). Meta' delle entita' viveva per un intervento del
+mondo e non per il proprio corpo.
 
-IL SEME 2 E' ANDATO MEGLIO SENZA L'AIUTO: 53 -> 61 nascite, 3 -> 18 vive, e GENERAZIONE 7, la
-stirpe piu' profonda di qualunque braccio misurato finora (tutti gli altri si fermano a 5). Un
-seme non dimostra niente, ma e' il primo segno che la direzione che l'utente ha chiesto non e'
-solo piu' onesta: togliere il paracadute puo' far SELEZIONARE meglio. I semi 1 e 3 vanno
-all'opposto (generazione 3 contro 5): quando la popolazione resta piccola le generazioni non
-hanno il tempo di accumularsi. Serve il lotto a dodici semi per sapere quale dei due e' il caso.
+NESSUN SEME SI E' ESTINTO, ed era la cosa da verificare: 5, 7 e 7 vive a tremila tick con
+popolazioni medie di 29, 40 e 32. La pressione morde, non azzera.
 
-LA VELOCITA' VERA SI E' DIMEZZATA (0.043-0.053 -> 0.020-0.032 m/s) e il motivo e' aritmetico: un
-corpo caduto prima veniva rimesso in piedi e tornava a produrre metri, adesso contribuisce zero
-per il resto della sua vita. Quel dimezzamento E' la misura di quanta parte della locomozione
-veniva dal mondo invece che dai corpi.
-
-LA MEDIANA DELLE PROVE E' SCESA (0.812/0.697/0.772 -> 0.534/0.473/0.366 m/s). Attenzione a come
-si legge: e' la mediana dei corpi MISURATI nell'oracolo, non una perdita di capacita'. Con meno
-entita' vive e piu' giovani si misurano piu' corpi di prima generazione e meno andature allenate.
-Da ricontrollare quando il lotto sara' a dodici.
+DUE COSE CHE IL LOTTO SPORCO MI AVEVA FATTO DIRE E CHE NON SONO VERE:
+ - "il seme 2 raggiunge la generazione 7, la stirpe piu' profonda mai misurata". NO: pulito fa 6,
+   esattamente come col rimontaggio. Era l'archivio ricco.
+ - "la mediana delle prove e' scesa da 0.81 a 0.37". NO: a archivio pulito e' 0.52/0.49/0.40
+   contro 0.53/0.42/0.40 del braccio senza fisica, cioe' PARI. I corpi non sono peggiorati:
+   e' cambiato quanto il mondo li aiutava.
+Quello che resta vero e' il dimezzamento della velocita' vera (.036-.045 -> .019-.027 m/s), ed e'
+aritmetico: un corpo caduto prima veniva rimesso in piedi e tornava a produrre metri, adesso
+contribuisce zero per il resto della sua vita. Quel dimezzamento E' la misura di quanta parte
+della locomozione veniva dal mondo invece che dai corpi.
 
 ------------------------------------------------------------------------------------------
 3. LA REGOLA GENERALE, perche' non la rifaccia una quarta volta
